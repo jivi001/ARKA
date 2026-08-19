@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<nmaprun scanner="nmap" args="nmap -sV -p 80 -oX - 192.168.1.0/24" start="1724000000" startstr="Mon Aug 19 00:00:00 2026" version="7.95" xmloutputversion="1.05">
+<host starttime="1724000000" endtime="1724000005">
+<status state="up" reason="syn-ack"/>
+<address addr="192.168.1.1" addrtype="ipv4"/>
+<hostnames><hostname name="gateway.local" type="PTR"/></hostnames>
+<ports>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" product="Apache" version="2.4.58" method="probeMatch" conf="10"/>
+</port>
+</ports>
+</host>
+<host starttime="1724000000" endtime="1724000005">
+<status state="up" reason="syn-ack"/>
+<address addr="192.168.1.10" addrtype="ipv4"/>
+<hostnames/>
+<ports>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" product="nginx" version="1.24.0" method="probeMatch" conf="10"/>
+</port>
+</ports>
+</host>
+<host starttime="1724000000" endtime="1724000005">
+<status state="up" reason="syn-ack"/>
+<address addr="192.168.1.20" addrtype="ipv4"/>
+<address addr="AA:BB:CC:DD:EE:FF" addrtype="mac"/>
+<hostnames>
+<hostname name="db.internal" type="PTR"/>
+<hostname name="database.local" type="user"/>
+</hostnames>
+<ports>
+<port protocol="tcp" portid="80">
+<state state="filtered" reason="no-response"/>
+</port>
+</ports>
+</host>
+<runstats>
+<finished time="1724000010" timestr="Mon Aug 19 00:00:10 2026" elapsed="10.00" exit="success"/>
+<hosts up="3" down="253" total="256"/>
+</runstats>
+</nmaprun>

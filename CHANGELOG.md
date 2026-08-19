@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-08-19
+
+### Phase 2.2.1: Nmap Adapter & Parser Foundation (Complete)
+
+### Added
+- **Nmap Adapter & Safe Domain Models**: Added `NmapScanConfig` (`arka/app/tools/nmap/schemas.py`) enforcing an explicit argument allowlist (`-sV`, `-sC`, `-p`, `-T{0-4}`, `-oX -`) with strict port regex validation and zero raw flag passthrough.
+- **Structured Nmap Output Models**: Added `NmapHost`, `NmapPort`, `NmapService`, `NmapScript`, and `NmapResult` models.
+- **Mandatory Defused XML Parser**: Added `parse_nmap_xml` (`arka/app/tools/nmap/parser.py`) using `defusedxml` to parse hosts, ports, service banners, CPE lists, and NSE script output safely from untrusted target responses.
+- **Operation-Level Risk Escalation**: Added `NmapToolDefinition` with `determine_risk()` dynamically deriving `RiskLevel.HIGH` when aggressive options (`default_scripts=True` or `timing_template >= 3`) are requested, mandating `ApprovalManager` gate.
+- **Extensible Risk Evaluation**: Added `determine_risk()` method on `ToolDefinition` and integrated with `PolicyEngine.evaluate()`.
+- **Nmap Tool Executor**: Implemented `NmapToolExecutor` (`arka/app/tools/nmap/executor.py`) bridging the Nmap adapter to `ExecutionManager` and `EvidenceStore`.
+- **XML Fixtures & Comprehensive Tests**: Added realistic XML fixtures and 67 automated test cases:
+  - `tests/unit/test_nmap_parser.py` (basic scan, multi-host, CPEs, scripts, malformed XML, empty result).
+  - `tests/unit/test_nmap_adapter.py` (argument allowlist construction, port validation, timing bounds, tool definition).
+  - `tests/security/test_nmap_security.py` (flag injection immunity, shell metacharacters, scope enforcement, escalation enforcement).
+  - `tests/integration/test_nmap_adapter.py` (full pipeline: CandidateToolRequest -> ToolRegistry -> PolicyEngine -> ExecutionManager).
+
+### Changed
+- **Dependencies**: Added `defusedxml>=0.7.0` to mandatory dependencies in `pyproject.toml`.
+
+---
+
 ## [0.2.0] - 2026-08-19
 
 ### Phase 2.1: Secure Execution Engine & Sandboxing (Complete)

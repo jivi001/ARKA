@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<nmaprun scanner="nmap" args="nmap -sV -p 1-1024 -oX - 10.0.0.0/30" start="1724000000" startstr="Mon Aug 19 00:00:00 2026" version="7.95" xmloutputversion="1.05">
+<runstats>
+<finished time="1724000005" timestr="Mon Aug 19 00:00:05 2026" elapsed="5.00" exit="success"/>
+<hosts up="0" down="4" total="4"/>
+</runstats>
+</nmaprun>

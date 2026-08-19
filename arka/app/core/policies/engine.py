@@ -67,7 +67,8 @@ class PolicyEngine:
                 )
 
         # 2. Check risk level authoritatively from the tool definition
-        risk_level = tool_def.risk_level
+        args = getattr(tool_request, "arguments", {}) or {}
+        risk_level = tool_def.determine_risk(args)
 
         # 3. Determine if approval is required based on risk threshold
         requires_approval = self._risk_approval_thresholds.get(risk_level, True)

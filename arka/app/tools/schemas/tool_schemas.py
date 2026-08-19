@@ -29,6 +29,14 @@ class ToolDefinition(BaseModel):
     category: str = "general"
     enabled: bool = True
 
+    def determine_risk(self, arguments: dict[str, Any] | None = None) -> RiskLevel:
+        """Derive the authoritative risk level for given execution arguments.
+
+        Defaults to the tool's static risk_level. Tool-specific definitions
+        can override this to implement deterministic operation-level risk escalation.
+        """
+        return self.risk_level
+
 
 class CandidateToolRequest(BaseModel):
     """Untrusted candidate tool request proposed by an LLM or agent reasoning step.

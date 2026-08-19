@@ -25,6 +25,7 @@ graph TD
         subgraph Adapters["Tool Executors"]
             Echo[EchoToolExecutor - Low Risk]
             HighMock[HighRiskMockToolExecutor - High Risk]
+            Nmap[NmapToolExecutor - Phase 2.2.1 Medium/High]
         end
         
         Evidence[EvidenceStore - SHA-256 Hashing]

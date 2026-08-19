@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<nmaprun scanner="nmap" args="nmap -sV -sC -p 80,443 -oX - 192.168.1.10" start="1724000000" startstr="Mon Aug 19 00:00:00 2026" version="7.95" xmloutputversion="1.05">
+<host starttime="1724000000" endtime="1724000015">
+<status state="up" reason="syn-ack"/>
+<address addr="192.168.1.10" addrtype="ipv4"/>
+<hostnames><hostname name="webserver.example.com" type="PTR"/></hostnames>
+<ports>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" product="nginx" version="1.24.0" extrainfo="" method="probeMatch" conf="10">
+<cpe>cpe:/a:nginx:nginx:1.24.0</cpe>
+</service>
+<script id="http-title" output="Welcome to nginx"/>
+<script id="http-server-header" output="nginx/1.24.0"/>
+</port>
+<port protocol="tcp" portid="443">
+<state state="open" reason="syn-ack"/>
+<service name="https" product="nginx" version="1.24.0" extrainfo="SSL" method="probeMatch" conf="10">
+<cpe>cpe:/a:nginx:nginx:1.24.0</cpe>
+<cpe>cpe:/o:linux:linux_kernel</cpe>
+</service>
+<script id="ssl-cert" output="Subject: CN=webserver.example.com\nIssuer: CN=Let's Encrypt"/>
+<script id="ssl-date" output="TLS randomness does not represent time"/>
+</port>
+</ports>
+</host>
+<runstats>
+<finished time="1724000015" timestr="Mon Aug 19 00:00:15 2026" elapsed="15.00" exit="success"/>
+<hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

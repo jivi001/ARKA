@@ -142,7 +142,7 @@ class ToolRegistry:
                 target=candidate.target,
                 arguments=candidate.arguments,
                 reason=candidate.reason,
-                risk_level=tool_def.risk_level,
+                risk_level=decision.risk_level,
                 scope_validated=True,
                 policy_approved=True,
                 approval_id=approval_id,

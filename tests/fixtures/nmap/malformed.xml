@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nmaprun scanner="nmap" version="7.95">
+<host>
+<status state="up"/>
+<address addr="192.168.1.10" addrtype="ipv4"/>
+<ports>
+<port protocol="tcp" portid="80">
+<state state="open"/>
+<!-- Truncated / malformed: missing closing tags -->

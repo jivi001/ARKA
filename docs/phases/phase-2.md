@@ -2,7 +2,8 @@
 
 **Current Status**:
 - **Phase 2.1 (Secure Execution Engine & Sandboxing)**: **`COMPLETE`**
-- **Phase 2.2 (Tool Adapters & Reconnaissance Integration)**: **`PLANNED`**
+- **Phase 2.2.1 (Nmap Adapter & Parser Foundation)**: **`COMPLETE`**
+- **Phase 2.2.2+ (Reconnaissance Agents & Additional Tool Adapters)**: **`PLANNED`**
 
 ---
 
@@ -20,7 +21,7 @@ graph TD
         AuthReq[Authoritative ToolRequest]
     end
     
-    subgraph ExecutionPlane["Execution Plane (Phase 2.1)"]
+    subgraph ExecutionPlane["Execution Plane (Phase 2.1 / 2.2.1)"]
         ExecMgr[ExecutionManager]
         ExecPolicy[ExecutionPolicy]
         
@@ -29,8 +30,8 @@ graph TD
             DockerRT[DockerSandboxRuntime - Least Privilege Container]
         end
         
-        ToolExec[ToolExecutor]
-        SecTool[Security Tool / Mock]
+        ToolExec[NmapToolExecutor / MockToolExecutor]
+        NmapParser[Nmap XML Parser - defusedxml]
         ExecResult[ExecutionResult / ToolResult]
         Evidence[EvidenceStore & Cryptographic Hashes]
         AuditLog[(Immutable Audit Log)]
@@ -47,8 +48,8 @@ graph TD
     ExecMgr --> ExecPolicy
     ExecPolicy --> IsolationRuntimes
     IsolationRuntimes --> ToolExec
-    ToolExec --> SecTool
-    SecTool --> ExecResult
+    ToolExec --> NmapParser
+    NmapParser --> ExecResult
     ExecResult --> Evidence
     ExecResult --> AuditLog
 ```
@@ -84,8 +85,32 @@ graph TD
 
 ---
 
-## 3. Phase 2.2 Planned Milestone
+## 3. Phase 2.2.1 Implementation Summary: Nmap Adapter & Parser Foundation (Completed)
 
-- Tool adapters and structured output parsers for Nmap, Nuclei, ffuf, WhatWeb, and Amass.
-- `ReconAgent` LangGraph subagent for autonomous asset discovery and service enumeration.
-- Target network routing policies linking `ScopeGuard` to container networking.
+1. **Nmap Domain Models & Safe Argument Construction** (`arka/app/tools/nmap/schemas.py`):
+   - `NmapScanConfig`: Enforces an explicit argument allowlist (`-sV`, `-sC`, `-p`, `-T{0-4}`, `-oX -`).
+   - Zero raw flag passthrough: the LLM never sees or specifies CLI flags directly.
+   - Port validation: strictly regex-validated (`^[0-9]+([,\-][0-9]+)*$`).
+   - Structured result models: `NmapHost`, `NmapPort`, `NmapService`, `NmapScript`, `NmapResult`.
+
+2. **Nmap XML Parser** (`arka/app/tools/nmap/parser.py`):
+   - Mandatory `defusedxml` ElementTree parsing against entity expansion and billion-laughs attacks.
+   - Parses hosts, IPv4/IPv6 addresses, hostnames, ports, service banners, CPE lists, and NSE script outputs.
+   - Treats all XML output as untrusted data; returns controlled errors on malformed input.
+
+3. **Deterministic Risk Model & Operation-Level Escalation** (`arka/app/tools/nmap/definition.py`):
+   - Base risk: `RiskLevel.MEDIUM` (standard port and service scanning within authorized scope).
+   - Operation-level escalation to `RiskLevel.HIGH` triggered when aggressive options are configured (`default_scripts=True` or `timing_template >= 3`).
+   - `PolicyEngine` enforces mandatory human approval via `ApprovalManager` for escalated scans.
+
+4. **Nmap Tool Executor** (`arka/app/tools/nmap/executor.py`):
+   - Implements `ToolExecutor` and integrates seamlessly with `ExecutionManager`.
+   - Execution is currently simulated in-memory (Phase 2.2.1 foundation); ready for real containerized execution when `DockerSandboxRuntime` connects to live Docker.
+
+---
+
+## 4. Phase 2.2 Planned Subsequent Milestones
+
+- **Phase 2.2.2**: Additional security tool adapters and parsers (Nuclei, ffuf, WhatWeb, Amass).
+- **Phase 2.2.3**: `ReconAgent` LangGraph subagent for autonomous asset discovery and service enumeration.
+- **Phase 2.2.4**: Target network routing policies linking `ScopeGuard` to container networking.
