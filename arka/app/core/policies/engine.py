@@ -3,9 +3,10 @@
 Evaluates tool requests against scope, risk levels, and approval requirements.
 All decisions are deterministic — no LLM involvement in authorization.
 """
+
 from arka.app.core.scope.scopeguard import ScopeGuard, ScopeViolation
-from arka.app.core.state.models import RiskLevel, PolicyDecisionType, PolicyDecision
-from arka.app.tools.schemas.tool_schemas import ToolRequest, ToolDefinition
+from arka.app.core.state.models import PolicyDecision, PolicyDecisionType, RiskLevel
+from arka.app.tools.schemas.tool_schemas import CandidateToolRequest, ToolDefinition, ToolRequest
 
 
 class PolicyEngine:
@@ -13,8 +14,8 @@ class PolicyEngine:
 
     Evaluates tool requests against scope, risk levels, and approval requirements.
     The policy engine makes decisions based on:
-    1. Scope validation (is the target authorized?)
-    2. Risk classification (what risk level is the tool?)
+    1. Scope validation (is the target authorized? Exclusions always take priority.)
+    2. Risk classification (what risk level is defined for the tool?)
     3. Approval requirements (does this risk level need human approval?)
     """
 
@@ -27,22 +28,35 @@ class PolicyEngine:
             RiskLevel.CRITICAL: True,
         }
 
-    def evaluate(self, tool_request: ToolRequest, tool_def: ToolDefinition) -> PolicyDecision:
+    def evaluate(
+        self,
+        tool_request: ToolRequest | CandidateToolRequest,
+        tool_def: ToolDefinition,
+        engagement_id: str = "",
+        task_id: str = "",
+        agent_id: str = "",
+    ) -> PolicyDecision:
         """Evaluate a tool request against policy.
 
         Returns a PolicyDecision with ALLOW, DENY, or REQUIRE_APPROVAL.
         Scope violations always result in DENY regardless of risk level.
+        Risk level is authoritatively derived from ToolDefinition.
         """
-        # 1. Validate target is in scope
+        eff_engagement_id = getattr(tool_request, "engagement_id", "") or engagement_id
+        eff_task_id = getattr(tool_request, "task_id", "") or task_id
+        eff_agent_id = getattr(tool_request, "agent_id", "") or agent_id
+
         target = tool_request.target
+
+        # 1. Validate target is in scope
         if target:
             try:
                 self._scope_guard.validate_target(target)
             except ScopeViolation as e:
                 return PolicyDecision(
-                    engagement_id=tool_request.engagement_id,
-                    task_id=tool_request.task_id,
-                    agent_id=tool_request.agent_id,
+                    engagement_id=eff_engagement_id,
+                    task_id=eff_task_id,
+                    agent_id=eff_agent_id,
                     action=f"execute_tool:{tool_def.name}",
                     target=target,
                     tool_name=tool_def.name,
@@ -52,7 +66,7 @@ class PolicyEngine:
                     requires_approval=False,
                 )
 
-        # 2. Check risk level from the tool definition
+        # 2. Check risk level authoritatively from the tool definition
         risk_level = tool_def.risk_level
 
         # 3. Determine if approval is required based on risk threshold
@@ -73,9 +87,9 @@ class PolicyEngine:
             )
 
         return PolicyDecision(
-            engagement_id=tool_request.engagement_id,
-            task_id=tool_request.task_id,
-            agent_id=tool_request.agent_id,
+            engagement_id=eff_engagement_id,
+            task_id=eff_task_id,
+            agent_id=eff_agent_id,
             action=f"execute_tool:{tool_def.name}",
             target=target or "",
             tool_name=tool_def.name,

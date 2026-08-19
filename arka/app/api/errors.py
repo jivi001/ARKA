@@ -1,8 +1,10 @@
 """ARKA API error handling and consistent error responses."""
+
 from typing import Any
-from pydantic import BaseModel, Field
+
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 
 class ErrorResponse(BaseModel):

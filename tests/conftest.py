@@ -1,10 +1,12 @@
 import pytest
-from arka.app.core.state.models import ScopeDefinition, ScopeTarget
-from arka.app.core.scope.scopeguard import ScopeGuard
-from arka.app.core.policies.engine import PolicyEngine
+
 from arka.app.audit.service import AuditService
-from arka.app.tools.registry.registry import ToolRegistry
+from arka.app.core.policies.engine import PolicyEngine
+from arka.app.core.scope.scopeguard import ScopeGuard
+from arka.app.core.state.models import ScopeDefinition, ScopeTarget
 from arka.app.tools.mock.tools import register_mock_tools
+from arka.app.tools.registry.registry import ToolRegistry
+
 
 @pytest.fixture
 def sample_scope() -> ScopeDefinition:
@@ -24,17 +26,21 @@ def sample_scope() -> ScopeDefinition:
         ),
     )
 
+
 @pytest.fixture
 def scope_guard(sample_scope) -> ScopeGuard:
     return ScopeGuard(sample_scope)
+
 
 @pytest.fixture
 def audit_service() -> AuditService:
     return AuditService()
 
+
 @pytest.fixture
 def policy_engine(scope_guard) -> PolicyEngine:
     return PolicyEngine(scope_guard)
+
 
 @pytest.fixture
 def tool_registry(policy_engine, audit_service, scope_guard) -> ToolRegistry:
@@ -46,7 +52,8 @@ def tool_registry(policy_engine, audit_service, scope_guard) -> ToolRegistry:
 @pytest.fixture
 def client():
     from fastapi.testclient import TestClient
+
     from arka.app.api import create_app
+
     app = create_app()
     return TestClient(app)
-

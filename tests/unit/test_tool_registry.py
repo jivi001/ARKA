@@ -1,6 +1,8 @@
 import pytest
-from arka.app.tools.schemas.tool_schemas import ToolRequest
+
 from arka.app.tools.registry.registry import ToolRegistry
+from arka.app.tools.schemas.tool_schemas import ToolRequest
+
 
 class TestToolRegistry:
     @pytest.mark.asyncio
@@ -12,7 +14,7 @@ class TestToolRegistry:
             tool_name="echo_test",
             target="example.com",
             arguments={"message": "hello"},
-            reason="test"
+            reason="test",
         )
         result = await tool_registry.execute(request)
         assert result.success is True
@@ -27,7 +29,7 @@ class TestToolRegistry:
             tool_name="unknown-tool",
             target="example.com",
             arguments={},
-            reason="test"
+            reason="test",
         )
         result = await tool_registry.execute(request)
         assert result.success is False
@@ -42,7 +44,7 @@ class TestToolRegistry:
             tool_name="echo_test",
             target="evil.com",
             arguments={"message": "hello"},
-            reason="test"
+            reason="test",
         )
         result = await tool_registry.execute(request)
         assert result.success is False

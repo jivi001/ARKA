@@ -1,7 +1,7 @@
-import pytest
 from arka.app.core.policies.engine import PolicyEngine
-from arka.app.core.state.models import RiskLevel, PolicyDecisionType
+from arka.app.core.state.models import PolicyDecisionType, RiskLevel
 from arka.app.tools.schemas.tool_schemas import ToolDefinition, ToolRequest
+
 
 class TestPolicyEngine:
     def test_allow_low_risk(self, policy_engine: PolicyEngine):
@@ -11,7 +11,7 @@ class TestPolicyEngine:
             version="1.0",
             risk_level=RiskLevel.LOW,
             input_schema={},
-            output_schema={}
+            output_schema={},
         )
         tool_req = ToolRequest(
             engagement_id="eng-1",
@@ -19,7 +19,7 @@ class TestPolicyEngine:
             agent_id="agent-1",
             tool_name="echo",
             target="example.com",
-            reason="test"
+            reason="test",
         )
         decision = policy_engine.evaluate(tool_req, tool_def)
         assert decision.decision == PolicyDecisionType.ALLOW
@@ -31,7 +31,7 @@ class TestPolicyEngine:
             version="1.0",
             risk_level=RiskLevel.LOW,
             input_schema={},
-            output_schema={}
+            output_schema={},
         )
         tool_req = ToolRequest(
             engagement_id="eng-1",
@@ -39,7 +39,7 @@ class TestPolicyEngine:
             agent_id="agent-1",
             tool_name="echo",
             target="evil.com",
-            reason="test"
+            reason="test",
         )
         decision = policy_engine.evaluate(tool_req, tool_def)
         assert decision.decision == PolicyDecisionType.DENY
@@ -51,7 +51,7 @@ class TestPolicyEngine:
             version="1.0",
             risk_level=RiskLevel.HIGH,
             input_schema={},
-            output_schema={}
+            output_schema={},
         )
         tool_req = ToolRequest(
             engagement_id="eng-1",
@@ -59,7 +59,7 @@ class TestPolicyEngine:
             agent_id="agent-1",
             tool_name="exploit",
             target="example.com",
-            reason="test"
+            reason="test",
         )
         decision = policy_engine.evaluate(tool_req, tool_def)
         assert decision.decision == PolicyDecisionType.REQUIRE_APPROVAL
@@ -71,7 +71,7 @@ class TestPolicyEngine:
             version="1.0",
             risk_level=RiskLevel.MEDIUM,
             input_schema={},
-            output_schema={}
+            output_schema={},
         )
         tool_req = ToolRequest(
             engagement_id="eng-1",
@@ -79,7 +79,7 @@ class TestPolicyEngine:
             agent_id="agent-1",
             tool_name="scan",
             target="example.com",
-            reason="test"
+            reason="test",
         )
         policy_engine.set_approval_threshold(RiskLevel.MEDIUM, True)
         decision = policy_engine.evaluate(tool_req, tool_def)

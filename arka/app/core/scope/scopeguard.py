@@ -1,151 +1,208 @@
+import contextlib
 import ipaddress
 from urllib.parse import urlparse
-from typing import List, Tuple, Optional
 
 from arka.app.core.state.models import ScopeDefinition, ScopeTarget
 
+
 class ScopeViolation(Exception):
     """Raised when a target is outside the authorized scope."""
+
     def __init__(self, target: str, reason: str):
         self.target = target
         self.reason = reason
         super().__init__(f"Scope violation: {target} - {reason}")
 
+
 class ScopeGuard:
     """Deterministic scope enforcement engine.
-    
+
     Never relies on LLM decisions for scope validation.
-    All checks are based on explicit scope definitions.
+    All checks are based on explicit scope definitions with deterministic logic.
+    Exclusions ALWAYS take precedence over inclusions.
     """
 
     def __init__(self, scope: ScopeDefinition):
         self._scope = scope
         self._included_networks = self._parse_networks(scope.includes)
         self._excluded_networks = self._parse_networks(scope.excludes)
-        self._included_domains = set(d.lower() for d in scope.includes.domains)
-        self._excluded_domains = set(d.lower() for d in scope.excludes.domains)
-        self._included_ips = set(scope.includes.ip_addresses)
-        self._excluded_ips = set(scope.excludes.ip_addresses)
-        self._included_ports = set(scope.includes.ports)
+        self._included_domains = {d.strip().lower() for d in scope.includes.domains if d.strip()}
+        self._excluded_domains = {d.strip().lower() for d in scope.excludes.domains if d.strip()}
+        self._included_ips = self._parse_ip_set(scope.includes.ip_addresses)
+        self._excluded_ips = self._parse_ip_set(scope.excludes.ip_addresses)
+        self._included_ports = {p for p in scope.includes.ports if 0 <= p <= 65535}
         self._allowed_port_ranges = self._parse_port_ranges(scope.includes.port_ranges)
         self._subdomains_allowed = scope.includes.subdomains_allowed
 
-    def _parse_networks(self, target: ScopeTarget) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    def _parse_networks(
+        self, target: ScopeTarget
+    ) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
         networks = []
         for cidr in target.cidrs:
-            try:
-                networks.append(ipaddress.ip_network(cidr, strict=False))
-            except ValueError:
-                pass
+            cidr_clean = cidr.strip()
+            if not cidr_clean:
+                continue
+            with contextlib.suppress(ValueError):
+                networks.append(ipaddress.ip_network(cidr_clean, strict=False))
         return networks
+
+    def _parse_ip_set(
+        self, ip_strings: list[str]
+    ) -> set[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+        ips = set()
+        for s in ip_strings:
+            s_clean = s.strip()
+            if not s_clean:
+                continue
+            with contextlib.suppress(ValueError):
+                ips.add(ipaddress.ip_address(s_clean))
+        return ips
 
     def _parse_port_ranges(self, ranges: list[str]) -> list[tuple[int, int]]:
         parsed = []
         for prange in ranges:
-            parts = prange.split('-')
+            parts = prange.strip().split("-")
             if len(parts) == 2:
-                try:
-                    start = int(parts[0])
-                    end = int(parts[1])
+                with contextlib.suppress(ValueError):
+                    start = int(parts[0].strip())
+                    end = int(parts[1].strip())
                     if 0 <= start <= 65535 and 0 <= end <= 65535 and start <= end:
                         parsed.append((start, end))
-                except ValueError:
-                    pass
         return parsed
 
     def _is_subdomain_of(self, domain: str, parent: str) -> bool:
-        return domain == parent or domain.endswith('.' + parent)
+        """Strict domain/subdomain check.
+
+        Matches exact domain or strict subdomains (with leading dot delimiter).
+        Prevents suffix/prefix attacks like evil-example.com or notexample.com.
+        """
+        domain = domain.lower().strip()
+        parent = parent.lower().strip()
+        if not domain or not parent:
+            return False
+        return domain == parent or domain.endswith("." + parent)
 
     def validate_port(self, port: int) -> bool:
         """Check if a port is within allowed scope."""
+        if not isinstance(port, int) or port < 0 or port > 65535:
+            return False
         if not self._included_ports and not self._allowed_port_ranges:
             return True
         if port in self._included_ports:
             return True
-        for start, end in self._allowed_port_ranges:
-            if start <= port <= end:
-                return True
+        return any(start <= port <= end for start, end in self._allowed_port_ranges)
+
+    @staticmethod
+    def _ip_in_net(
+        ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address,
+        net: ipaddress.IPv4Network | ipaddress.IPv6Network,
+    ) -> bool:
+        if isinstance(ip_obj, ipaddress.IPv4Address) and isinstance(net, ipaddress.IPv4Network):
+            return ip_obj in net
+        if isinstance(ip_obj, ipaddress.IPv6Address) and isinstance(net, ipaddress.IPv6Network):
+            return ip_obj in net
+        return False
+
+    @staticmethod
+    def _net_overlaps(
+        net1: ipaddress.IPv4Network | ipaddress.IPv6Network,
+        net2: ipaddress.IPv4Network | ipaddress.IPv6Network,
+    ) -> bool:
+        if isinstance(net1, ipaddress.IPv4Network) and isinstance(net2, ipaddress.IPv4Network):
+            return net1.overlaps(net2)
+        if isinstance(net1, ipaddress.IPv6Network) and isinstance(net2, ipaddress.IPv6Network):
+            return net1.overlaps(net2)
+        return False
+
+    @staticmethod
+    def _net_subnet_of(
+        child: ipaddress.IPv4Network | ipaddress.IPv6Network,
+        parent: ipaddress.IPv4Network | ipaddress.IPv6Network,
+    ) -> bool:
+        if isinstance(child, ipaddress.IPv4Network) and isinstance(parent, ipaddress.IPv4Network):
+            return child.subnet_of(parent)
+        if isinstance(child, ipaddress.IPv6Network) and isinstance(parent, ipaddress.IPv6Network):
+            return child.subnet_of(parent)
         return False
 
     def validate_ip(self, ip: str) -> bool:
-        """Check if IP address is in scope."""
+        """Check if an IPv4 or IPv6 address is in scope."""
+        ip_clean = ip.strip()
         try:
-            ip_obj = ipaddress.ip_address(ip)
-        except ValueError:
-            raise ScopeViolation(ip, "Invalid IP address format.")
+            ip_obj = ipaddress.ip_address(ip_clean)
+        except ValueError as e:
+            raise ScopeViolation(ip, "Invalid IP address format.") from e
 
         # Check exclusions first (exclusions always take priority)
-        if ip in self._excluded_ips:
+        if ip_obj in self._excluded_ips:
             return False
         for net in self._excluded_networks:
-            if ip_obj in net:
+            if self._ip_in_net(ip_obj, net):
                 return False
 
         # Check inclusions
-        if ip in self._included_ips:
+        if ip_obj in self._included_ips:
             return True
-        for net in self._included_networks:
-            if ip_obj in net:
-                return True
-
-        return False
+        return any(self._ip_in_net(ip_obj, net) for net in self._included_networks)
 
     def validate_domain(self, domain: str) -> bool:
-        """Check if domain is in scope. Handles subdomain logic."""
-        domain = domain.lower()
-        
-        # Check exclusions first (exclusions always take priority)
-        if domain in self._excluded_domains:
+        """Check if domain is in scope. Handles subdomain and exclusion logic."""
+        domain_clean = domain.strip().lower()
+        if not domain_clean or "/" in domain_clean or "\\" in domain_clean or " " in domain_clean:
             return False
+
+        # Check exclusions first (exclusions always take priority)
         for ex in self._excluded_domains:
-            if self._is_subdomain_of(domain, ex):
+            if self._is_subdomain_of(domain_clean, ex):
                 return False
 
         # Check inclusions
-        if domain in self._included_domains:
+        if domain_clean in self._included_domains:
             return True
         if self._subdomains_allowed:
             for inc in self._included_domains:
-                if self._is_subdomain_of(domain, inc):
+                if self._is_subdomain_of(domain_clean, inc):
                     return True
         return False
 
     def validate_cidr(self, cidr: str) -> bool:
         """Check if a CIDR range is entirely within scope."""
+        cidr_clean = cidr.strip()
         try:
-            net_obj = ipaddress.ip_network(cidr, strict=False)
-        except ValueError:
-            raise ScopeViolation(cidr, "Invalid CIDR format.")
+            net_obj = ipaddress.ip_network(cidr_clean, strict=False)
+        except ValueError as e:
+            raise ScopeViolation(cidr, "Invalid CIDR format.") from e
 
-        # If it intersects any excluded network, it's invalid
+        # If it intersects any excluded network of the same version, it's invalid
         for ex_net in self._excluded_networks:
-            if net_obj.overlaps(ex_net):
+            if self._net_overlaps(net_obj, ex_net):
                 return False
 
-        # It must be entirely within at least one included network
-        for inc_net in self._included_networks:
-            if net_obj.subnet_of(inc_net):
-                return True
-                
-        return False
+        # If any excluded IP of the same version falls within this CIDR, it's invalid
+        for ex_ip in self._excluded_ips:
+            if self._ip_in_net(ex_ip, net_obj):
+                return False
+
+        # It must be entirely within at least one included network of the same version
+        return any(self._net_subnet_of(net_obj, inc_net) for inc_net in self._included_networks)
 
     def validate_url(self, url: str) -> bool:
-        """Validate a URL's host and port are in scope."""
-        if not url.startswith(('http://', 'https://')):
-            url = 'http://' + url
+        """Validate URL host and optional port against scope."""
+        url_clean = url.strip()
+        if not url_clean.startswith(("http://", "https://")):
+            url_clean = "http://" + url_clean
         try:
-            parsed = urlparse(url)
-        except Exception:
-            raise ScopeViolation(url, "Invalid URL format.")
-            
+            parsed = urlparse(url_clean)
+        except Exception as e:
+            raise ScopeViolation(url, "Invalid URL format.") from e
+
         host = parsed.hostname
         if not host:
             raise ScopeViolation(url, "Could not extract host from URL.")
-            
+
         port = parsed.port
-        if port is not None:
-            if not self.validate_port(port):
-                return False
+        if port is not None and not self.validate_port(port):
+            return False
 
         try:
             # Check if host is IP
@@ -154,31 +211,52 @@ class ScopeGuard:
         except ValueError:
             return self.validate_domain(host)
 
-    def validate_target(self, target: str, port: Optional[int] = None) -> bool:
-        """Validate whether a target is within scope. Returns True if valid, raises ScopeViolation otherwise."""
-        if port is not None:
-            if not self.validate_port(port):
-                raise ScopeViolation(f"{target}:{port}", f"Port {port} not in scope.")
+    def validate_target(self, target: str, port: int | None = None) -> bool:
+        """Validate whether a target is within scope.
 
-        if target.startswith('http://') or target.startswith('https://'):
-            if not self.validate_url(target):
-                raise ScopeViolation(target, "URL not in scope.")
+        Returns True if valid, raises ScopeViolation otherwise.
+        """
+        if not target or not isinstance(target, str) or not target.strip():
+            raise ScopeViolation(str(target), "Empty target specified.")
+
+        target_clean = target.strip()
+
+        # If port provided separately, validate it
+        if port is not None and not self.validate_port(port):
+            raise ScopeViolation(f"{target_clean}:{port}", f"Port {port} not in scope.")
+
+        # URL validation
+        if target_clean.startswith(("http://", "https://")):
+            if not self.validate_url(target_clean):
+                raise ScopeViolation(target_clean, "URL not in scope.")
             return True
 
-        if '/' in target:
-            if not self.validate_cidr(target):
-                raise ScopeViolation(target, "CIDR not in scope.")
+        # Check for host:port format if not a CIDR and not an IPv6 address
+        if ":" in target_clean and not target_clean.startswith("[") and "/" not in target_clean:
+            parts = target_clean.split(":")
+            if len(parts) == 2 and parts[1].isdigit():
+                host_part = parts[0]
+                port_part = int(parts[1])
+                if not self.validate_port(port_part):
+                    raise ScopeViolation(target_clean, f"Port {port_part} not in scope.")
+                return self.validate_target(host_part)
+
+        # CIDR notation
+        if "/" in target_clean:
+            if not self.validate_cidr(target_clean):
+                raise ScopeViolation(target_clean, "CIDR not in scope.")
             return True
 
+        # IP Address check
         try:
-            ipaddress.ip_address(target)
-            if not self.validate_ip(target):
-                raise ScopeViolation(target, "IP not in scope.")
+            ipaddress.ip_address(target_clean)
+            if not self.validate_ip(target_clean):
+                raise ScopeViolation(target_clean, "IP not in scope.")
             return True
         except ValueError:
             pass
 
-        if not self.validate_domain(target):
-            raise ScopeViolation(target, "Domain not in scope.")
-            
+        # Domain check
+        if not self.validate_domain(target_clean):
+            raise ScopeViolation(target_clean, "Domain not in scope.")
         return True

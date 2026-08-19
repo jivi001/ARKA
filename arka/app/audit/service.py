@@ -1,10 +1,14 @@
 """Append-only audit trail service for ARKA.
 
-This is NOT metrics — it's an authoritative security/compliance record.
-Events are immutable once recorded.
+This is an authoritative security/compliance record, NOT metrics.
+Events are strictly append-only and immutable once recorded.
+No UPDATE or DELETE methods exist on this service.
 """
+
 import inspect
-from typing import Callable, Optional, Any
+from collections.abc import Callable
+from copy import deepcopy
+from typing import Any, ClassVar
 
 from arka.app.audit.schemas import AuditEvent, AuditEventType
 
@@ -12,22 +16,63 @@ from arka.app.audit.schemas import AuditEvent, AuditEventType
 class AuditService:
     """Append-only audit trail for compliance and security.
 
-    This is NOT metrics — it's an authoritative security/compliance record.
     Events are immutable once recorded.
+    Defensive copies are returned to prevent mutation of internal state.
+    Sensitive parameters and secrets are automatically redacted.
     """
 
+    SENSITIVE_KEYS: ClassVar[set[str]] = {
+        "api_key",
+        "apikey",
+        "authorization",
+        "auth_token",
+        "token",
+        "secret",
+        "password",
+        "vault_token",
+        "private_key",
+    }
+
     def __init__(self) -> None:
-        self._events: list[AuditEvent] = []  # In-memory for Phase 1, DB-backed later
+        self._events: list[AuditEvent] = []
         self._handlers: list[Callable] = []
+
+    def _redact_dict(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Recursively redact sensitive keys from dictionary data."""
+        clean: dict[str, Any] = {}
+        for k, v in data.items():
+            if k.lower() in self.SENSITIVE_KEYS:
+                clean[k] = "[REDACTED]"
+            elif isinstance(v, dict):
+                clean[k] = self._redact_dict(v)
+            elif isinstance(v, list):
+                clean[k] = [
+                    self._redact_dict(item) if isinstance(item, dict) else item for item in v
+                ]
+            else:
+                clean[k] = v
+        return clean
 
     async def record(self, event: AuditEvent) -> None:
         """Record an audit event. Append-only — events cannot be modified or deleted."""
-        self._events.append(event)
+        # Sanitize parameters and metadata
+        event_dict = event.model_dump()
+        if "parameters" in event_dict and isinstance(event_dict["parameters"], dict):
+            event_dict["parameters"] = self._redact_dict(event_dict["parameters"])
+        if "metadata" in event_dict and isinstance(event_dict["metadata"], dict):
+            event_dict["metadata"] = self._redact_dict(event_dict["metadata"])
+
+        sanitized_event = AuditEvent(**event_dict)
+        self._events.append(sanitized_event)
+
         for handler in self._handlers:
-            if inspect.iscoroutinefunction(handler):
-                await handler(event)
-            else:
-                handler(event)
+            try:
+                if inspect.iscoroutinefunction(handler):
+                    await handler(sanitized_event)
+                else:
+                    handler(sanitized_event)
+            except Exception:
+                pass
 
     async def record_action(
         self,
@@ -48,6 +93,7 @@ class AuditService:
         correlation_id: str | None = None,
     ) -> AuditEvent:
         """Convenience method to record an audit event with individual fields."""
+        sanitized_params = self._redact_dict(parameters) if parameters else {}
         event = AuditEvent(
             event_type=event_type,
             actor=actor,
@@ -58,19 +104,24 @@ class AuditService:
             target=target,
             tool_name=tool_name,
             authorization_decision=authorization_decision,
-            parameters=parameters or {},
+            parameters=sanitized_params,
             result_status=result_status,
             error=error,
             evidence_ref=evidence_ref,
             correlation_id=correlation_id,
         )
         await self.record(event)
-        return event
+        return deepcopy(event)
 
-    async def get_events(self, engagement_id: Optional[str] = None, 
-                         task_id: Optional[str] = None,
-                         event_type: Optional[AuditEventType] = None,
-                         limit: int = 100, offset: int = 0) -> list[AuditEvent]:
+    async def get_events(
+        self,
+        engagement_id: str | None = None,
+        task_id: str | None = None,
+        event_type: AuditEventType | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[AuditEvent]:
+        """Get defensive copies of recorded audit events."""
         filtered = self._events
         if engagement_id:
             filtered = [e for e in filtered if e.engagement_id == engagement_id]
@@ -78,9 +129,10 @@ class AuditService:
             filtered = [e for e in filtered if e.task_id == task_id]
         if event_type:
             filtered = [e for e in filtered if e.event_type == event_type]
-            
-        return filtered[offset:offset+limit]
+
+        # Return deep copies so callers cannot mutate the internal list or models
+        return [deepcopy(e) for e in filtered[offset : offset + limit]]
 
     def add_handler(self, handler: Callable) -> None:
-        """Add a handler that's called for every audit event (e.g., for logging)."""
+        """Add a handler that's called for every audit event."""
         self._handlers.append(handler)

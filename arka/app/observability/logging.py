@@ -1,10 +1,13 @@
 import logging
-import structlog
+import sys
 from typing import Any
+
+import structlog
+
 
 def setup_logging(log_level: str = "INFO") -> None:
     """Configure structured JSON logging.
-    
+
     Args:
         log_level: The logging level to set.
     """
@@ -13,7 +16,7 @@ def setup_logging(log_level: str = "INFO") -> None:
         stream=sys.stdout,
         level=getattr(logging, log_level.upper(), logging.INFO),
     )
-    
+
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
@@ -28,13 +31,14 @@ def setup_logging(log_level: str = "INFO") -> None:
         cache_logger_on_first_use=True,
     )
 
+
 def get_logger(name: str, **kwargs: Any) -> structlog.stdlib.BoundLogger:
     """Get a bound logger with context.
-    
+
     Args:
         name: The logger name.
         **kwargs: Initial bound context variables.
-        
+
     Returns:
         A structlog bound logger instance.
     """

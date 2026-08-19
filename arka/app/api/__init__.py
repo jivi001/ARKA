@@ -1,12 +1,13 @@
 """ARKA FastAPI application factory."""
+
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI
 
 from arka.app.api.errors import ArkaAPIError, arka_exception_handler, generic_exception_handler
-from arka.app.api.routes.health import router as health_router
 from arka.app.api.routes.engagements import router as engagements_router
+from arka.app.api.routes.health import router as health_router
 from arka.app.api.routes.llm import router as llm_router
 from arka.app.core.config import get_settings
 
@@ -19,7 +20,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     Redis connections, and worker initialization.
     """
     # Startup
-    settings = get_settings()
+    _ = get_settings()
 
     # Phase 1: Basic initialization
     # Future: Initialize database pool, Redis connection, Arq workers

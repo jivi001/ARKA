@@ -26,11 +26,12 @@ dependencies = [
     "opentelemetry-sdk",
     "opentelemetry-instrumentation-fastapi",
     "httpx",
-    "typer[all]",
+    "typer>=0.12.0",
     "rich",
     "structlog",
     "python-dotenv",
     "tenacity",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [project.scripts]
@@ -52,8 +53,19 @@ dev = [
 line-length = 100
 target-version = "py313"
 
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "SIM", "RUF"]
+ignore = ["B008", "BLE001", "B024"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]
+
 [tool.mypy]
-strict = true
+python_version = "3.13"
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+files = ["arka"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

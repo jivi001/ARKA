@@ -1,7 +1,9 @@
-import asyncio
-from arq import create_pool
-from arq.connections import RedisSettings, ArqRedis
+from typing import ClassVar
+
+from arq.connections import ArqRedis, RedisSettings
+
 from arka.app.core.config import get_settings
+
 
 async def execute_tool_task(ctx: dict, tool_request_data: dict) -> dict:
     """Worker function to execute a tool request asynchronously."""
@@ -12,23 +14,26 @@ async def execute_tool_task(ctx: dict, tool_request_data: dict) -> dict:
     # 3. Return ToolResult
     return {"status": "completed", "request": tool_request_data}
 
+
 async def run_orchestrator_task(ctx: dict, engagement_id: str, objective: str) -> dict:
     """Worker function to run the LangGraph orchestrator."""
     # Phase 1: Orchestrator execution stub
     return {"status": "completed", "engagement_id": engagement_id}
 
+
 async def startup(ctx: dict) -> None:
     """Worker startup hook."""
-    pass
+
 
 async def shutdown(ctx: dict) -> None:
     """Worker shutdown hook."""
-    pass
+
 
 def get_redis_settings() -> RedisSettings:
     settings = get_settings()
     # Parse redis URL into RedisSettings
     from urllib.parse import urlparse
+
     parsed = urlparse(settings.redis_url)
     return RedisSettings(
         host=parsed.hostname or "localhost",
@@ -36,9 +41,11 @@ def get_redis_settings() -> RedisSettings:
         database=int(parsed.path.lstrip("/") or "0"),
     )
 
+
 class WorkerSettings:
     """Arq worker settings."""
-    functions = [execute_tool_task, run_orchestrator_task]
+
+    functions: ClassVar[list] = [execute_tool_task, run_orchestrator_task]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings()  # Will be overridden at runtime
@@ -47,10 +54,12 @@ class WorkerSettings:
     retry_jobs = True
     max_tries = 3
 
+
 async def enqueue_tool_execution(redis: ArqRedis, tool_request_data: dict) -> str:
     """Submit a tool execution job."""
     job = await redis.enqueue_job("execute_tool_task", tool_request_data)
     return job.job_id if job else ""
+
 
 async def enqueue_orchestrator_run(redis: ArqRedis, engagement_id: str, objective: str) -> str:
     """Submit an orchestrator run job."""

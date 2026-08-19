@@ -1,11 +1,15 @@
 """
 Audit event schemas.
 """
-from enum import Enum
-from typing import Any, Optional
+
 from datetime import datetime
+from enum import Enum
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from arka.app.core.state.models import new_id, utc_now
+
 
 class AuditEventType(str, Enum):
     ENGAGEMENT_CREATED = "engagement.created"
@@ -34,22 +38,24 @@ class AuditEventType(str, Enum):
     AGENT_STOPPED = "agent.stopped"
     SECURITY_ALERT = "security.alert"
 
+
 class AuditEvent(BaseModel):
     """Append-only audit event for compliance and security."""
+
     event_id: str = Field(default_factory=new_id)
     event_type: AuditEventType
     timestamp: datetime = Field(default_factory=utc_now)
-    engagement_id: Optional[str] = None
-    task_id: Optional[str] = None
-    agent_id: Optional[str] = None
+    engagement_id: str | None = None
+    task_id: str | None = None
+    agent_id: str | None = None
     actor: str  # who/what initiated this
     action: str
-    target: Optional[str] = None
-    tool_name: Optional[str] = None
-    authorization_decision: Optional[str] = None
+    target: str | None = None
+    tool_name: str | None = None
+    authorization_decision: str | None = None
     parameters: dict[str, Any] = Field(default_factory=dict)
-    result_status: Optional[str] = None
-    error: Optional[str] = None
-    evidence_ref: Optional[str] = None
-    correlation_id: Optional[str] = None
+    result_status: str | None = None
+    error: str | None = None
+    evidence_ref: str | None = None
+    correlation_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)

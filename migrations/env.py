@@ -1,11 +1,10 @@
 import asyncio
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-
-from alembic import context
 
 from arka.app.core.config import get_settings
 from arka.app.database.models import Base
@@ -23,13 +22,16 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
+
 def get_url():
     settings = get_settings()
     return settings.database_sync_url
 
+
 def get_async_url():
     settings = get_settings()
     return settings.database_url
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -67,11 +69,11 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
-    
+
     configuration = config.get_section(config.config_ini_section)
     if configuration is None:
         configuration = {}
-        
+
     configuration["sqlalchemy.url"] = get_async_url()
 
     connectable = async_engine_from_config(
@@ -90,6 +92,7 @@ def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
 
     asyncio.run(run_async_migrations())
+
 
 if context.is_offline_mode():
     run_migrations_offline()

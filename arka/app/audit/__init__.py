@@ -1,9 +1,7 @@
 """
 Audit module exports.
 """
-from .schemas import AuditEventType, AuditEvent
 
-__all__ = [
-    "AuditEventType",
-    "AuditEvent"
-]
+from .schemas import AuditEvent, AuditEventType
+
+__all__ = ["AuditEvent", "AuditEventType"]

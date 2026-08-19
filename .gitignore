@@ -47,3 +47,9 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
+
+
+
+graphify-out/
+.gemini
+.agents/

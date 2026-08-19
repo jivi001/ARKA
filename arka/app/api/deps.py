@@ -1,10 +1,7 @@
 """FastAPI dependency injection for ARKA."""
-from functools import lru_cache
 
-from arka.app.core.config import get_settings
 from arka.app.audit.service import AuditService
 from arka.app.llm.gateway.gateway import LLMGateway
-
 
 # Singleton instances for application lifetime
 _audit_service: AuditService | None = None

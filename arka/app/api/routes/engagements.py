@@ -1,14 +1,14 @@
 """Engagement management API endpoints."""
-from datetime import datetime, timezone
+
 from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from arka.app.api.errors import NotFoundError, ConflictError
 from arka.app.api.deps import get_audit_service
-from arka.app.audit.service import AuditService
+from arka.app.api.errors import ConflictError, NotFoundError
 from arka.app.audit.schemas import AuditEventType
+from arka.app.audit.service import AuditService
 from arka.app.core.state.models import (
     EngagementState,
     EngagementStatus,
@@ -200,9 +200,7 @@ async def stop_engagement(
         raise NotFoundError("Engagement", engagement_id)
 
     if state.status in (EngagementStatus.COMPLETED, EngagementStatus.STOPPED):
-        raise ConflictError(
-            f"Engagement is already in terminal state '{state.status.value}'."
-        )
+        raise ConflictError(f"Engagement is already in terminal state '{state.status.value}'.")
 
     state.status = EngagementStatus.STOPPED
     state.completed_at = utc_now()

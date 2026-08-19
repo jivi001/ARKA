@@ -1,11 +1,14 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from arka.app.api import create_app
+
 
 @pytest.fixture
 def client():
     app = create_app()
     return TestClient(app)
+
 
 class TestHealthEndpoints:
     def test_health(self, client):
@@ -17,13 +20,17 @@ class TestHealthEndpoints:
         response = client.get("/ready")
         assert response.status_code == 200
 
+
 class TestEngagementAPI:
     def test_create_engagement(self, client):
-        response = client.post("/engagements", json={
-            "name": "Test Engagement",
-            "description": "Test",
-            "scope": {"includes": {"domains": ["example.com"]}}
-        })
+        response = client.post(
+            "/engagements",
+            json={
+                "name": "Test Engagement",
+                "description": "Test",
+                "scope": {"includes": {"domains": ["example.com"]}},
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "Test Engagement"
@@ -43,10 +50,10 @@ class TestEngagementAPI:
 
     def test_engagement_lifecycle(self, client):
         # Create with scope
-        response = client.post("/engagements", json={
-            "name": "Lifecycle",
-            "scope": {"includes": {"domains": ["example.com"]}}
-        })
+        response = client.post(
+            "/engagements",
+            json={"name": "Lifecycle", "scope": {"includes": {"domains": ["example.com"]}}},
+        )
         eng_id = response.json()["engagement_id"]
 
         # Start

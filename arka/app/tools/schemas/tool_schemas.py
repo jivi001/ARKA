@@ -1,13 +1,20 @@
+"""Tool request and response schemas.
+
+Defines both untrusted candidate proposals from LLMs (CandidateToolRequest)
+and authoritative, deterministic execution requests (ToolRequest).
 """
-Tool request and response schemas.
-"""
-from typing import Any, Optional
+
 from datetime import datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from arka.app.core.state.models import RiskLevel, new_id, utc_now
+
 
 class ToolDefinition(BaseModel):
     """Registration schema for a tool in the Tool Registry."""
+
     name: str
     description: str
     version: str = "1.0.0"
@@ -22,8 +29,28 @@ class ToolDefinition(BaseModel):
     category: str = "general"
     enabled: bool = True
 
+
+class CandidateToolRequest(BaseModel):
+    """Untrusted candidate tool request proposed by an LLM or agent reasoning step.
+
+    Contains ONLY the proposed action details. It CANNOT specify authorization,
+    scope validation, risk level, or approval state.
+    """
+
+    tool_name: str
+    target: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    reason: str = ""
+
+
 class ToolRequest(BaseModel):
-    """A validated request to execute a tool."""
+    """An authoritative request to execute a tool.
+
+    Security fields (scope_validated, policy_approved, risk_level, approval_id)
+    must only be populated by trusted ARKA validation components (ScopeGuard,
+    PolicyEngine, ApprovalManager, ToolRegistry), NEVER from LLM output.
+    """
+
     request_id: str = Field(default_factory=new_id)
     engagement_id: str
     task_id: str
@@ -31,15 +58,17 @@ class ToolRequest(BaseModel):
     tool_name: str
     target: str
     arguments: dict[str, Any] = Field(default_factory=dict)
-    reason: str
+    reason: str = ""
     risk_level: RiskLevel = RiskLevel.LOW
     scope_validated: bool = False
     policy_approved: bool = False
-    approval_id: Optional[str] = None
+    approval_id: str | None = None
     requested_at: datetime = Field(default_factory=utc_now)
+
 
 class ToolResult(BaseModel):
     """Result from a tool execution."""
+
     result_id: str = Field(default_factory=new_id)
     request_id: str
     engagement_id: str
@@ -47,9 +76,9 @@ class ToolResult(BaseModel):
     tool_name: str
     success: bool
     output: dict[str, Any] = Field(default_factory=dict)
-    raw_output: Optional[str] = None
-    error: Optional[str] = None
+    raw_output: str | None = None
+    error: str | None = None
     execution_time_ms: int = 0
     evidence_refs: list[str] = Field(default_factory=list)
     executed_at: datetime = Field(default_factory=utc_now)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
