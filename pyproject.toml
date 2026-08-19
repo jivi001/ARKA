@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "arka"
+version = "0.1.0"
+description = "Autonomous Risk Knowledge & Assessment Platform"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]",
+    "uvicorn[standard]",
+    "pydantic>=2.0",
+    "pydantic-settings",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg",
+    "alembic",
+    "redis>=5.0",
+    "arq>=0.26",
+    "langgraph>=0.2",
+    "langgraph-checkpoint-postgres",
+    "litellm>=1.40",
+    "langfuse>=2.0",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-fastapi",
+    "httpx",
+    "typer[all]",
+    "rich",
+    "structlog",
+    "python-dotenv",
+    "tenacity",
+]
+
+[project.scripts]
+arka = "arka.app.cli.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "mypy",
+    "ruff",
+    "respx",
+    "factory-boy",
+    "aiosqlite",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.mypy]
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

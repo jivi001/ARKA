@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  arka-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    depends_on:
+      - postgres
+      - redis
+    command: uvicorn arka.app.api:app --host 0.0.0.0 --port 8000 --reload
+
+  arka-worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    depends_on:
+      - postgres
+      - redis
+    command: arq arka.app.workers.arq_worker.WorkerSettings
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: arka
+      POSTGRES_PASSWORD: arka
+      POSTGRES_DB: arka
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:
