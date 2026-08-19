@@ -1,8 +1,15 @@
+import sys
+
 import httpx
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 console = Console()
 app = typer.Typer(name="arka", help="ARKA — Autonomous Risk Knowledge & Assessment")
@@ -87,9 +94,9 @@ def health() -> None:
     result = api_get("/health")
     status = result.get("status", "unknown")
     if status == "healthy":
-        console.print("[green]✓ ARKA is healthy[/green]")
+        console.print("[green][OK] ARKA is healthy[/green]")
     else:
-        console.print(f"[red]✗ ARKA status: {status}[/red]")
+        console.print(f"[red][X] ARKA status: {status}[/red]")
 
 
 # Provider commands
@@ -107,7 +114,7 @@ def provider_list() -> None:
     table.add_column("Role", style="yellow")
     table.add_column("Configured", style="bold")
     for p in providers:
-        configured = "✓" if p["configured"] else "✗"
+        configured = "[OK]" if p["configured"] else "[X]"
         style = "green" if p["configured"] else "red"
         table.add_row(p["name"], p["model"], p["role"], f"[{style}]{configured}[/{style}]")
     console.print(table)
@@ -119,14 +126,14 @@ def provider_test(prompt: str = "Say 'ARKA is operational'") -> None:
     with console.status("Testing LLM provider..."):
         result = api_post("/llm/test", {"prompt": prompt})
     if result.get("status") == "success":
-        console.print("[green]✓ LLM test successful[/green]")
+        console.print("[green][OK] LLM test successful[/green]")
         console.print(f"  Provider: {result['provider']}")
         console.print(f"  Model: {result['model']}")
         console.print(f"  Response: {result['response']}")
         console.print(f"  Latency: {result['latency_ms']}ms")
         console.print(f"  Tokens: {result['tokens_used']}")
     else:
-        console.print(f"[red]✗ LLM test failed: {result.get('error', 'Unknown error')}[/red]")
+        console.print(f"[red][X] LLM test failed: {result.get('error', 'Unknown error')}[/red]")
 
 
 # Engagement commands
@@ -149,7 +156,7 @@ def engagement_create(
             "description": description,
         },
     )
-    console.print("[green]✓ Engagement created[/green]")
+    console.print("[green][OK] Engagement created[/green]")
     console.print(f"  ID: {result['engagement_id']}")
     console.print(f"  Name: {result['name']}")
     console.print(f"  Status: {result['status']}")
@@ -159,7 +166,7 @@ def engagement_create(
 def engagement_start(engagement_id: str = typer.Argument(..., help="Engagement ID")) -> None:
     """Start an engagement."""
     result = api_post(f"/engagements/{engagement_id}/start")
-    console.print("[green]✓ Engagement started[/green]")
+    console.print("[green][OK] Engagement started[/green]")
     console.print(f"  Status: {result['status']}")
 
 
@@ -182,7 +189,7 @@ def engagement_status(engagement_id: str = typer.Argument(..., help="Engagement 
 def engagement_pause(engagement_id: str = typer.Argument(..., help="Engagement ID")) -> None:
     """Pause an engagement."""
     result = api_post(f"/engagements/{engagement_id}/pause")
-    console.print("[yellow]⏸ Engagement paused[/yellow]")
+    console.print("[yellow][PAUSED] Engagement paused[/yellow]")
     console.print(f"  Status: {result['status']}")
 
 
@@ -190,7 +197,7 @@ def engagement_pause(engagement_id: str = typer.Argument(..., help="Engagement I
 def engagement_stop(engagement_id: str = typer.Argument(..., help="Engagement ID")) -> None:
     """Stop an engagement."""
     result = api_post(f"/engagements/{engagement_id}/stop")
-    console.print("[red]⏹ Engagement stopped[/red]")
+    console.print("[red][STOPPED] Engagement stopped[/red]")
     console.print(f"  Status: {result['status']}")
 
 

@@ -71,10 +71,23 @@ class LLMGateway:
             LLMProvider.GOOGLE: "gemini/",
             LLMProvider.NVIDIA: "nvidia_nim/",
             LLMProvider.KIMI: "openai/",
+            LLMProvider.OPENROUTER: "openrouter/",
             LLMProvider.CUSTOM: "openai/",
         }
+        if provider == LLMProvider.OPENROUTER:
+            if not model.startswith("openrouter/"):
+                return f"openrouter/{model}"
+            return model
+
+        if base_url:
+            if not model.startswith("openai/"):
+                return f"openai/{model}"
+            return model
+
         prefix = prefix_map.get(provider, "openai/")
-        if "/" in model or model.startswith(prefix):
+        if model.startswith(prefix):
+            return model
+        if "/" in model:
             return model
         return f"{prefix}{model}"
 
@@ -97,7 +110,10 @@ class LLMGateway:
             "timeout": float(settings.arka_llm_timeout),
         }
         if settings.arka_llm_base_url:
-            primary_params["api_base"] = settings.arka_llm_base_url
+            base_url = settings.arka_llm_base_url.rstrip("/")
+            if base_url.endswith("/chat/completions"):
+                base_url = base_url[: -len("/chat/completions")]
+            primary_params["api_base"] = base_url
 
         model_list.append(
             {

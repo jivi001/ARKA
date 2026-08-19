@@ -1,6 +1,7 @@
 from enum import Enum
+from typing import Any
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +31,7 @@ class LLMProvider(str, Enum):
     GOOGLE = "google"
     NVIDIA = "nvidia"
     KIMI = "kimi"
+    OPENROUTER = "openrouter"
     CUSTOM = "custom"
 
 
@@ -77,6 +79,25 @@ class Settings(BaseSettings):
     arka_secrets_backend: SecretsBackend = SecretsBackend.ENV
     vault_addr: str | None = None
     vault_token: SecretStr | None = None
+
+    @field_validator(
+        "arka_llm_fallback_provider",
+        "arka_llm_fallback_model",
+        "arka_llm_fallback_api_key",
+        "arka_llm_fallback_base_url",
+        "arka_llm_base_url",
+        "langfuse_host",
+        "langfuse_public_key",
+        "langfuse_secret_key",
+        "vault_addr",
+        "vault_token",
+        mode="before",
+    )
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        if v == "" or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
 
     @property
     def is_production(self) -> bool:
