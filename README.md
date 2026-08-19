@@ -91,7 +91,7 @@ Append-Only Audit Trail (immutable, secret-redacted, defensive copies)
 ### 2. Setup
 ```bash
 # Clone the repository
-git clone <repository_url>
+git clone https://github.com/jivi001/ARKA
 cd ARKA
 
 # Install dependencies in virtual environment
