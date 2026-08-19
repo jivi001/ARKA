@@ -1,5 +1,3 @@
-import asyncio
-import time
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -8,6 +6,7 @@ from arka.app.audit.service import AuditService
 from arka.app.core.approvals.manager import ApprovalManager
 from arka.app.core.policies.engine import PolicyEngine
 from arka.app.core.state.models import PolicyDecision, PolicyDecisionType
+from arka.app.execution.manager import ExecutionManager
 from arka.app.tools.schemas.tool_schemas import (
     CandidateToolRequest,
     ToolDefinition,
@@ -35,7 +34,7 @@ class ToolRegistry:
 
     The LLM never directly executes tools — all execution flows through this registry.
     Ensures input schema validation, deterministic scope validation, policy enforcement,
-    persistent approval verification, and immutable audit logging.
+    persistent approval verification, sandboxed execution, and immutable audit logging.
     """
 
     def __init__(
@@ -43,12 +42,14 @@ class ToolRegistry:
         policy_engine: PolicyEngine,
         audit_service: AuditService,
         approval_manager: ApprovalManager | None = None,
+        execution_manager: ExecutionManager | None = None,
     ):
         self._tools: dict[str, ToolDefinition] = {}
         self._executors: dict[str, ToolExecutor] = {}
         self._policy = policy_engine
         self._audit = audit_service
         self._approval_manager = approval_manager
+        self._execution_manager = execution_manager or ExecutionManager(audit_service=audit_service)
 
     def set_approval_manager(self, approval_manager: ApprovalManager) -> None:
         """Set or update the approval manager instance."""
@@ -291,99 +292,14 @@ class ToolRegistry:
                     evidence_refs=[],
                 )
 
-        # 5. Execute
+        # 5. Execute via authoritative ExecutionManager
+        request.scope_validated = True
+        request.policy_approved = True
         executor = self._executors[request.tool_name]
-
-        await self._audit.record_action(
-            event_type=AuditEventType.TOOL_REQUESTED,
-            actor=request.agent_id,
-            action=f"execute:{request.tool_name}",
-            engagement_id=request.engagement_id,
-            task_id=request.task_id,
-            agent_id=request.agent_id,
-            tool_name=request.tool_name,
-            target=request.target,
-            parameters=request.arguments,
-            correlation_id=request.request_id,
+        _exec_res, tool_result = await self._execution_manager.execute_tool(
+            request, tool_def, executor
         )
-
-        start = time.monotonic()
-        try:
-            result = await asyncio.wait_for(
-                executor.execute(request, tool_def),
-                timeout=tool_def.timeout_seconds,
-            )
-            result.execution_time_ms = int((time.monotonic() - start) * 1000)
-
-            await self._audit.record_action(
-                event_type=AuditEventType.TOOL_EXECUTED,
-                actor=request.agent_id,
-                action=f"executed:{request.tool_name}",
-                engagement_id=request.engagement_id,
-                task_id=request.task_id,
-                agent_id=request.agent_id,
-                tool_name=request.tool_name,
-                target=request.target,
-                result_status="success" if result.success else "failed",
-                error=result.error,
-                correlation_id=request.request_id,
-            )
-            return result
-
-        except TimeoutError:
-            elapsed = int((time.monotonic() - start) * 1000)
-            await self._audit.record_action(
-                event_type=AuditEventType.TOOL_FAILED,
-                actor=request.agent_id,
-                action=f"timeout:{request.tool_name}",
-                engagement_id=request.engagement_id,
-                task_id=request.task_id,
-                agent_id=request.agent_id,
-                tool_name=request.tool_name,
-                target=request.target,
-                result_status="timeout",
-                error=f"Tool execution timed out after {tool_def.timeout_seconds}s",
-                correlation_id=request.request_id,
-            )
-            return ToolResult(
-                request_id=request.request_id,
-                engagement_id=request.engagement_id,
-                task_id=request.task_id,
-                tool_name=request.tool_name,
-                success=False,
-                error=f"Tool execution timed out after {tool_def.timeout_seconds}s",
-                output={},
-                raw_output="",
-                execution_time_ms=elapsed,
-                evidence_refs=[],
-            )
-        except Exception as e:
-            elapsed = int((time.monotonic() - start) * 1000)
-            await self._audit.record_action(
-                event_type=AuditEventType.TOOL_FAILED,
-                actor=request.agent_id,
-                action=f"error:{request.tool_name}",
-                engagement_id=request.engagement_id,
-                task_id=request.task_id,
-                agent_id=request.agent_id,
-                tool_name=request.tool_name,
-                target=request.target,
-                result_status="error",
-                error=f"Execution error: {e!s}",
-                correlation_id=request.request_id,
-            )
-            return ToolResult(
-                request_id=request.request_id,
-                engagement_id=request.engagement_id,
-                task_id=request.task_id,
-                tool_name=request.tool_name,
-                success=False,
-                error=f"Execution error: {e!s}",
-                output={},
-                raw_output="",
-                execution_time_ms=elapsed,
-                evidence_refs=[],
-            )
+        return tool_result
 
     def _validate_arguments(
         self, arguments: dict[str, Any], tool_def: ToolDefinition

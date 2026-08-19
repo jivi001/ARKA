@@ -37,6 +37,14 @@ class AuditEventType(str, Enum):
     AGENT_STARTED = "agent.started"
     AGENT_STOPPED = "agent.stopped"
     SECURITY_ALERT = "security.alert"
+    EXECUTION_REQUESTED = "execution.requested"
+    EXECUTION_AUTHORIZED = "execution.authorized"
+    EXECUTION_STARTED = "execution.started"
+    EXECUTION_COMPLETED = "execution.completed"
+    EXECUTION_FAILED = "execution.failed"
+    EXECUTION_TIMED_OUT = "execution.timed_out"
+    EXECUTION_CANCELLED = "execution.cancelled"
+    EXECUTION_REJECTED = "execution.rejected"
 
 
 class AuditEvent(BaseModel):

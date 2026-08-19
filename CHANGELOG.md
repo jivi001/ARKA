@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.0] - 2026-08-19
+
+### Phase 2.1: Secure Execution Engine & Sandboxing (Complete)
+
+### Added
+- **Execution Domain Models**: Added `ExecutionStatus`, `NetworkProfile`, `ExecutionLimits`, `ExecutionRequest`, `ExecutionResult`, and `EvidenceReference` (`arka/app/execution/schemas.py`).
+- **ExecutionManager**: Implemented authoritative execution bridge (`arka/app/execution/manager.py`) enforcing pre-execution authorization checks, sandbox lifecycle, timeout termination, resource cleanup, and cryptographic evidence generation.
+- **ExecutionPolicy**: Added deterministic runtime constraints (`arka/app/execution/policy.py`) enforcing argument array format, forbidding shell interpreters (`sh`, `bash`, `cmd.exe`, `powershell.exe`, etc.), sanitizing environment variables, and enforcing `NO_NETWORK` profile.
+- **Sandbox Runtime Abstractions**: Added `SandboxRuntime` ABC with `LocalSafeRuntime` (in-memory zero-network mock testing) and `DockerSandboxRuntime` (least-privilege container baseline with non-root user, read-only rootfs, dropped capabilities, no-new-privileges, and no Docker socket exposure).
+- **Cryptographic Evidence Store**: Added `EvidenceStore` (`arka/app/execution/evidence.py`) calculating SHA-256 integrity digests over raw tool outputs, structured results, and execution telemetry.
+- **ADR-011**: Added Architecture Decision Record for Secure Execution Engine and Sandbox Isolation Architecture (`docs/decisions/ADR-011-secure-execution-engine-and-sandboxing.md`).
+- **Phase 2.1 Tests**: Added comprehensive test suites:
+  - `tests/unit/test_execution_manager.py` (lifecycle, timeouts, errors, rejections, evidence).
+  - `tests/unit/test_execution_policy.py` (forbidden shells, env sanitization, argument validation).
+  - `tests/unit/test_sandbox_runtime.py` (LocalSafeRuntime & DockerSandboxRuntime configurations).
+  - `tests/security/test_execution_security.py` (injection immunity, untrusted tool output).
+  - `tests/integration/test_execution_engine.py` (full pipeline with low/high risk tools and scope denial).
+
+### Changed
+- **ToolRegistry Integration**: Integrated `ExecutionManager` into `ToolRegistry.execute()`, routing all tool execution through sandbox isolation and cryptographic evidence recording while maintaining 100% backward compatibility.
+- **Audit Event Types**: Extended `AuditEventType` with `EXECUTION_REQUESTED`, `EXECUTION_AUTHORIZED`, `EXECUTION_STARTED`, `EXECUTION_COMPLETED`, `EXECUTION_FAILED`, `EXECUTION_TIMED_OUT`, `EXECUTION_CANCELLED`, and `EXECUTION_REJECTED`.
+
+---
+
 ## [0.1.0] - 2026-08-19
 
 ### Phase 1: Secure Agent Control Plane (Hardened & Verified)

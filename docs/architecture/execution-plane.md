@@ -1,10 +1,10 @@
 # Execution Plane Architecture
 
-The **Execution Plane** is responsible for dispatching, running, and capturing the output of authorized security tools. It acts as an isolated sandbox boundary between the control plane and external network targets.
+The **Execution Plane** is responsible for dispatching, sandboxing, running, and capturing the output of authorized security tools. It acts as an isolated sandbox boundary between the control plane and target systems.
 
 ---
 
-## 1. Execution Plane Architecture
+## 1. Execution Plane Architecture (Phase 2.1 Complete)
 
 ```mermaid
 graph TD
@@ -14,48 +14,60 @@ graph TD
     end
 
     subgraph ExecutionPlane["Execution Plane Boundary"]
-        Queue[(Redis / Arq Task Queue)]
-        Worker[Arq Async Worker]
+        EM[ExecutionManager]
+        EP[ExecutionPolicy]
         
-        subgraph Adapters["Tool Adapters (Phase 1: Mock / Phase 2: Real)"]
+        subgraph IsolationRuntimes["Sandbox Isolation Boundary"]
+            LocalRT[LocalSafeRuntime - In-Memory Safe Mock]
+            DockerRT[DockerSandboxRuntime - Least Privilege Container]
+        end
+
+        subgraph Adapters["Tool Executors"]
             Echo[EchoToolExecutor - Low Risk]
             HighMock[HighRiskMockToolExecutor - High Risk]
-            NmapAdapter["Nmap Adapter (Phase 2 - Planned)"]
-            NucleiAdapter["Nuclei Adapter (Phase 2 - Planned)"]
         end
-
-        subgraph Isolation["Isolation Layer (Phase 2 - Planned)"]
-            DockerRun["Docker Container Isolation"]
-            NetNS["Network Namespace Filtering"]
-            Sandbox["gVisor / Firecracker MicroVMs"]
-        end
+        
+        Evidence[EvidenceStore - SHA-256 Hashing]
+        Audit[Append-Only Audit Service]
     end
 
-    TR -->|Enqueue / In-Process Dispatch| Worker
-    Worker --> Adapters
-    Adapters -.-> Isolation
+    TR -->|Authoritative ToolRequest Only| EM
+    EM --> EP
+    EP -->|Derive Limits & Sanitize Env| IsolationRuntimes
+    IsolationRuntimes --> Adapters
+    Adapters -->|ToolResult & Outputs| EM
+    EM -->|Record Output Hash| Evidence
+    EM -->|EXECUTION_* & TOOL_* Events| Audit
 ```
 
 ---
 
-## 2. Phase 1 Implementation (`IMPLEMENTED`)
+## 2. Key Components
 
-In Phase 1, the execution plane is hardened with strict safety guarantees:
+### 1. `ExecutionManager` (`arka/app/execution/manager.py`)
+- Authoritative execution bridge between the control plane and sandbox runtimes.
+- Rejects all unvalidated inputs (`CandidateToolRequest`, arbitrary dicts, unauthenticated calls).
+- Drives execution through lifecycle: `EXECUTION_REQUESTED` $\to$ `EXECUTION_AUTHORIZED` $\to$ `EXECUTION_STARTED` $\to$ `EXECUTION_COMPLETED` (or `EXECUTION_FAILED` / `EXECUTION_TIMED_OUT` / `EXECUTION_REJECTED`).
+- Enforces strict timeout cancellation and resource release.
 
-- **In-Memory & Direct Dispatch**: Tools are registered in `ToolRegistry` and executed via asynchronous Python executors implementing `ToolExecutor`.
-- **Safe Mock Tools**:
-  - `EchoToolExecutor`: Low-risk tool validating reachability and echoing arguments without invoking shell or network calls.
-  - `HighRiskMockToolExecutor`: High-risk tool simulating exploit verification without destructive payloads or network calls.
-- **Timeout Management**: Every tool definition specifies `timeout_seconds`. `ToolRegistry.execute()` enforces timeouts via `asyncio.wait_for()`, aborting frozen executions and generating structured `TOOL_FAILED` audit events.
-- **Exception Isolation**: If a tool throws an unexpected exception, it is caught within `ToolRegistry`, returning a structured `ToolResult(success=False, error=...)` rather than crashing the orchestrator process.
+### 2. `ExecutionPolicy` (`arka/app/execution/policy.py`)
+- Deterministic runtime constraint engine.
+- Rejects shell execution (`shell=True`), requiring argument arrays `[executable, arg1, arg2]`.
+- Forbids dangerous shell binaries (`sh`, `bash`, `zsh`, `cmd.exe`, `powershell.exe`, `python`, etc.).
+- Scrubs sensitive environment variables (`LD_PRELOAD`, `DATABASE_URL`, `API_KEY`, etc.).
+- Enforces network profile isolation (`NO_NETWORK`).
 
----
+### 3. `SandboxRuntime` (`arka/app/execution/sandbox/`)
+- `LocalSafeRuntime`: Development and testing sandbox with zero subprocess shell and zero network egress. Safely truncates oversized outputs (`max_stdout_bytes`, `max_stderr_bytes`).
+- `DockerSandboxRuntime`: Container isolation baseline configured with least privilege:
+  - Non-root user (`1000:1000`)
+  - Read-only root filesystem (`read_only=True`)
+  - Dropped Linux capabilities (`cap_drop=["ALL"]`)
+  - Prevention of privilege escalation (`no-new-privileges:true`)
+  - Disabled network (`network_mode="none"`)
+  - No host root filesystem mounts and no Docker socket (`/var/run/docker.sock`) exposure.
 
-## 3. Phase 2 Roadmap: Isolated Tool Runner (`PLANNED`)
-
-In Phase 2, the execution plane will transition to strict containerized and microVM isolation:
-
-1. **Docker Container Baselines**: Tools will execute inside ephemeral, single-use containers.
-2. **Network Namespaces**: Outbound traffic from tool containers will be constrained by iptables/nftables to only allow communication with explicitly scoped IP addresses and ports.
-3. **MicroVM Sandboxing (`PLANNED`)**: High-risk exploits will run inside gVisor (`runsc`) or Firecracker microVMs to prevent container breakout vulnerabilities.
-4. **Structured Parsers**: Raw tool output (`stdout`, `stderr`, XML/JSON) will be parsed into normalized vulnerability artifacts before returning to the control plane.
+### 4. `EvidenceStore` (`arka/app/execution/evidence.py`)
+- Cryptographic provenance tracking for all tool outputs.
+- Computes SHA-256 integrity digests over raw stdout, stderr, and structured outputs.
+- Provides tamper-evident verification of findings.

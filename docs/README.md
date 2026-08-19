@@ -73,7 +73,7 @@ docs/
 ├── phases/                             # Project phase documentation and roadmaps
 │   ├── phase-1.md                      # Phase 1: Secure Agent Control Plane (COMPLETED)
 │   ├── phase-1-hardening.md            # Detailed Phase 1 hardening audit and change log
-│   ├── phase-2.md                      # Phase 2: Secure Tool Execution & Recon (PLANNED)
+│   ├── phase-2.md                      # Phase 2: Secure Tool Execution (Phase 2.1 COMPLETE / Phase 2.2 PLANNED)
 │   └── roadmap.md                      # Multi-phase master roadmap and implementation milestones
 │
 └── decisions/                          # Architecture Decision Records (ADRs)
@@ -86,7 +86,8 @@ docs/
     ├── ADR-007-persistent-human-approval-workflow.md
     ├── ADR-008-append-only-audit-architecture.md
     ├── ADR-009-arq-instead-of-celery.md
-    └── ADR-010-remote-llm-by-default-with-vpc-support.md
+    ├── ADR-010-remote-llm-by-default-with-vpc-support.md
+    └── ADR-011-secure-execution-engine-and-sandboxing.md
 ```
 
 ---
