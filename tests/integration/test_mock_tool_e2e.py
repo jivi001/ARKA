@@ -91,6 +91,7 @@ class TestMockToolEndToEnd:
 
         assert err is None
         assert auth_req is not None
+        assert decision is not None
         assert decision.decision == PolicyDecisionType.ALLOW
         assert auth_req.scope_validated is True
         assert auth_req.policy_approved is True
@@ -135,6 +136,7 @@ class TestMockToolEndToEnd:
         )
 
         assert auth_req is None
+        assert decision is not None
         assert decision.decision == PolicyDecisionType.REQUIRE_APPROVAL
         assert "Requires human approval" in (err or "")
 

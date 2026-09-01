@@ -14,6 +14,7 @@ Uses mocked provider responses to test:
 """
 
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 import litellm.exceptions
@@ -75,7 +76,7 @@ class TestLLMGatewayIntegration:
             gateway = LLMGateway(audit_service=audit_service)
 
             mock_response = make_mock_completion_response(content="Autonomous plan generated.")
-            gateway._router.acompletion = AsyncMock(return_value=mock_response)
+            cast(Any, gateway._router).acompletion = AsyncMock(return_value=mock_response)
 
             req = LLMRequest(
                 engagement_id="eng-llm-1",
@@ -105,11 +106,9 @@ class TestLLMGatewayIntegration:
     async def test_authentication_error_401(self, mock_settings, audit_service):
         with patch("arka.app.llm.gateway.gateway.get_settings", return_value=mock_settings):
             gateway = LLMGateway(audit_service=audit_service)
-            gateway._router.acompletion = AsyncMock(
+            cast(Any, gateway._router).acompletion = AsyncMock(
                 side_effect=litellm.exceptions.AuthenticationError(
-                    message="Invalid API Key",
-                    llm_provider="openai",
-                    model="gpt-4o",
+                    message="Invalid API Key", llm_provider="openai", model="gpt-4o"
                 )
             )
 
@@ -128,11 +127,9 @@ class TestLLMGatewayIntegration:
     async def test_rate_limit_error_429_is_retryable(self, mock_settings):
         with patch("arka.app.llm.gateway.gateway.get_settings", return_value=mock_settings):
             gateway = LLMGateway()
-            gateway._router.acompletion = AsyncMock(
+            cast(Any, gateway._router).acompletion = AsyncMock(
                 side_effect=litellm.exceptions.RateLimitError(
-                    message="Rate limit exceeded",
-                    llm_provider="openai",
-                    model="gpt-4o",
+                    message="Rate limit exceeded", llm_provider="openai", model="gpt-4o"
                 )
             )
 
@@ -150,11 +147,9 @@ class TestLLMGatewayIntegration:
     async def test_timeout_error_504_is_retryable(self, mock_settings):
         with patch("arka.app.llm.gateway.gateway.get_settings", return_value=mock_settings):
             gateway = LLMGateway()
-            gateway._router.acompletion = AsyncMock(
+            cast(Any, gateway._router).acompletion = AsyncMock(
                 side_effect=litellm.exceptions.Timeout(
-                    message="Gateway timeout",
-                    model="gpt-4o",
-                    llm_provider="openai",
+                    message="Gateway timeout", model="gpt-4o", llm_provider="openai"
                 )
             )
 
@@ -172,11 +167,9 @@ class TestLLMGatewayIntegration:
     async def test_service_unavailable_503(self, mock_settings):
         with patch("arka.app.llm.gateway.gateway.get_settings", return_value=mock_settings):
             gateway = LLMGateway()
-            gateway._router.acompletion = AsyncMock(
+            cast(Any, gateway._router).acompletion = AsyncMock(
                 side_effect=litellm.exceptions.ServiceUnavailableError(
-                    message="Service unavailable",
-                    llm_provider="openai",
-                    model="gpt-4o",
+                    message="Service unavailable", llm_provider="openai", model="gpt-4o"
                 )
             )
 
@@ -191,9 +184,9 @@ class TestLLMGatewayIntegration:
             assert exc.value.retryable is True
 
     @pytest.mark.asyncio
-    async def test_structured_output_json_parsing(self, mock_settings):
+    async def test_streaming_not_supported(self, mock_settings, audit_service):
         with patch("arka.app.llm.gateway.gateway.get_settings", return_value=mock_settings):
-            gateway = LLMGateway()
+            gateway = LLMGateway(audit_service=audit_service)
 
             # Markdown code-fenced json response
             raw_json = (
@@ -202,9 +195,12 @@ class TestLLMGatewayIntegration:
                 "```"
             )
             mock_response = make_mock_completion_response(content=raw_json)
-            gateway._router.acompletion = AsyncMock(return_value=mock_response)
+            cast(Any, gateway._router).acompletion = AsyncMock(return_value=mock_response)
 
             req = LLMRequest(
+                engagement_id="eng-llm-1",
+                task_id="task-llm-1",
+                agent_id="orchestrator",
                 messages=[LLMMessage(role="user", content="Action?")],
                 response_format={"type": "json_object"},
             )
@@ -218,9 +214,10 @@ class TestLLMGatewayIntegration:
     async def test_multimodal_request_serialization(self, mock_settings):
         with patch("arka.app.llm.gateway.gateway.get_settings", return_value=mock_settings):
             gateway = LLMGateway()
-            gateway._router.acompletion = AsyncMock(
+            mock_acompletion = AsyncMock(
                 return_value=make_mock_completion_response(content="Image inspected")
             )
+            cast(Any, gateway._router).acompletion = mock_acompletion
 
             multi_message = LLMMessage(
                 role="user",
@@ -241,8 +238,8 @@ class TestLLMGatewayIntegration:
             req = LLMRequest(messages=[multi_message])
             res = await gateway.complete(req)
             assert res.success is True
-            assert gateway._router.acompletion.called
-            call_kwargs = gateway._router.acompletion.call_args.kwargs
+            assert mock_acompletion.called
+            call_kwargs = mock_acompletion.call_args.kwargs
             messages = call_kwargs["messages"]
             assert len(messages) == 1
             parts = messages[0]["content"]

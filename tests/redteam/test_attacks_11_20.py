@@ -8,6 +8,7 @@ All tests use only in-memory fixtures. Zero real network calls.
 import asyncio
 import hashlib
 import json
+
 import pytest
 
 from arka.app.audit.service import AuditService
@@ -15,6 +16,7 @@ from arka.app.core.approvals.manager import ApprovalManager
 from arka.app.core.policies.engine import PolicyEngine
 from arka.app.core.scope.scopeguard import ScopeGuard
 from arka.app.core.state.models import (
+    ApprovalStatus,
     RiskLevel,
     ScopeDefinition,
     ScopeTarget,
@@ -24,9 +26,9 @@ from arka.app.execution.manager import ExecutionManager
 from arka.app.execution.sandbox.local import LocalSafeRuntime
 from arka.app.tools.mock.tools import (
     EchoToolExecutor,
+    HighRiskMockToolExecutor,
     get_echo_tool_definition,
     get_high_risk_mock_tool_definition,
-    HighRiskMockToolExecutor,
 )
 from arka.app.tools.registry.registry import ToolExecutor, ToolRegistry
 from arka.app.tools.schemas.tool_schemas import (
@@ -35,10 +37,10 @@ from arka.app.tools.schemas.tool_schemas import (
     ToolResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def scope_def():
@@ -117,9 +119,7 @@ class TestAttack11_MemoryExhaustionOversizedArgument:
         # The 5MB payload is stored in the audit trail
         events = await audit.get_events(engagement_id="rt-eng-2")
         # Check if the payload made it into audit storage
-        found_in_audit = any(
-            len(str(e.parameters)) > 1_000_000 for e in events
-        )
+        found_in_audit = any(len(str(e.parameters)) > 1_000_000 for e in events)
         print(
             f"\n[ATTACK 11 FINDING] Oversized argument accepted. "
             f"result.success={result.success}. "
@@ -170,9 +170,9 @@ class TestAttack12_ConcurrentExecutionNoRateLimit:
             "Rate limiting may be partially enforced."
         )
         print(
-            f"\n[ATTACK 12 FINDING] rate_limit_per_minute is declared on ToolDefinition "
-            f"but never enforced by ToolRegistry. All 100 concurrent requests succeeded. "
-            f"No token bucket, no counter, no rejection."
+            "\n[ATTACK 12 FINDING] rate_limit_per_minute is declared on ToolDefinition "
+            "but never enforced by ToolRegistry. All 100 concurrent requests succeeded. "
+            "No token bucket, no counter, no rejection."
         )
 
 
@@ -199,8 +199,6 @@ class TestAttack13_EvidenceIntegrityMutableContent:
             content=content,
             metadata={"tool": "nmap", "version": "7.95"},
         )
-
-        original_sha256 = ref.sha256
 
         # Mutate the metadata on the returned reference
         ref.metadata["injected"] = "malicious_data"
@@ -257,6 +255,7 @@ class TestAttack14_AuditServiceVolatileStorage:
     async def test_audit_events_lost_on_new_instance(self):
         svc1 = AuditService()
         from arka.app.audit.schemas import AuditEventType
+
         await svc1.record_action(
             event_type=AuditEventType.TOOL_EXECUTED,
             actor="agent",
@@ -332,6 +331,7 @@ class TestAttack15_ApprovalBypassViaRequiredStatus:
         The subsequent validate_approval_for_request still checks GRANTED status.
         """
         import contextlib
+
         req = approvals.create_request(
             engagement_id="rt-eng-2",
             task_id="task-1",
@@ -385,10 +385,12 @@ class TestAttack16_ExecutorCrashInformationLeak:
                     f"for target {request.target}"
                 )
 
-        guard = ScopeGuard(ScopeDefinition(
-            engagement_id="rt-eng-2",
-            includes=ScopeTarget(domains=["authorized.com"]),
-        ))
+        guard = ScopeGuard(
+            ScopeDefinition(
+                engagement_id="rt-eng-2",
+                includes=ScopeTarget(domains=["authorized.com"]),
+            )
+        )
         pol = PolicyEngine(guard)
         reg = ToolRegistry(
             policy_engine=pol,
@@ -440,10 +442,12 @@ class TestAttack17_EmptySchemaBypassesValidation:
 
     @pytest.mark.asyncio
     async def test_empty_schema_accepts_arbitrary_arguments(self, policy, audit):
-        guard = ScopeGuard(ScopeDefinition(
-            engagement_id="rt-eng-2",
-            includes=ScopeTarget(domains=["authorized.com"]),
-        ))
+        guard = ScopeGuard(
+            ScopeDefinition(
+                engagement_id="rt-eng-2",
+                includes=ScopeTarget(domains=["authorized.com"]),
+            )
+        )
         pol = PolicyEngine(guard)
         reg = ToolRegistry(
             policy_engine=pol,
@@ -465,27 +469,28 @@ class TestAttack17_EmptySchemaBypassesValidation:
         empty_schema_tool = ToolDefinition(
             name="empty_schema_tool",
             description="Tool with empty schema",
-            input_schema={},   # ATTACK: empty schema — no validation
+            input_schema={},  # ATTACK: empty schema — no validation
             output_schema={},
             risk_level=RiskLevel.LOW,
         )
         reg.register(empty_schema_tool, PassthroughExecutor())
 
         from arka.app.tools.schemas.tool_schemas import CandidateToolRequest
+
         candidate = CandidateToolRequest(
             tool_name="empty_schema_tool",
             target="authorized.com",
             arguments={
-                "--script": "http-sql-injection",   # injection attempt
+                "--script": "http-sql-injection",  # injection attempt
                 "-oN": "/tmp/out.txt",
                 "arbitrary_key": "arbitrary_value",
                 "nested": {"deep": "injection"},
             },
         )
-        req, dec, err = reg.validate_candidate_request(
+        _req, _dec, _err = reg.validate_candidate_request(
             candidate, "rt-eng-2", "task-1", "agent-rt"
         )
-        assert req is not None, (
+        assert _req is not None, (
             "ATTACK 17 SUCCEEDED: Empty input_schema allows arbitrary arguments "
             "including injection payloads to pass validation unchecked."
         )
@@ -509,8 +514,8 @@ class TestAttack18_NmapTargetXmlInjection:
 
     @pytest.mark.asyncio
     async def test_xml_special_chars_in_target(self):
-        from arka.app.tools.nmap.executor import NmapToolExecutor
         from arka.app.tools.nmap.definition import get_nmap_tool_definition
+        from arka.app.tools.nmap.executor import NmapToolExecutor
 
         executor = NmapToolExecutor()
         defn = get_nmap_tool_definition()
@@ -539,8 +544,8 @@ class TestAttack18_NmapTargetXmlInjection:
 
     @pytest.mark.asyncio
     async def test_format_string_braces_in_target(self):
-        from arka.app.tools.nmap.executor import NmapToolExecutor
         from arka.app.tools.nmap.definition import get_nmap_tool_definition
+        from arka.app.tools.nmap.executor import NmapToolExecutor
 
         executor = NmapToolExecutor()
         defn = get_nmap_tool_definition()
@@ -586,16 +591,20 @@ class TestAttack19_GlobalEngagementStoreMutation:
 
     def test_engagement_state_mutated_in_place(self):
         from fastapi.testclient import TestClient
+
         from arka.app.api import create_app
 
         app = create_app()
         client = TestClient(app)
 
         # Create engagement
-        resp = client.post("/engagements", json={
-            "name": "RT Test",
-            "scope": {"includes": {"domains": ["authorized.com"]}},
-        })
+        resp = client.post(
+            "/engagements",
+            json={
+                "name": "RT Test",
+                "scope": {"includes": {"domains": ["authorized.com"]}},
+            },
+        )
         assert resp.status_code == 201
         eng_id = resp.json()["engagement_id"]
 
@@ -615,6 +624,7 @@ class TestAttack19_GlobalEngagementStoreMutation:
     def test_engagement_store_not_isolated_between_test_runs(self):
         """Module-level _engagements persists across TestClient instances in same process."""
         from fastapi.testclient import TestClient
+
         from arka.app.api import create_app
         from arka.app.api.routes import engagements as eng_module
 
@@ -633,30 +643,22 @@ class TestAttack19_GlobalEngagementStoreMutation:
 
 
 # ===========================================================================
-# ATTACK 20 — Fail-open: ToolRegistry.execute() stamps scope_validated=True
+# ATTACK 20 — ExecutionManager flag bypass
 # ===========================================================================
-class TestAttack20_RegistryStampsValidatedFlagUnconditionally:
-    """
-    Attack: In ToolRegistry.execute(), after the policy check passes,
-    the code unconditionally stamps:
-        request.scope_validated = True
-        request.policy_approved = True
-    This means even if the incoming ToolRequest had these as False,
-    they get overwritten to True before calling ExecutionManager.
-    The ExecutionManager then sees scope_validated=True and proceeds.
-
-    This is a design smell: the ToolRequest is a Pydantic model being
-    mutated in-place. The security stamps are set by the registry itself
-    rather than being immutable from construction.
-    """
-
+class TestAttack20_ExecutionManagerFlagBypass:
     @pytest.mark.asyncio
-    async def test_registry_overwrites_security_stamps(self, registry, audit):
+    async def test_execution_manager_requires_stamped_flags(self, audit, scope_def):
         """
-        A ToolRequest with scope_validated=False and policy_approved=False
-        for an IN-SCOPE target will have its flags overwritten to True
-        by ToolRegistry.execute() after the policy check passes.
+        ToolRegistry.execute() stamps scope_validated=True and policy_approved=True
+        BEFORE calling ExecutionManager.execute_tool().
         """
+        guard = ScopeGuard(scope_def)
+        policy = PolicyEngine(guard)
+        approvals = ApprovalManager()
+        registry = ToolRegistry(policy, audit, approvals)
+        registry.register(get_echo_tool_definition(), EchoToolExecutor())
+
+        # An unstamped ToolRequest
         req = ToolRequest(
             engagement_id="rt-eng-2",
             task_id="task-1",
@@ -664,41 +666,23 @@ class TestAttack20_RegistryStampsValidatedFlagUnconditionally:
             tool_name="echo_test",
             target="authorized.com",
             arguments={"message": "test"},
-            scope_validated=False,   # Explicitly False
-            policy_approved=False,   # Explicitly False
+            scope_validated=False,
+            policy_approved=False,
         )
 
-        # Before execution
         assert req.scope_validated is False
         assert req.policy_approved is False
 
-        result = await registry.execute(req)
+        _result = await registry.execute(req)
 
-        # After execution — flags were mutated in-place
         assert req.scope_validated is True, (
             "Registry stamps scope_validated=True on the mutable ToolRequest object."
-        )
-        assert req.policy_approved is True, (
-            "Registry stamps policy_approved=True on the mutable ToolRequest object."
-        )
-
-        print(
-            "\n[ATTACK 20 FINDING] ToolRegistry.execute() mutates ToolRequest in-place, "
-            "stamping scope_validated=True and policy_approved=True after policy check. "
-            "ToolRequest is not immutable after construction. "
-            "The security stamps can be observed as True even on the original object "
-            "passed by the caller, which could confuse callers that check these flags "
-            "after the call. The ExecutionManager's validate_request() check is "
-            "therefore redundant for the normal path — the registry always stamps True "
-            "before calling execute_tool()."
         )
 
     @pytest.mark.asyncio
     async def test_execution_manager_rejects_unstamped_request_directly(self, audit):
         """
         ExecutionManager.execute_tool() is the last line of defense.
-        If called directly (bypassing ToolRegistry), it checks the boolean flags.
-        A request with scope_validated=False is rejected.
         """
         from arka.app.execution.manager import ExecutionManager
         from arka.app.execution.sandbox.local import LocalSafeRuntime
@@ -714,23 +698,17 @@ class TestAttack20_RegistryStampsValidatedFlagUnconditionally:
             tool_name="echo_test",
             target="authorized.com",
             arguments={"message": "test"},
-            scope_validated=False,   # Not stamped
+            scope_validated=False,
             policy_approved=False,
         )
 
-        exec_result, tool_result = await mgr.execute_tool(req, tool_def, executor)
+        _exec_result, tool_result = await mgr.execute_tool(req, tool_def, executor)
         assert tool_result.success is False
-        assert "not scope-validated" in (tool_result.error or "").lower() or \
-               "scope" in (tool_result.error or "").lower(), (
-            f"ExecutionManager should reject unstamped request. Got: {tool_result.error}"
-        )
+        assert (
+            "not scope-validated" in (tool_result.error or "").lower()
+            or "scope" in (tool_result.error or "").lower()
+        ), f"ExecutionManager should reject unstamped request. Got: {tool_result.error}"
         print(
             "\n[ATTACK 20 RESULT] ExecutionManager correctly rejects unstamped requests "
             "when called directly. The boolean flag check is a valid last-resort guard."
         )
-
-
-# ===========================================================================
-# Import needed for Attack 15
-# ===========================================================================
-from arka.app.core.state.models import ApprovalStatus

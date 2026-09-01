@@ -52,6 +52,9 @@ class Engagement(Base):
     tasks: Mapped[list["Task"]] = relationship(
         back_populates="engagement", cascade="all, delete-orphan"
     )
+    assets: Mapped[list["AssetDB"]] = relationship(
+        back_populates="engagement", cascade="all, delete-orphan"
+    )
 
 
 class Scope(Base):
@@ -264,3 +267,150 @@ class AuditLog(Base):
     evidence_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     correlation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+
+
+class AssetDB(Base):
+    __tablename__ = "assets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    engagement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    asset_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    address: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    address_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    hostname: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    domain: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(50), default="active", index=True)
+    source: Mapped[str] = mapped_column(String(100), default="nmap")
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    first_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, index=True
+    )
+    last_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, index=True
+    )
+    evidence_refs: Mapped[list] = mapped_column(JSON, default=list)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+
+    # Relationships
+    engagement: Mapped["Engagement"] = relationship(back_populates="assets")
+    services: Mapped[list["ServiceDB"]] = relationship(
+        back_populates="asset", cascade="all, delete-orphan"
+    )
+    technologies: Mapped[list["TechnologyDB"]] = relationship(
+        back_populates="asset", cascade="all, delete-orphan"
+    )
+    endpoints: Mapped[list["EndpointDB"]] = relationship(
+        back_populates="asset", cascade="all, delete-orphan"
+    )
+
+
+class ServiceDB(Base):
+    __tablename__ = "services"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    engagement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    port: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    protocol: Mapped[str] = mapped_column(String(20), default="tcp", index=True)
+    state: Mapped[str] = mapped_column(String(50), default="open", index=True)
+    service_name: Mapped[str] = mapped_column(String(100), default="")
+    product: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    cpe: Mapped[list] = mapped_column(JSON, default=list)
+    banner: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(100), default="nmap")
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    evidence_refs: Mapped[list] = mapped_column(JSON, default=list)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+
+    # Relationships
+    asset: Mapped["AssetDB"] = relationship(back_populates="services")
+    technologies: Mapped[list["TechnologyDB"]] = relationship(
+        back_populates="service", cascade="all, delete-orphan"
+    )
+
+
+class TechnologyDB(Base):
+    __tablename__ = "technologies"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    engagement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    service_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("services.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    cpe: Mapped[list] = mapped_column(JSON, default=list)
+    source: Mapped[str] = mapped_column(String(100), default="nmap")
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    evidence_refs: Mapped[list] = mapped_column(JSON, default=list)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+
+    # Relationships
+    asset: Mapped["AssetDB"] = relationship(back_populates="technologies")
+    service: Mapped["ServiceDB | None"] = relationship(back_populates="technologies")
+
+
+class EndpointDB(Base):
+    __tablename__ = "endpoints"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    engagement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    scheme: Mapped[str] = mapped_column(String(20), default="http")
+    host: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    port: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    path: Mapped[str] = mapped_column(String(2048), nullable=False)
+    query_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    source: Mapped[str] = mapped_column(String(100), default="ffuf")
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    evidence_refs: Mapped[list] = mapped_column(JSON, default=list)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+
+    # Relationships
+    asset: Mapped["AssetDB"] = relationship(back_populates="endpoints")

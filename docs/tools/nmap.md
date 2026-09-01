@@ -32,15 +32,19 @@ ExecutionManager (Sandbox Lifecycle & Resource Limits)
         ↓
 NmapToolExecutor
         ↓
-Nmap Execution (Simulated in Phase 2.2.1)
+Nmap Execution (Sandboxed)
         ↓
 Nmap XML Output
         ↓
-NmapXmlParser (defusedxml)
+parse_nmap_xml (defusedxml)
         ↓
 NmapResult (Structured Domain Model)
         ↓
 EvidenceStore (SHA-256) & AuditService
+        ↓
+AssetNormalizer (Phase 2.2.2 Canonical Ingestion)
+        ↓
+AssetRepository (PostgreSQL / In-Memory)
 ```
 
 ---

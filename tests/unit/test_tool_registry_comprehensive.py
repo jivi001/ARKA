@@ -235,6 +235,7 @@ class TestToolRegistryValidation:
             candidate, "eng-1", "task-1", "agent-1"
         )
         assert auth_req is None
+        assert decision is not None
         assert decision.decision == PolicyDecisionType.DENY
         assert "Policy denied" in (err or "")
 
@@ -248,6 +249,7 @@ class TestToolRegistryValidation:
             candidate, "eng-1", "task-1", "agent-1"
         )
         assert auth_req is None
+        assert decision is not None
         assert decision.decision == PolicyDecisionType.REQUIRE_APPROVAL
         assert "Requires human approval" in (err or "")
 

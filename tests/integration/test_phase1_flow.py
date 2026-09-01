@@ -8,6 +8,7 @@ CLI/API → Engagement → Task → LangGraph → LLM Gateway → CandidateToolR
 
 import json
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -136,7 +137,7 @@ class TestPhase1CompleteFlow:
         mock_usage = SimpleNamespace(prompt_tokens=20, completion_tokens=10, total_tokens=30)
         llm_mock_res = SimpleNamespace(choices=[mock_choice], usage=mock_usage, model="gpt-4o")
 
-        llm._router = SimpleNamespace(acompletion=AsyncMock(return_value=llm_mock_res))
+        llm._router = cast(Any, SimpleNamespace(acompletion=AsyncMock(return_value=llm_mock_res)))
 
         # 3. Create Orchestrator Graph
         checkpointer = MemorySaver()
@@ -150,7 +151,7 @@ class TestPhase1CompleteFlow:
             checkpointer=checkpointer,
         )
 
-        initial_state = {
+        initial_state: dict[str, Any] = {
             "engagement_id": "eng-phase1-low",
             "engagement_name": "Phase 1 Low Risk Test",
             "objective": "Test deterministic low-risk pipeline",
@@ -227,7 +228,7 @@ class TestPhase1CompleteFlow:
         mock_usage = SimpleNamespace(prompt_tokens=20, completion_tokens=10, total_tokens=30)
         llm_mock_res = SimpleNamespace(choices=[mock_choice], usage=mock_usage, model="gpt-4o")
 
-        llm._router = SimpleNamespace(acompletion=AsyncMock(return_value=llm_mock_res))
+        llm._router = cast(Any, SimpleNamespace(acompletion=AsyncMock(return_value=llm_mock_res)))
 
         # 3. Create Orchestrator Graph
         checkpointer = MemorySaver()
@@ -241,7 +242,7 @@ class TestPhase1CompleteFlow:
             checkpointer=checkpointer,
         )
 
-        initial_state = {
+        initial_state: dict[str, Any] = {
             "engagement_id": "eng-phase1-high",
             "engagement_name": "Phase 1 High Risk Approval Test",
             "objective": "Test human approval gate interruption and resume",
@@ -284,7 +285,7 @@ class TestPhase1CompleteFlow:
         approvals.approve(approval_req.approval_id, "lead_security_architect")
 
         # 6. Resume graph from checkpoint with approval command
-        resume_command = Command(
+        resume_command: Any = Command(
             resume={"status": "approved", "approved_by": "lead_security_architect"}
         )
         final_state = await graph.ainvoke(resume_command, config=config)

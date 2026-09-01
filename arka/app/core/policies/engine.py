@@ -48,23 +48,36 @@ class PolicyEngine:
 
         target = tool_request.target
 
-        # 1. Validate target is in scope
-        if target:
-            try:
-                self._scope_guard.validate_target(target)
-            except ScopeViolation as e:
-                return PolicyDecision(
-                    engagement_id=eff_engagement_id,
-                    task_id=eff_task_id,
-                    agent_id=eff_agent_id,
-                    action=f"execute_tool:{tool_def.name}",
-                    target=target,
-                    tool_name=tool_def.name,
-                    decision=PolicyDecisionType.DENY,
-                    reason=f"Target out of scope: {e.reason}",
-                    risk_level=tool_def.risk_level,
-                    requires_approval=False,
-                )
+        # 1. Validate target is present and in scope
+        if not target or not target.strip():
+            return PolicyDecision(
+                engagement_id=eff_engagement_id,
+                task_id=eff_task_id,
+                agent_id=eff_agent_id,
+                action=f"execute_tool:{tool_def.name}",
+                target=target or "",
+                tool_name=tool_def.name,
+                decision=PolicyDecisionType.DENY,
+                reason="Target cannot be empty",
+                risk_level=tool_def.risk_level,
+                requires_approval=False,
+            )
+
+        try:
+            self._scope_guard.validate_target(target)
+        except ScopeViolation as e:
+            return PolicyDecision(
+                engagement_id=eff_engagement_id,
+                task_id=eff_task_id,
+                agent_id=eff_agent_id,
+                action=f"execute_tool:{tool_def.name}",
+                target=target,
+                tool_name=tool_def.name,
+                decision=PolicyDecisionType.DENY,
+                reason=f"Target out of scope: {e.reason}",
+                risk_level=tool_def.risk_level,
+                requires_approval=False,
+            )
 
         # 2. Check risk level authoritatively from the tool definition
         args = getattr(tool_request, "arguments", {}) or {}

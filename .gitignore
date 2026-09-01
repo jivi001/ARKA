@@ -53,3 +53,4 @@ coverage.xml
 graphify-out/
 .gemini
 .agents/
+.ipynb_checkpoints/

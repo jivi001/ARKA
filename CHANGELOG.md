@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.2] - 2026-09-01
+
+### Phase 2.2.2: Canonical Asset / Service / Technology Model (Complete)
+
+### Added
+- **Canonical Asset Domain Models** (`arka/app/core/assets/models.py`): Defined `Asset`, `Service`, `Technology`, `Endpoint`, `ObservationConflict`, and `NormalizedAssetBundle` domain entities for tool-independent representation of discovered infrastructure.
+- **Deterministic Identity Engine** (`arka/app/core/assets/identity.py`): Implemented deterministic UUIDv5 identity generation based on engagement ID and canonical normalized target strings across IPv4, IPv6, hostnames, domains, URLs, and network protocols.
+- **Asset Normalizer** (`arka/app/core/assets/normalizer.py`): Implemented `AssetNormalizer` parsing `NmapResult` observations into canonical infrastructure bundles with automatic deduplication, CPE/product technology extraction, script banner aggregation, and non-destructive conflict preservation.
+- **Database Schema & Alembic Migration** (`arka/app/database/models.py`, `migrations/versions/003_asset_canonical_models.py`): Added `AssetDB`, `ServiceDB`, `TechnologyDB`, and `EndpointDB` SQLAlchemy models with foreign key cascades, JSON metadata columns, and query indexes.
+- **Asset Repositories** (`arka/app/core/assets/repository.py`): Added asynchronous PostgreSQL `AssetRepository` with idempotent upsert operations and `InMemoryAssetRepository` for testing and offline execution sandboxes.
+- **Strict Discovered != Authorized Boundary**: Verified and documented that discovered infrastructure represents observation-only data that never expands `ScopeGuard` or `ScopeDefinition`.
+- **Comprehensive Test Suites**: Added 42 automated tests covering normalization, deterministic identity, deduplication, conflict preservation, security boundary enforcement, and integration with `EvidenceStore`:
+  - `tests/unit/test_asset_models.py`
+  - `tests/unit/test_asset_normalizer.py`
+  - `tests/unit/test_asset_repository.py`
+  - `tests/security/test_asset_normalization_security.py`
+  - `tests/integration/test_asset_ingestion.py`
+- **Documentation**: Added `docs/architecture/asset-model.md` and `docs/security/asset-discovery-security.md`, and updated `docs/phases/phase-2.md` and `docs/tools/nmap.md`.
+
+---
+
 ## [0.2.1] - 2026-08-19
 
 ### Phase 2.2.1: Nmap Adapter & Parser Foundation (Complete)

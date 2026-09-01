@@ -296,18 +296,24 @@ class ToolRegistry:
         request.scope_validated = True
         request.policy_approved = True
         executor = self._executors[request.tool_name]
-        _exec_res, tool_result = await self._execution_manager.execute_tool(
-            request, tool_def, executor
-        )
-        return tool_result
+        if self._execution_manager:
+            _exec_res, tool_result = await self._execution_manager.execute_tool(
+                request, tool_def, executor
+            )
+            return tool_result
+
+        return await executor.execute(request, tool_def)
 
     def _validate_arguments(
-        self, arguments: dict[str, Any], tool_def: ToolDefinition
+        self, arguments: dict[str, Any] | None, tool_def: ToolDefinition
     ) -> str | None:
         """Validate arguments against tool's input schema.
 
         Checks required fields, unknown fields, and types.
         """
+        if arguments is None:
+            return "Arguments cannot be None"
+
         schema = tool_def.input_schema
         if not schema:
             return None

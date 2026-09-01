@@ -3,7 +3,8 @@
 **Current Status**:
 - **Phase 2.1 (Secure Execution Engine & Sandboxing)**: **`COMPLETE`**
 - **Phase 2.2.1 (Nmap Adapter & Parser Foundation)**: **`COMPLETE`**
-- **Phase 2.2.2+ (Reconnaissance Agents & Additional Tool Adapters)**: **`PLANNED`**
+- **Phase 2.2.2 (Canonical Asset / Service / Technology Model)**: **`COMPLETE`**
+- **Phase 2.2.3+ (Reconnaissance Agents & Additional Tool Adapters)**: **`PLANNED`**
 
 ---
 
@@ -36,6 +37,12 @@ graph TD
         Evidence[EvidenceStore & Cryptographic Hashes]
         AuditLog[(Immutable Audit Log)]
     end
+
+    subgraph NormalizationAndAssetStore["Canonical Ingestion (Phase 2.2.2)"]
+        AssetNormalizer[AssetNormalizer]
+        AssetRepo[AssetRepository]
+        AssetDB[(PostgreSQL Assets / Services / Tech / Endpoints)]
+    end
     
     Agent --> Candidate
     Candidate --> Registry
@@ -52,6 +59,11 @@ graph TD
     NmapParser --> ExecResult
     ExecResult --> Evidence
     ExecResult --> AuditLog
+
+    ExecResult --> AssetNormalizer
+    Evidence --> AssetNormalizer
+    AssetNormalizer --> AssetRepo
+    AssetRepo --> AssetDB
 ```
 
 ---
@@ -105,12 +117,34 @@ graph TD
 
 4. **Nmap Tool Executor** (`arka/app/tools/nmap/executor.py`):
    - Implements `ToolExecutor` and integrates seamlessly with `ExecutionManager`.
-   - Execution is currently simulated in-memory (Phase 2.2.1 foundation); ready for real containerized execution when `DockerSandboxRuntime` connects to live Docker.
 
 ---
 
-## 4. Phase 2.2 Planned Subsequent Milestones
+## 4. Phase 2.2.2 Implementation Summary: Canonical Asset / Service / Technology Model (Completed)
 
-- **Phase 2.2.2**: Additional security tool adapters and parsers (Nuclei, ffuf, WhatWeb, Amass).
-- **Phase 2.2.3**: `ReconAgent` LangGraph subagent for autonomous asset discovery and service enumeration.
-- **Phase 2.2.4**: Target network routing policies linking `ScopeGuard` to container networking.
+1. **Canonical Domain Models & Deterministic Identity** (`arka/app/core/assets/`):
+   - `Asset`, `Service`, `Technology`, `Endpoint`, `ObservationConflict`, `NormalizedAssetBundle`.
+   - Deterministic UUIDv5 identity generation based on engagement ID and normalized attributes.
+   - Complete normalization for IPv4, IPv6, hostnames, domains, URLs, and protocols.
+
+2. **Asset Normalizer** (`arka/app/core/assets/normalizer.py`):
+   - Normalizes tool observations (`NmapResult`) into deduplicated canonical entities.
+   - Extracts CPE-based and product-based technologies.
+   - Detects and preserves observation conflicts across scans without losing provenance.
+
+3. **Database Persistence & Alembic Migrations** (`arka/app/database/models.py`, `migrations/versions/003_asset_canonical_models.py`):
+   - Added `AssetDB`, `ServiceDB`, `TechnologyDB`, and `EndpointDB` with foreign keys and cascade rules.
+   - Production async `AssetRepository` and `InMemoryAssetRepository` for testing.
+
+4. **Strict Security Invariant: Discovered != Authorized** (`tests/security/test_asset_normalization_security.py`):
+   - Discovered infrastructure stored in asset repository is observation-only.
+   - Scope authorization remains strictly governed by `ScopeGuard` and `ScopeDefinition`.
+
+---
+
+## 5. Phase 2 Planned Subsequent Milestones
+
+- **Phase 2.2.3**: Additional security tool adapters and parsers (WhatWeb, ffuf, Nuclei).
+- **Phase 2.2.4**: `ReconAgent` LangGraph subagent for autonomous asset discovery and service enumeration.
+- **Phase 2.2.5**: Target network routing policies linking `ScopeGuard` to container networking.
+
