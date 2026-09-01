@@ -10,6 +10,7 @@ from arka.app.execution.manager import ExecutionManager
 from arka.app.execution.policy import ExecutionPolicy
 from arka.app.execution.sandbox.local import LocalSafeRuntime
 from arka.app.execution.schemas import (
+    EvidenceType,
     ExecutionLimits,
     ExecutionStatus,
 )
@@ -26,6 +27,23 @@ class DummyEchoExecutor:
             success=True,
             output={"echo": request.arguments.get("msg", ""), "target": request.target},
             execution_time_ms=5,
+        )
+
+
+class DummyMultiOutputExecutor:
+    """Mock executor that produces raw_output, structured output, and stderr."""
+
+    async def execute(self, request: ToolRequest, definition: ToolDefinition) -> ToolResult:
+        return ToolResult(
+            request_id=request.request_id,
+            engagement_id=request.engagement_id,
+            task_id=request.task_id,
+            tool_name=request.tool_name,
+            success=False,
+            output={"partial": "data"},
+            raw_output="<xml>raw scan output</xml>",
+            error="warning: host was slow to respond",
+            execution_time_ms=10,
         )
 
 
@@ -226,3 +244,59 @@ class TestExecutionManagerLifecycle:
 
         events = await audit_service.get_events(engagement_id="eng-crash")
         assert any(e.event_type == AuditEventType.EXECUTION_FAILED for e in events)
+
+    @pytest.mark.asyncio
+    async def test_multi_artifact_evidence_and_audit_event(
+        self,
+        execution_manager: ExecutionManager,
+        echo_tool_def: ToolDefinition,
+        audit_service: AuditService,
+    ):
+        """Verify that an execution producing stdout, structured dict, and stderr
+        records 3 separate cryptographic evidence items and emits EVIDENCE_RECORDED.
+        """
+        request = ToolRequest(
+            engagement_id="eng-multi-ev",
+            task_id="task-multi-ev",
+            agent_id="agent-recon",
+            tool_name="multi_tool",
+            target="192.168.1.50",
+            arguments={},
+            scope_validated=True,
+            policy_approved=True,
+        )
+
+        exec_res, tool_res = await execution_manager.execute_tool(
+            request=request,
+            tool_def=echo_tool_def,
+            executor_func=DummyMultiOutputExecutor(),
+        )
+
+        # 1. Verify 3 evidence references recorded
+        assert len(tool_res.evidence_refs) == 3
+        assert len(exec_res.evidence_references) == 3
+
+        # 2. Check each evidence type
+        stored_refs = [
+            execution_manager.evidence_store.get_evidence(eid) for eid in tool_res.evidence_refs
+        ]
+        types = {r.evidence_type for r in stored_refs if r is not None}
+        assert types == {
+            EvidenceType.RAW_STDOUT.value,
+            EvidenceType.STRUCTURED_RESULT.value,
+            EvidenceType.RAW_STDERR.value,
+        }
+
+        # 3. Verify cryptographic integrity on all 3
+        for eid in tool_res.evidence_refs:
+            assert execution_manager.evidence_store.verify_integrity(eid) is True
+
+        # 4. Verify EVIDENCE_RECORDED audit event emitted
+        events = await audit_service.get_events(engagement_id="eng-multi-ev")
+        event_types = [e.event_type for e in events]
+        assert AuditEventType.EVIDENCE_RECORDED in event_types
+        ev_recorded_event = next(
+            e for e in events if e.event_type == AuditEventType.EVIDENCE_RECORDED
+        )
+        assert ev_recorded_event.parameters["evidence_count"] == 3
+        assert ev_recorded_event.parameters["evidence_ids"] == tool_res.evidence_refs

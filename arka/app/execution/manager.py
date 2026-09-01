@@ -195,17 +195,73 @@ class ExecutionManager:
             duration_ms = int((time.monotonic() - start_mono) * 1000)
             executed_tool_result.execution_time_ms = duration_ms
 
-            # Step 6: Capture cryptographic evidence
-            evidence_ref = self.evidence_store.record_evidence(
+            # Step 6: Capture cryptographic evidence (three items)
+            evidence_refs_list: list[str] = []
+            all_evidence_references = []
+
+            # 6a. Record raw tool output (e.g. raw Nmap XML)
+            if executed_tool_result.raw_output:
+                raw_ref = self.evidence_store.record_evidence(
+                    execution_id=execution_id,
+                    request_id=request.request_id,
+                    engagement_id=request.engagement_id,
+                    task_id=request.task_id,
+                    content=executed_tool_result.raw_output,
+                    evidence_type="raw_stdout",
+                    tool_name=request.tool_name,
+                    metadata={"target": request.target},
+                )
+                evidence_refs_list.append(raw_ref.evidence_id)
+                all_evidence_references.append(raw_ref)
+
+            # 6b. Record structured result (parsed output dict)
+            structured_ref = self.evidence_store.record_evidence(
                 execution_id=execution_id,
                 request_id=request.request_id,
                 engagement_id=request.engagement_id,
                 task_id=request.task_id,
                 content=executed_tool_result.output,
                 evidence_type="structured_result",
-                metadata={"tool_name": request.tool_name, "target": request.target},
+                tool_name=request.tool_name,
+                metadata={"target": request.target},
             )
-            executed_tool_result.evidence_refs.append(evidence_ref.evidence_id)
+            evidence_refs_list.append(structured_ref.evidence_id)
+            all_evidence_references.append(structured_ref)
+
+            # 6c. Record stderr if present
+            if executed_tool_result.error:
+                stderr_ref = self.evidence_store.record_evidence(
+                    execution_id=execution_id,
+                    request_id=request.request_id,
+                    engagement_id=request.engagement_id,
+                    task_id=request.task_id,
+                    content=executed_tool_result.error,
+                    evidence_type="raw_stderr",
+                    tool_name=request.tool_name,
+                    metadata={"target": request.target},
+                )
+                evidence_refs_list.append(stderr_ref.evidence_id)
+                all_evidence_references.append(stderr_ref)
+
+            # Attach all evidence refs to tool result
+            executed_tool_result.evidence_refs.extend(evidence_refs_list)
+
+            # 6d. Audit: evidence recorded
+            await self.audit.record_action(
+                event_type=AuditEventType.EVIDENCE_RECORDED,
+                actor="execution_manager",
+                action=f"evidence_recorded:{request.tool_name}",
+                engagement_id=request.engagement_id,
+                task_id=request.task_id,
+                agent_id=request.agent_id,
+                tool_name=request.tool_name,
+                target=request.target,
+                parameters={
+                    "evidence_count": len(evidence_refs_list),
+                    "evidence_ids": evidence_refs_list,
+                },
+                correlation_id=request.request_id,
+            )
 
             sandbox_meta = await self.runtime.collect_metadata(sandbox_id)
 
@@ -229,7 +285,7 @@ class ExecutionManager:
                 structured_output=executed_tool_result.output,
                 error=executed_tool_result.error,
                 sandbox_id=sandbox_id,
-                evidence_references=[evidence_ref],
+                evidence_references=all_evidence_references,
                 resource_usage={"duration_ms": duration_ms},
                 metadata=sandbox_meta,
             )
@@ -259,7 +315,7 @@ class ExecutionManager:
                     target=request.target,
                     result_status="completed",
                     error=executed_tool_result.error,
-                    evidence_ref=evidence_ref.evidence_id,
+                    evidence_ref=structured_ref.evidence_id,
                     correlation_id=request.request_id,
                 )
             else:
@@ -287,7 +343,7 @@ class ExecutionManager:
                     target=request.target,
                     result_status="failed",
                     error=executed_tool_result.error,
-                    evidence_ref=evidence_ref.evidence_id,
+                    evidence_ref=structured_ref.evidence_id,
                     correlation_id=request.request_id,
                 )
             return exec_result, executed_tool_result

@@ -10,6 +10,7 @@ from arka.app.core.scope.scopeguard import ScopeGuard
 from arka.app.core.state.models import RiskLevel, ScopeDefinition, ScopeTarget
 from arka.app.execution.manager import ExecutionManager
 from arka.app.execution.sandbox.local import LocalSafeRuntime
+from arka.app.execution.schemas import EvidenceType
 from arka.app.tools.mock.tools import EchoToolExecutor, HighRiskMockToolExecutor
 from arka.app.tools.registry.registry import ToolRegistry
 from arka.app.tools.schemas.tool_schemas import (
@@ -141,11 +142,18 @@ class TestExecutionEngineE2E:
         assert result.success is True
         assert result.output.get("echo") == {"message": "e2e_recon_test"}
         assert result.output.get("target") == "192.168.1.55"
-        assert len(result.evidence_refs) == 1
-
-        # 3. Verify Cryptographic Evidence Integrity
-        evidence_id = result.evidence_refs[0]
-        assert execution_manager.evidence_store.verify_integrity(evidence_id) is True
+        # 3. Verify Exact Cryptographic Evidence Contract (RAW_STDOUT + STRUCTURED_RESULT)
+        assert len(result.evidence_refs) == 2
+        recorded_refs = [
+            execution_manager.evidence_store.get_evidence(eid) for eid in result.evidence_refs
+        ]
+        evidence_types = {r.evidence_type for r in recorded_refs if r is not None}
+        assert evidence_types == {
+            EvidenceType.RAW_STDOUT.value,
+            EvidenceType.STRUCTURED_RESULT.value,
+        }
+        for ev_id in result.evidence_refs:
+            assert execution_manager.evidence_store.verify_integrity(ev_id) is True
 
         # 4. Verify Immutable Audit Events
         events = await audit_service.get_events(engagement_id="eng-e2e-1")
@@ -164,6 +172,7 @@ class TestExecutionEngineE2E:
         tool_registry: ToolRegistry,
         approval_manager: ApprovalManager,
         audit_service: AuditService,
+        execution_manager: ExecutionManager,
     ):
         """Prove the high risk approval pipeline with persistent approval gate
 
@@ -221,7 +230,18 @@ class TestExecutionEngineE2E:
         assert result.success is True
         assert result.output.get("action") == "simulated_high_risk_operation"
         assert result.output.get("approved_by") == approval.approval_id
-        assert len(result.evidence_refs) == 1
+        # 5b. Verify Exact Evidence Contract (RAW_STDOUT + STRUCTURED_RESULT)
+        assert len(result.evidence_refs) == 2
+        high_risk_refs = [
+            execution_manager.evidence_store.get_evidence(eid) for eid in result.evidence_refs
+        ]
+        high_risk_types = {r.evidence_type for r in high_risk_refs if r is not None}
+        assert high_risk_types == {
+            EvidenceType.RAW_STDOUT.value,
+            EvidenceType.STRUCTURED_RESULT.value,
+        }
+        for ev_id in result.evidence_refs:
+            assert execution_manager.evidence_store.verify_integrity(ev_id) is True
 
         # 6. Audit check
         events = await audit_service.get_events(engagement_id="eng-e2e-2")

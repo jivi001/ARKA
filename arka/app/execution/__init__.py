@@ -9,6 +9,7 @@ from arka.app.execution.sandbox.docker import DockerSandboxRuntime
 from arka.app.execution.sandbox.local import LocalSafeRuntime
 from arka.app.execution.schemas import (
     EvidenceReference,
+    EvidenceType,
     ExecutionLimits,
     ExecutionRequest,
     ExecutionResult,
@@ -20,6 +21,7 @@ __all__ = [
     "DockerSandboxRuntime",
     "EvidenceReference",
     "EvidenceStore",
+    "EvidenceType",
     "ExecutionEngine",
     "ExecutionLimits",
     "ExecutionManager",

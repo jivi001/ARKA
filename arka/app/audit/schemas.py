@@ -45,6 +45,7 @@ class AuditEventType(str, Enum):
     EXECUTION_TIMED_OUT = "execution.timed_out"
     EXECUTION_CANCELLED = "execution.cancelled"
     EXECUTION_REJECTED = "execution.rejected"
+    EVIDENCE_RECORDED = "evidence.recorded"
 
 
 class AuditEvent(BaseModel):

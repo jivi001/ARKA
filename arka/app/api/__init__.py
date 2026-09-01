@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from arka.app.api.errors import ArkaAPIError, arka_exception_handler, generic_exception_handler
 from arka.app.api.routes.engagements import router as engagements_router
+from arka.app.api.routes.evidence import router as evidence_router
 from arka.app.api.routes.health import router as health_router
 from arka.app.api.routes.llm import router as llm_router
 from arka.app.core.config import get_settings
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     # Routers
     app.include_router(health_router)
     app.include_router(engagements_router)
+    app.include_router(evidence_router)
     app.include_router(llm_router)
 
     return app

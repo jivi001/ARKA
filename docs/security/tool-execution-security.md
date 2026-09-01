@@ -89,7 +89,11 @@ Execution is decoupled from the host via `SandboxRuntime`:
 
 ---
 
-## 7. Cryptographic Evidence & Non-Repudiation
+## 7. Cryptographic Evidence & Non-Repudiation (Phase 2.2.3)
 
-- `EvidenceStore` computes a **SHA-256 digest** over raw tool outputs and structured results.
-- Every `ToolResult` includes cryptographic `EvidenceReference` IDs that provide an unalterable provenance record of test artifacts.
+- **Multi-Artifact Evidence Capture**: `ExecutionManager` independently captures and hashes `RAW_STDOUT` (e.g. raw Nmap XML), `STRUCTURED_RESULT` (parsed dictionary), and `RAW_STDERR` (error stream).
+- **Cryptographic SHA-256 Digest**: `EvidenceStore` computes a deterministic SHA-256 digest over the raw byte serialization of every evidence item.
+- **Content-Addressed Deduplication**: Identical content across executions shares raw blob storage while retaining distinct, immutable provenance references.
+- **Defensive Immutability**: All evidence lookups return deep defensive copies to prevent caller mutation of internal store records.
+- **Secret Redaction**: Metadata parameters are sanitized against regex credential patterns before storage.
+- **Persistence Boundary**: `EvidenceStore` currently operates in-memory; connection to the PostgreSQL `evidence` table and durable artifact storage is planned for a future worker persistence phase. Every `ToolResult` includes cryptographic `EvidenceReference` IDs that provide an unalterable provenance record linking observations back to their execution origin.

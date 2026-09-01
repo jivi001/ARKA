@@ -4,7 +4,8 @@
 - **Phase 2.1 (Secure Execution Engine & Sandboxing)**: **`COMPLETE`**
 - **Phase 2.2.1 (Nmap Adapter & Parser Foundation)**: **`COMPLETE`**
 - **Phase 2.2.2 (Canonical Asset / Service / Technology Model)**: **`COMPLETE`**
-- **Phase 2.2.3+ (Reconnaissance Agents & Additional Tool Adapters)**: **`PLANNED`**
+- **Phase 2.2.3 (Evidence Pipeline & Provenance Foundation)**: **`COMPLETE`**
+- **Phase 2.2.4+ (Reconnaissance Agents & Additional Tool Adapters)**: **`PLANNED`**
 
 ---
 
@@ -22,7 +23,7 @@ graph TD
         AuthReq[Authoritative ToolRequest]
     end
     
-    subgraph ExecutionPlane["Execution Plane (Phase 2.1 / 2.2.1)"]
+    subgraph ExecutionPlane["Execution Plane (Phase 2.1 / 2.2.1 / 2.2.3)"]
         ExecMgr[ExecutionManager]
         ExecPolicy[ExecutionPolicy]
         
@@ -142,9 +143,33 @@ graph TD
 
 ---
 
-## 5. Phase 2 Planned Subsequent Milestones
+## 5. Phase 2.2.3 Implementation Summary: Evidence Pipeline & Provenance Foundation (Completed)
 
-- **Phase 2.2.3**: Additional security tool adapters and parsers (WhatWeb, ffuf, Nuclei).
+1. **Evidence Typing & Structured Schemas** (`arka/app/execution/schemas.py`):
+   - `EvidenceType` enum: `RAW_STDOUT`, `RAW_STDERR`, `STRUCTURED_RESULT`, `TOOL_ARTIFACT`, `PARSED_RESULT`.
+   - `EvidenceReference` extended with `tool_name` for direct provenance tracking.
+
+2. **Hardened EvidenceStore** (`arka/app/execution/evidence.py`):
+   - Append-only immutability with defensive copies (`model_copy(deep=True)`) preventing caller mutation.
+   - Content-addressed deduplication (shared blobs indexed by SHA-256 with distinct provenance references).
+   - Listing APIs: `list_by_engagement()`, `list_by_execution()`, `list_all()`.
+   - Automatic secret pattern redaction in evidence metadata (preserves raw binary/text evidence integrity).
+   - Non-repudiation verification: `verify_integrity()`.
+
+3. **Multi-Artifact Execution Pipeline** (`arka/app/execution/manager.py`):
+   - Automatically records separate cryptographic evidence for `RAW_STDOUT` (raw XML/text), `STRUCTURED_RESULT` (parsed output dict), and `RAW_STDERR` (error stream).
+   - Generates `EVIDENCE_RECORDED` audit events on every capture.
+
+4. **Read-Only Evidence API** (`arka/app/api/routes/evidence.py`):
+   - `GET /evidence/{id}` and `GET /evidence?engagement_id=...` exposing metadata only.
+   - Prevents raw artifact leakage and prohibits state mutation through API.
+
+---
+
+## 6. Phase 2 Planned Subsequent Milestones
+
 - **Phase 2.2.4**: `ReconAgent` LangGraph subagent for autonomous asset discovery and service enumeration.
-- **Phase 2.2.5**: Target network routing policies linking `ScopeGuard` to container networking.
+- **Phase 2.2.5**: Additional security tool adapters and parsers (WhatWeb, ffuf, Nuclei).
+- **Phase 2.2.6**: Target network routing policies linking `ScopeGuard` to container networking.
+
 

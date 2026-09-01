@@ -48,15 +48,35 @@ class ExecutionLimits(BaseModel):
     max_concurrent_executions: int = Field(default=5, ge=1, le=50)
 
 
+class EvidenceType(str, Enum):
+    """Canonical evidence categories for execution artifacts."""
+
+    RAW_STDOUT = "raw_stdout"
+    RAW_STDERR = "raw_stderr"
+    STRUCTURED_RESULT = "structured_result"
+    TOOL_ARTIFACT = "tool_artifact"
+    PARSED_RESULT = "parsed_result"
+
+
 class EvidenceReference(BaseModel):
-    """Cryptographic provenance record for execution output and artifacts."""
+    """Cryptographic provenance record for execution output and artifacts.
+
+    Each evidence reference records:
+    - WHO: engagement_id, task_id (the engagement and task context)
+    - WHAT TOOL: tool_name (the tool that produced the evidence)
+    - WHAT EXECUTION: execution_id, request_id (the specific run)
+    - WHEN: created_at (UTC timestamp)
+    - WHAT CONTENT: sha256 (integrity digest of the raw bytes)
+    - WHAT TYPE: evidence_type (structured enum category)
+    """
 
     evidence_id: str = Field(default_factory=new_id)
     execution_id: str
     request_id: str
     engagement_id: str
     task_id: str
-    evidence_type: str = "raw_tool_output"  # raw_tool_output, structured_result, log
+    tool_name: str = ""
+    evidence_type: str = EvidenceType.STRUCTURED_RESULT.value
     location: str = "in_memory"  # in_memory, filesystem path, or artifact storage
     sha256: str
     size_bytes: int = 0
