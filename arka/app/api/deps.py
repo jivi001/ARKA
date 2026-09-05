@@ -6,6 +6,7 @@ from arka.app.audit.service import AuditService
 from arka.app.core.approvals.manager import ApprovalManager
 from arka.app.core.scope.repository import ScopeRepository
 from arka.app.core.tasks.repository import TaskRepository
+from arka.app.execution.evidence import EvidenceStore
 from arka.app.llm.gateway.gateway import LLMGateway
 from arka.app.orchestration.recon_service import ReconOrchestrationService
 from arka.app.workers.backend import ArqWorkerBackend, InProcessWorkerBackend, WorkerBackend
@@ -19,6 +20,7 @@ _task_repository: TaskRepository | None = None
 _recon_orchestration_service: ReconOrchestrationService | None = None
 _worker_backend: WorkerBackend | None = None
 _arq_redis_pool: ArqRedis | None = None
+_evidence_store: EvidenceStore | None = None
 
 
 def set_arq_redis_pool(pool: ArqRedis | None) -> None:
@@ -84,6 +86,14 @@ def get_task_repository() -> TaskRepository:
     return _task_repository
 
 
+def get_evidence_store() -> EvidenceStore:
+    """Get or create the singleton EvidenceStore."""
+    global _evidence_store
+    if _evidence_store is None:
+        _evidence_store = EvidenceStore()
+    return _evidence_store
+
+
 def get_recon_orchestration_service() -> ReconOrchestrationService:
     """Get or create the singleton ReconOrchestrationService."""
     global _recon_orchestration_service
@@ -94,6 +104,7 @@ def get_recon_orchestration_service() -> ReconOrchestrationService:
             audit_service=get_audit_service(),
             llm_gateway=get_llm_gateway(),
             approval_manager=get_approval_manager(),
+            evidence_store=get_evidence_store(),
         )
     return _recon_orchestration_service
 
@@ -124,6 +135,7 @@ def reset_dependencies() -> None:
     """Reset all singleton instances. Used in testing."""
     global _audit_service, _llm_gateway, _scope_repository, _approval_manager
     global _task_repository, _recon_orchestration_service, _worker_backend, _arq_redis_pool
+    global _evidence_store
     _audit_service = None
     _llm_gateway = None
     _scope_repository = None
@@ -132,3 +144,4 @@ def reset_dependencies() -> None:
     _recon_orchestration_service = None
     _worker_backend = None
     _arq_redis_pool = None
+    _evidence_store = None

@@ -65,12 +65,14 @@ class ReconOrchestrationService:
         audit_service: AuditService,
         llm_gateway: LLMGateway,
         approval_manager: ApprovalManager,
+        evidence_store: EvidenceStore | None = None,
     ) -> None:
         self._task_repo = task_repository
         self._scope_repo = scope_repository
         self._audit = audit_service
         self._llm = llm_gateway
         self._approval_manager = approval_manager
+        self._evidence_store = evidence_store
 
     async def start(
         self,
@@ -174,9 +176,7 @@ class ReconOrchestrationService:
             # 2. Load authoritative scope from PostgreSQL
             raw_scope = await self._scope_repo.get_scope(engagement_id)
             if not raw_scope:
-                raise ReconOrchestrationError(
-                    f"No scope defined for engagement {engagement_id}"
-                )
+                raise ReconOrchestrationError(f"No scope defined for engagement {engagement_id}")
 
             if isinstance(raw_scope, ScopeDefinition):
                 scope_def = raw_scope
@@ -193,7 +193,7 @@ class ReconOrchestrationService:
             # 3. Construct per-task isolated security boundary components
             scope_guard = ScopeGuard(scope_def)
             policy_engine = PolicyEngine(scope_guard)
-            evidence_store = EvidenceStore()
+            evidence_store = self._evidence_store or EvidenceStore()
             execution_manager = ExecutionManager(
                 audit_service=self._audit,
                 evidence_store=evidence_store,
@@ -235,9 +235,9 @@ class ReconOrchestrationService:
                 "engagement_id": engagement_id,
                 "current_task_id": task_id,
                 "authorized_scope": scope_data,
-                "recon_objectives": [task.objective] if task.objective else [
-                    "Enumerate open ports and active services"
-                ],
+                "recon_objectives": [task.objective]
+                if task.objective
+                else ["Enumerate open ports and active services"],
                 "max_iterations": task.max_iterations,
                 "max_actions": task.max_iterations * 3,
             }

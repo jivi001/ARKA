@@ -6,10 +6,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from arka.app.api.deps import get_worker_backend, set_arq_redis_pool
+from arka.app.api.deps import get_evidence_store, get_worker_backend, set_arq_redis_pool
 from arka.app.api.errors import ArkaAPIError, arka_exception_handler, generic_exception_handler
 from arka.app.api.routes.engagements import router as engagements_router
 from arka.app.api.routes.evidence import router as evidence_router
+from arka.app.api.routes.evidence import set_evidence_store
 from arka.app.api.routes.health import router as health_router
 from arka.app.api.routes.llm import router as llm_router
 from arka.app.core.config import get_settings
@@ -85,6 +86,9 @@ def create_app() -> FastAPI:
     # Exception handlers
     app.add_exception_handler(ArkaAPIError, arka_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, generic_exception_handler)  # type: ignore[arg-type]
+
+    # Initialize evidence store for API access
+    set_evidence_store(get_evidence_store())
 
     # Routers
     app.include_router(health_router)

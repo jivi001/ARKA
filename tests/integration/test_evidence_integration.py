@@ -212,3 +212,18 @@ class TestEvidencePipelineEndToEndIntegration:
         # 10d. 400 when no filter parameters are supplied
         resp_400 = api_client.get("/evidence")
         assert resp_400.status_code == 400
+
+
+def test_evidence_store_initialized_by_default_in_app() -> None:
+    """Verify create_app() automatically wires and initializes the evidence store.
+
+    Prevents 503 Service Unavailable ('Evidence store not initialized') when querying
+    the evidence endpoints on a freshly booted application.
+    """
+    from arka.app.api.deps import reset_dependencies
+
+    reset_dependencies()
+    client = TestClient(create_app())
+    resp = client.get("/evidence?engagement_id=nonexistent-eng")
+    assert resp.status_code == 200
+    assert resp.json() == []
