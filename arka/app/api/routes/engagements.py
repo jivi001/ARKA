@@ -12,9 +12,17 @@ from sqlalchemy import select, update
 from arka.app.api.deps import (
     get_approval_manager,
     get_audit_service,
+    get_recon_orchestration_service,
     get_scope_repository,
+    get_task_repository,
+    get_worker_backend,
 )
-from arka.app.api.errors import ConflictError, NotFoundError, ValidationError
+from arka.app.api.errors import (
+    ConflictError,
+    NotFoundError,
+    ServiceUnavailableError,
+    ValidationError,
+)
 from arka.app.audit.schemas import AuditEventType
 from arka.app.audit.service import AuditService
 from arka.app.core.approvals.manager import ApprovalManager
@@ -32,7 +40,10 @@ from arka.app.core.state.models import (
     new_id,
     utc_now,
 )
+from arka.app.core.tasks.repository import TaskRepository
 from arka.app.database.models import Engagement
+from arka.app.orchestration.recon_service import ReconOrchestrationService
+from arka.app.workers.backend import WorkerBackend
 
 router = APIRouter(prefix="/engagements", tags=["engagements"])
 
@@ -531,13 +542,76 @@ async def stop_engagement(
 
 
 @router.get("/{engagement_id}/tasks")
-async def get_engagement_tasks(engagement_id: str) -> dict:
-    """Get tasks for an engagement."""
-    state = _engagements.get(engagement_id)
+async def get_engagement_tasks(
+    engagement_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    task_repo: TaskRepository = Depends(get_task_repository),
+    scope_repo: ScopeRepository = Depends(get_scope_repository),
+) -> dict:
+    """Get persistent tasks for an engagement with strict isolation."""
+    state = await _get_or_load_engagement(engagement_id, scope_repo)
     if not state:
         raise NotFoundError("Engagement", engagement_id)
 
-    return {"engagement_id": engagement_id, "tasks": [], "total": 0}
+    tasks = await task_repo.get_tasks_by_engagement(engagement_id, limit=limit, offset=offset)
+    return {
+        "engagement_id": engagement_id,
+        "tasks": [
+            {
+                "task_id": str(t.id),
+                "engagement_id": str(t.engagement_id),
+                "task_type": t.task_type,
+                "status": t.status,
+                "name": t.name,
+                "objective": t.objective,
+                "max_iterations": t.max_iterations,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "started_at": t.started_at.isoformat() if t.started_at else None,
+                "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+                "output_data": t.output_data or {},
+                "errors": t.errors or [],
+                "evidence_refs": t.evidence_refs or [],
+            }
+            for t in tasks
+        ],
+        "total": len(tasks),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/{engagement_id}/tasks/{task_id}")
+async def get_engagement_task(
+    engagement_id: str,
+    task_id: str,
+    task_repo: TaskRepository = Depends(get_task_repository),
+    scope_repo: ScopeRepository = Depends(get_scope_repository),
+) -> dict:
+    """Get a specific persistent task for an engagement, enforcing cross-engagement isolation."""
+    state = await _get_or_load_engagement(engagement_id, scope_repo)
+    if not state:
+        raise NotFoundError("Engagement", engagement_id)
+
+    task = await task_repo.get_task_by_id_and_engagement(task_id, engagement_id)
+    if not task:
+        raise NotFoundError("Task", task_id)
+
+    return {
+        "task_id": str(task.id),
+        "engagement_id": str(task.engagement_id),
+        "task_type": task.task_type,
+        "status": task.status,
+        "name": task.name,
+        "objective": task.objective,
+        "max_iterations": task.max_iterations,
+        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "started_at": task.started_at.isoformat() if task.started_at else None,
+        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+        "output_data": task.output_data or {},
+        "errors": task.errors or [],
+        "evidence_refs": task.evidence_refs or [],
+    }
 
 
 @router.get("/{engagement_id}/audit")
@@ -545,10 +619,11 @@ async def get_engagement_audit(
     engagement_id: str,
     limit: int = 100,
     offset: int = 0,
+    scope_repo: ScopeRepository = Depends(get_scope_repository),
     audit: AuditService = Depends(get_audit_service),
 ) -> dict:
     """Get audit trail for an engagement."""
-    state = _engagements.get(engagement_id)
+    state = await _get_or_load_engagement(engagement_id, scope_repo)
     if not state:
         raise NotFoundError("Engagement", engagement_id)
 
@@ -571,25 +646,76 @@ class ReconRunRequest(BaseModel):
 async def run_engagement_recon(
     engagement_id: str,
     request: ReconRunRequest | None = None,
+    orchestrator: ReconOrchestrationService = Depends(get_recon_orchestration_service),
+    worker_backend: WorkerBackend = Depends(get_worker_backend),
+    task_repo: TaskRepository = Depends(get_task_repository),
+    scope_repo: ScopeRepository = Depends(get_scope_repository),
     audit: AuditService = Depends(get_audit_service),
 ) -> dict:
-    """Trigger autonomous reconnaissance on an authorized engagement."""
-    state = _engagements.get(engagement_id)
+    """Trigger autonomous reconnaissance on an authorized active engagement.
+
+    Enforces:
+    1. Engagement exists and status is 'active'
+    2. Authoritative scope is configured
+    3. Persistent task is created in PostgreSQL ('queued')
+    4. Task is enqueued to worker backend (InProcess or Arq)
+    5. Synchronous rollback to 'failed' if enqueue fails
+    """
+    state = await _get_or_load_engagement(engagement_id, scope_repo)
     if not state:
         raise NotFoundError("Engagement", engagement_id)
 
+    if state.status != EngagementStatus.ACTIVE:
+        raise ConflictError(
+            f"Cannot run reconnaissance on engagement in '{state.status.value}' state. "
+            "Must be 'active'."
+        )
+
+    scope = await scope_repo.get_scope(engagement_id)
+    if not scope:
+        raise ConflictError(
+            "Cannot run reconnaissance without an authorized scope definition. "
+            "Configure scope first using 'arka engagement scope <ID>'."
+        )
+
     objective = request.objective if request else "Autonomous reconnaissance"
-    await audit.record_action(
-        event_type=AuditEventType.TASK_STARTED,
-        actor="api",
-        action="recon_triggered",
+    max_iterations = request.max_iterations if request else 10
+
+    # 1. Create persistent task in PostgreSQL
+    task_data = await orchestrator.start(
         engagement_id=engagement_id,
-        parameters={"objective": objective},
-        result_status="success",
+        objective=objective,
+        max_iterations=max_iterations,
     )
+    task_id = task_data["task_id"]
+
+    # 2. Enqueue to worker backend with failure handling
+    try:
+        await worker_backend.enqueue_recon(
+            task_id=task_id,
+            engagement_id=engagement_id,
+            objective=objective,
+            max_iterations=max_iterations,
+        )
+    except Exception as exc:
+        safe_err = f"Worker enqueue failed: {str(exc)[:1024]}"
+        await task_repo.mark_failed(task_id, error=safe_err)
+        await audit.record_action(
+            event_type=AuditEventType.TASK_FAILED,
+            actor="api",
+            action="enqueue_recon_task",
+            engagement_id=engagement_id,
+            task_id=task_id,
+            result_status="failed",
+            error=safe_err,
+        )
+        raise ServiceUnavailableError(
+            "Failed to enqueue reconnaissance task with worker backend."
+        ) from exc
 
     return {
+        "task_id": task_id,
         "engagement_id": engagement_id,
-        "status": "initiated",
+        "status": "queued",
         "objective": objective,
     }

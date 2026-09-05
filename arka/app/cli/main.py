@@ -403,11 +403,29 @@ def tasks(engagement_id: str = typer.Argument(..., help="Engagement ID")) -> Non
         console.print("[dim]No tasks found for this engagement.[/dim]")
         return
     table = Table(title="Tasks")
-    table.add_column("ID")
+    table.add_column("Task ID", style="cyan")
+    table.add_column("Type")
     table.add_column("Name")
     table.add_column("Status")
+    table.add_column("Created", style="dim")
     for task in result["tasks"]:
-        table.add_row(task.get("task_id", ""), task.get("name", ""), task.get("status", ""))
+        status_val = task.get("status", "")
+        status_color = (
+            "green"
+            if status_val == "completed"
+            else "yellow"
+            if status_val == "running"
+            else "red"
+            if status_val == "failed"
+            else "white"
+        )
+        table.add_row(
+            task.get("task_id", ""),
+            task.get("task_type", ""),
+            task.get("name", ""),
+            f"[{status_color}]{status_val}[/{status_color}]",
+            task.get("created_at", "")[:19] if task.get("created_at") else "",
+        )
     console.print(table)
 
 
@@ -458,6 +476,8 @@ def recon_run(
             {"objective": objective, "max_iterations": max_iterations},
         )
     console.print("[green][OK] Reconnaissance initiated[/green]")
+    if result.get("task_id"):
+        console.print(f"  Task ID: {result.get('task_id')}")
     console.print(f"  Engagement: {result.get('engagement_id')}")
     console.print(f"  Status: {result.get('status')}")
     console.print(f"  Objective: {result.get('objective')}")

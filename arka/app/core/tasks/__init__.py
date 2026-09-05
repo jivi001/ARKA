@@ -1,3 +1,3 @@
-from arka.app.core.tasks.repository import TaskRepository
+from arka.app.core.tasks.repository import TaskRepository, TaskStateTransitionError
 
-__all__ = ["TaskRepository"]
+__all__ = ["TaskRepository", "TaskStateTransitionError"]

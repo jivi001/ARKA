@@ -115,7 +115,7 @@ class ToolRegistry:
             return None, decision, f"Policy denied: {decision.reason}"
 
         if decision.decision == PolicyDecisionType.REQUIRE_APPROVAL:
-            # Check if valid approval exists
+            # Check if valid approval exists with exact scope_version
             is_approved = False
             if self._approval_manager and approval_id:
                 is_approved = self._approval_manager.validate_approval_for_request(
@@ -124,6 +124,7 @@ class ToolRegistry:
                     task_id=task_id,
                     tool_name=candidate.tool_name,
                     target=candidate.target,
+                    scope_version=decision.scope_version,
                 )
 
             if not is_approved:
@@ -268,9 +269,27 @@ class ToolRegistry:
                 evidence_refs=[],
             )
 
+        # Verify scope version consistency if request carried an expected version
+        if request.scope_version is not None and request.scope_version != decision.scope_version:
+            return ToolResult(
+                request_id=request.request_id,
+                engagement_id=request.engagement_id,
+                task_id=request.task_id,
+                tool_name=request.tool_name,
+                success=False,
+                error=(
+                    f"Scope version mismatch: request has v{request.scope_version} "
+                    f"but authoritative scope is v{decision.scope_version}"
+                ),
+                output={},
+                raw_output="",
+                execution_time_ms=0,
+                evidence_refs=[],
+            )
+
         if decision.decision == PolicyDecisionType.REQUIRE_APPROVAL:
-            # Check approval validity
-            is_valid_approval = request.policy_approved
+            # Strictly verify human approval binding and scope version
+            is_valid_approval = False
             if self._approval_manager and request.approval_id:
                 is_valid_approval = self._approval_manager.validate_approval_for_request(
                     approval_id=request.approval_id,
@@ -278,6 +297,7 @@ class ToolRegistry:
                     task_id=request.task_id,
                     tool_name=request.tool_name,
                     target=request.target,
+                    scope_version=decision.scope_version,
                 )
 
             if not is_valid_approval:

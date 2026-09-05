@@ -92,7 +92,15 @@ async def enqueue_tool_execution(redis: ArqRedis, tool_request_data: dict) -> st
     return job.job_id if job else ""
 
 
-async def enqueue_orchestrator_run(redis: ArqRedis, engagement_id: str, objective: str) -> str:
+async def enqueue_orchestrator_run(
+    redis: ArqRedis,
+    task_id: str,
+    engagement_id: str,
+    objective: str = "Autonomous reconnaissance",
+    max_iterations: int = 10,
+) -> str:
     """Submit an orchestrator run job."""
-    job = await redis.enqueue_job("run_orchestrator_task", engagement_id, objective)
+    job = await redis.enqueue_job(
+        "run_orchestrator_task", task_id, engagement_id, objective, max_iterations
+    )
     return job.job_id if job else ""

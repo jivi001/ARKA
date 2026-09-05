@@ -58,6 +58,13 @@ class ConflictError(ArkaAPIError):
         super().__init__(status_code=409, error="Conflict", detail=detail)
 
 
+class ServiceUnavailableError(ArkaAPIError):
+    """Service or background worker unavailable."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(status_code=503, error="Service Unavailable", detail=detail)
+
+
 async def arka_exception_handler(request: Request, exc: ArkaAPIError) -> JSONResponse:
     """Global exception handler for ArkaAPIError."""
     return JSONResponse(
