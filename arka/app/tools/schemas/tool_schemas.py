@@ -69,6 +69,7 @@ class ToolRequest(BaseModel):
     reason: str = ""
     risk_level: RiskLevel = RiskLevel.LOW
     scope_validated: bool = False
+    scope_version: int = 1
     policy_approved: bool = False
     approval_id: str | None = None
     requested_at: datetime = Field(default_factory=utc_now)

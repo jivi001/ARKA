@@ -1,4 +1,5 @@
 import sys
+from typing import Any
 
 import httpx
 import typer
@@ -170,9 +171,68 @@ def engagement_start(engagement_id: str = typer.Argument(..., help="Engagement I
     console.print(f"  Status: {result['status']}")
 
 
+def _render_scope_table(scope_data: dict) -> Table:
+    table = Table(title=f"Scope Definition (v{scope_data.get('version', 1)})")
+    table.add_column("Boundary", style="cyan", width=12)
+    table.add_column("Type", style="yellow", width=16)
+    table.add_column("Configured Targets", style="white")
+
+    inc = scope_data.get("includes", {})
+    exc = scope_data.get("excludes", {})
+
+    has_entries = False
+    if inc.get("domains"):
+        sub = (
+            " (subdomains allowed)"
+            if inc.get("subdomains_allowed", True)
+            else " (exact domain only)"
+        )
+        table.add_row("Included", "Domains", ", ".join(inc["domains"]) + sub)
+        has_entries = True
+    if inc.get("ip_addresses"):
+        table.add_row("Included", "IP Addresses", ", ".join(inc["ip_addresses"]))
+        has_entries = True
+    if inc.get("cidrs"):
+        table.add_row("Included", "CIDRs", ", ".join(inc["cidrs"]))
+        has_entries = True
+    if inc.get("urls"):
+        table.add_row("Included", "URLs", ", ".join(inc["urls"]))
+        has_entries = True
+    if inc.get("ports"):
+        table.add_row("Included", "Ports", ", ".join(str(p) for p in inc["ports"]))
+        has_entries = True
+    if inc.get("port_ranges"):
+        table.add_row("Included", "Port Ranges", ", ".join(inc["port_ranges"]))
+        has_entries = True
+
+    if exc.get("domains"):
+        table.add_row("[red]Excluded[/red]", "Domains", ", ".join(exc["domains"]))
+        has_entries = True
+    if exc.get("ip_addresses"):
+        table.add_row("[red]Excluded[/red]", "IP Addresses", ", ".join(exc["ip_addresses"]))
+        has_entries = True
+    if exc.get("cidrs"):
+        table.add_row("[red]Excluded[/red]", "CIDRs", ", ".join(exc["cidrs"]))
+        has_entries = True
+    if exc.get("urls"):
+        table.add_row("[red]Excluded[/red]", "URLs", ", ".join(exc["urls"]))
+        has_entries = True
+    if exc.get("ports"):
+        table.add_row("[red]Excluded[/red]", "Ports", ", ".join(str(p) for p in exc["ports"]))
+        has_entries = True
+
+    if scope_data.get("notes"):
+        table.add_row("Info", "Notes", scope_data["notes"])
+
+    if not has_entries:
+        table.add_row("Included", "[dim]Targets[/dim]", "[dim]No targets configured[/dim]")
+
+    return table
+
+
 @engagement_app.command("status")
 def engagement_status(engagement_id: str = typer.Argument(..., help="Engagement ID")) -> None:
-    """Get engagement status."""
+    """Get engagement status and active scope configuration."""
     result = api_get(f"/engagements/{engagement_id}")
     table = Table(title=f"Engagement: {result['name']}")
     table.add_column("Field", style="cyan")
@@ -182,7 +242,140 @@ def engagement_status(engagement_id: str = typer.Argument(..., help="Engagement 
     table.add_row("Objective", result.get("objective", ""))
     table.add_row("Created", result["created_at"])
     table.add_row("Started", result.get("started_at", "N/A"))
+
+    scope = result.get("scope")
+    if scope:
+        table.add_row("Scope", f"[green]Configured (v{scope.get('version', 1)})[/green]")
+    else:
+        table.add_row(
+            "Scope", "[red]Not configured (Run 'arka engagement scope <ID>' to set)[/red]"
+        )
+
     console.print(table)
+    if scope:
+        console.print(_render_scope_table(scope))
+
+
+@engagement_app.command("scope")
+def engagement_scope(
+    engagement_id: str = typer.Argument(..., help="Engagement ID"),
+    target: list[str] = typer.Option(
+        None,
+        "--target",
+        "-t",
+        help="Target specification (e.g. 127.0.0.1:3000, http://127.0.0.1:3000, example.com)",
+    ),
+    ip: list[str] = typer.Option(None, "--ip", help="Authorized IP address"),
+    domain: list[str] = typer.Option(None, "--domain", help="Authorized domain"),
+    cidr: list[str] = typer.Option(None, "--cidr", help="Authorized CIDR network range"),
+    url: list[str] = typer.Option(None, "--url", help="Authorized URL target"),
+    port: list[int] = typer.Option(None, "--port", "-p", help="Authorized port number (1-65535)"),
+    port_range: list[str] = typer.Option(
+        None, "--port-range", help="Authorized port range (e.g. 80-443)"
+    ),
+    no_subdomains: bool = typer.Option(
+        False, "--no-subdomains", help="Disallow subdomains for authorized domains"
+    ),
+    exclude_ip: list[str] = typer.Option(None, "--exclude-ip", help="Excluded IP address"),
+    exclude_domain: list[str] = typer.Option(None, "--exclude-domain", help="Excluded domain"),
+    exclude_cidr: list[str] = typer.Option(None, "--exclude-cidr", help="Excluded CIDR range"),
+    exclude_url: list[str] = typer.Option(None, "--exclude-url", help="Excluded URL target"),
+    notes: str = typer.Option("", "--notes", help="Scope definition notes"),
+    expected_version: int | None = typer.Option(
+        None, "--expected-version", help="Expected version for optimistic concurrency control"
+    ),
+    show: bool = typer.Option(False, "--show", "-s", help="Display current scope definition"),
+) -> None:
+    """Define or inspect the authoritative scope for an engagement.
+
+    SEMANTICS: create-or-replace (not merge).
+    """
+    has_mutation_flags = any(
+        [
+            target,
+            ip,
+            domain,
+            cidr,
+            url,
+            port,
+            port_range,
+            exclude_ip,
+            exclude_domain,
+            exclude_cidr,
+            exclude_url,
+        ]
+    )
+
+    if show or not has_mutation_flags:
+        scope_data = api_get(f"/engagements/{engagement_id}/scope")
+        console.print(_render_scope_table(scope_data))
+        return
+
+    # Parse and sort user inputs
+    target_ips = list(ip or [])
+    target_domains = list(domain or [])
+    target_cidrs = list(cidr or [])
+    target_urls = list(url or [])
+    target_ports = list(port or [])
+    target_port_ranges = list(port_range or [])
+
+    if target:
+        for t in target:
+            t_clean = t.strip()
+            if t_clean.startswith(("http://", "https://")):
+                target_urls.append(t_clean)
+            elif "/" in t_clean:
+                target_cidrs.append(t_clean)
+            elif ":" in t_clean and not t_clean.startswith("["):
+                parts = t_clean.split(":")
+                if len(parts) == 2 and parts[1].isdigit():
+                    host_part = parts[0]
+                    target_ports.append(int(parts[1]))
+                    try:
+                        import ipaddress
+
+                        ipaddress.ip_address(host_part)
+                        target_ips.append(host_part)
+                    except ValueError:
+                        target_domains.append(host_part)
+                else:
+                    target_domains.append(t_clean)
+            else:
+                try:
+                    import ipaddress
+
+                    ipaddress.ip_address(t_clean)
+                    target_ips.append(t_clean)
+                except ValueError:
+                    target_domains.append(t_clean)
+
+    payload: dict[str, Any] = {
+        "includes": {
+            "domains": target_domains,
+            "subdomains_allowed": not no_subdomains,
+            "ip_addresses": target_ips,
+            "cidrs": target_cidrs,
+            "urls": target_urls,
+            "ports": target_ports,
+            "port_ranges": target_port_ranges,
+        },
+        "excludes": {
+            "domains": list(exclude_domain or []),
+            "subdomains_allowed": True,
+            "ip_addresses": list(exclude_ip or []),
+            "cidrs": list(exclude_cidr or []),
+            "urls": list(exclude_url or []),
+            "ports": [],
+            "port_ranges": [],
+        },
+        "notes": notes,
+    }
+    if expected_version is not None:
+        payload["expected_version"] = expected_version
+
+    result = api_post(f"/engagements/{engagement_id}/scope", payload)
+    console.print(f"[green][OK] Scope established (version {result.get('version', 1)})[/green]")
+    console.print(_render_scope_table(result))
 
 
 @engagement_app.command("pause")

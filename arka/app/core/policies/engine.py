@@ -49,6 +49,7 @@ class PolicyEngine:
         target = tool_request.target
 
         # 1. Validate target is present and in scope
+        scope_ver = self._scope_guard.scope_version
         if not target or not target.strip():
             return PolicyDecision(
                 engagement_id=eff_engagement_id,
@@ -61,6 +62,7 @@ class PolicyEngine:
                 reason="Target cannot be empty",
                 risk_level=tool_def.risk_level,
                 requires_approval=False,
+                scope_version=scope_ver,
             )
 
         try:
@@ -77,6 +79,7 @@ class PolicyEngine:
                 reason=f"Target out of scope: {e.reason}",
                 risk_level=tool_def.risk_level,
                 requires_approval=False,
+                scope_version=scope_ver,
             )
 
         # 2. Check risk level authoritatively from the tool definition
@@ -111,6 +114,7 @@ class PolicyEngine:
             reason=reason,
             risk_level=risk_level,
             requires_approval=requires_approval,
+            scope_version=scope_ver,
         )
 
     def set_approval_threshold(self, level: RiskLevel, requires_approval: bool) -> None:

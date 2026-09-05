@@ -1,12 +1,18 @@
+import sys
 from collections.abc import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from arka.app.core.config import get_settings
 
 
-def get_async_engine():
+def get_async_engine(poolclass=None):
     settings = get_settings()
+    if poolclass is not None:
+        return create_async_engine(settings.database_url, echo=False, poolclass=poolclass)
+    if "pytest" in sys.modules or getattr(settings, "arka_env", None) == "testing":
+        return create_async_engine(settings.database_url, echo=False, poolclass=NullPool)
     return create_async_engine(settings.database_url, echo=False, pool_pre_ping=True)
 
 

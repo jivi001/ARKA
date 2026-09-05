@@ -144,6 +144,7 @@ class ToolRegistry:
                 reason=candidate.reason,
                 risk_level=decision.risk_level,
                 scope_validated=True,
+                scope_version=decision.scope_version,
                 policy_approved=True,
                 approval_id=approval_id,
             )
@@ -160,6 +161,7 @@ class ToolRegistry:
             reason=candidate.reason,
             risk_level=tool_def.risk_level,
             scope_validated=True,
+            scope_version=decision.scope_version,
             policy_approved=True,
         )
         return tool_req, decision, None

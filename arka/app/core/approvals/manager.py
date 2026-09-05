@@ -16,7 +16,14 @@ from arka.app.core.state.models import (
     new_id,
     utc_now,
 )
-from arka.app.database.models import ApprovalDB
+from arka.app.database.models import ApprovalDB, Engagement, Task
+
+
+def _safe_uuid(val: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(val))
+    except (ValueError, AttributeError):
+        return uuid.uuid5(uuid.NAMESPACE_DNS, str(val))
 
 
 class ApprovalManager:
@@ -41,10 +48,12 @@ class ApprovalManager:
 
     def _sync_to_db_model(self, req: ApprovalRequest) -> ApprovalDB:
         """Convert domain ApprovalRequest to database ApprovalDB."""
+        details = dict(req.details or {})
+        details["scope_version"] = req.scope_version
         return ApprovalDB(
-            id=uuid.UUID(req.approval_id),
-            engagement_id=uuid.UUID(req.engagement_id),
-            task_id=uuid.UUID(req.task_id),
+            id=_safe_uuid(req.approval_id),
+            engagement_id=_safe_uuid(req.engagement_id),
+            task_id=_safe_uuid(req.task_id),
             agent_id=req.agent_id,
             action=req.action,
             target=req.target,
@@ -53,7 +62,7 @@ class ApprovalManager:
             if isinstance(req.risk_level, RiskLevel)
             else req.risk_level,
             reason=req.reason,
-            details=req.details,
+            details=details,
             status=req.status.value if isinstance(req.status, ApprovalStatus) else req.status,
             requested_at=req.requested_at,
             decided_at=req.decided_at,
@@ -65,6 +74,8 @@ class ApprovalManager:
 
     def _from_db_model(self, db_obj: ApprovalDB) -> ApprovalRequest:
         """Convert database ApprovalDB to domain ApprovalRequest."""
+        details = db_obj.details or {}
+        scope_ver = details.get("scope_version", 1)
         return ApprovalRequest(
             approval_id=str(db_obj.id),
             engagement_id=str(db_obj.engagement_id),
@@ -75,7 +86,8 @@ class ApprovalManager:
             tool_name=db_obj.tool_name,
             risk_level=RiskLevel(db_obj.risk_level),
             reason=db_obj.reason,
-            details=db_obj.details or {},
+            details=details,
+            scope_version=scope_ver,
             status=ApprovalStatus(db_obj.status),
             requested_at=db_obj.requested_at,
             decided_at=db_obj.decided_at,
@@ -99,6 +111,7 @@ class ApprovalManager:
         expiry_seconds: int = 3600,
         correlation_id: str | None = None,
         approval_id: str | None = None,
+        scope_version: int = 1,
     ) -> ApprovalRequest:
         """Create a new pending approval request in REQUIRED state."""
         request = ApprovalRequest(
@@ -111,6 +124,7 @@ class ApprovalManager:
             tool_name=tool_name,
             risk_level=risk_level,
             reason=reason,
+            scope_version=scope_version,
             details=details or {},
             status=ApprovalStatus.REQUIRED,
             requested_at=utc_now(),
@@ -134,6 +148,7 @@ class ApprovalManager:
         expiry_seconds: int = 3600,
         correlation_id: str | None = None,
         approval_id: str | None = None,
+        scope_version: int = 1,
     ) -> ApprovalRequest:
         """Create and persist an approval request to PostgreSQL."""
         req = self.create_request(
@@ -149,12 +164,44 @@ class ApprovalManager:
             expiry_seconds=expiry_seconds,
             correlation_id=correlation_id,
             approval_id=approval_id,
+            scope_version=scope_version,
         )
         if self._session_factory:
-            async with self._session_factory() as session:
+            async with self._session_factory() as session, session.begin():
+                # Ensure engagement row exists to satisfy foreign key
+                eng_uuid = _safe_uuid(req.engagement_id)
+                eng_res = await session.execute(select(Engagement).where(Engagement.id == eng_uuid))
+                if not eng_res.scalar_one_or_none():
+                    session.add(
+                        Engagement(
+                            id=eng_uuid,
+                            name=f"Engagement {req.engagement_id}",
+                            status="created",
+                            created_at=utc_now(),
+                            updated_at=utc_now(),
+                        )
+                    )
+                    await session.flush()
+
+                # Ensure task row exists to satisfy foreign key
+                task_uuid = _safe_uuid(req.task_id)
+                task_res = await session.execute(select(Task).where(Task.id == task_uuid))
+                if not task_res.scalar_one_or_none():
+                    session.add(
+                        Task(
+                            id=task_uuid,
+                            engagement_id=eng_uuid,
+                            agent_id=req.agent_id or "system",
+                            name=f"Task {req.task_id}",
+                            status="pending",
+                            created_at=utc_now(),
+                            updated_at=utc_now(),
+                        )
+                    )
+                    await session.flush()
+
                 db_model = self._sync_to_db_model(req)
                 session.add(db_model)
-                await session.commit()
         return req
 
     def approve(self, approval_id: str, approved_by: str) -> ApprovalRequest:
@@ -192,10 +239,10 @@ class ApprovalManager:
         """Approve and persist state transition in PostgreSQL."""
         req = self.approve(approval_id, approved_by)
         if self._session_factory:
-            async with self._session_factory() as session:
+            async with self._session_factory() as session, session.begin():
                 stmt = (
                     update(ApprovalDB)
-                    .where(ApprovalDB.id == uuid.UUID(approval_id))
+                    .where(ApprovalDB.id == _safe_uuid(approval_id))
                     .values(
                         status=ApprovalStatus.GRANTED.value,
                         decided_by=approved_by,
@@ -203,7 +250,6 @@ class ApprovalManager:
                     )
                 )
                 await session.execute(stmt)
-                await session.commit()
         return req
 
     def reject(self, approval_id: str, rejected_by: str, reason: str = "") -> ApprovalRequest:
@@ -244,10 +290,10 @@ class ApprovalManager:
         """Reject and persist state transition in PostgreSQL."""
         req = self.reject(approval_id, rejected_by, reason)
         if self._session_factory:
-            async with self._session_factory() as session:
+            async with self._session_factory() as session, session.begin():
                 stmt = (
                     update(ApprovalDB)
-                    .where(ApprovalDB.id == uuid.UUID(approval_id))
+                    .where(ApprovalDB.id == _safe_uuid(approval_id))
                     .values(
                         status=ApprovalStatus.REJECTED.value,
                         decided_by=rejected_by,
@@ -256,7 +302,6 @@ class ApprovalManager:
                     )
                 )
                 await session.execute(stmt)
-                await session.commit()
         return req
 
     def get_request(self, approval_id: str) -> ApprovalRequest | None:
@@ -275,7 +320,7 @@ class ApprovalManager:
         if self._session_factory:
             async with self._session_factory() as session:
                 result = await session.execute(
-                    select(ApprovalDB).where(ApprovalDB.id == uuid.UUID(approval_id))
+                    select(ApprovalDB).where(ApprovalDB.id == _safe_uuid(approval_id))
                 )
                 row = result.scalar_one_or_none()
                 if row:
@@ -337,10 +382,11 @@ class ApprovalManager:
         task_id: str,
         tool_name: str,
         target: str,
+        scope_version: int | None = None,
     ) -> bool:
         """Verify an approval is valid, GRANTED, non-expired, and bound to the exact operation.
 
-        Prevents cross-engagement, cross-task, cross-tool, or cross-target reuse.
+        Prevents cross-engagement, cross-task, cross-tool, cross-target, or version reuse.
         """
         if not approval_id:
             return False
@@ -361,4 +407,80 @@ class ApprovalManager:
         if req.tool_name != tool_name:
             return False
 
-        return req.target.strip() == target.strip()
+        if req.target.strip() != target.strip():
+            return False
+
+        return scope_version is None or req.scope_version == scope_version
+
+    async def validate_approval_for_request_async(
+        self,
+        approval_id: str | None,
+        engagement_id: str,
+        task_id: str,
+        tool_name: str,
+        target: str,
+        scope_version: int | None = None,
+    ) -> bool:
+        """Asynchronously verify an approval is valid, GRANTED, non-expired, and scope-bound."""
+        if not approval_id:
+            return False
+
+        req = await self.get_request_async(approval_id)
+        if not req:
+            return False
+
+        if req.status != ApprovalStatus.GRANTED:
+            return False
+
+        if req.engagement_id != engagement_id:
+            return False
+
+        if req.task_id != task_id:
+            return False
+
+        if req.tool_name != tool_name:
+            return False
+
+        if req.target.strip() != target.strip():
+            return False
+
+        return scope_version is None or req.scope_version == scope_version
+
+    def invalidate_for_engagement(self, engagement_id: str, reason: str = "Scope modified") -> int:
+        """Transition all active approvals (REQUIRED or GRANTED) for an engagement to EXPIRED."""
+        count = 0
+        now = utc_now()
+        for req in self._requests.values():
+            if req.engagement_id == engagement_id and req.status in (
+                ApprovalStatus.REQUIRED,
+                ApprovalStatus.GRANTED,
+            ):
+                req.status = ApprovalStatus.EXPIRED
+                req.rejection_reason = reason
+                req.decided_at = now
+                count += 1
+        return count
+
+    async def invalidate_for_engagement_async(
+        self, engagement_id: str, reason: str = "Scope modified"
+    ) -> int:
+        """Transition active approvals to EXPIRED and persist in PostgreSQL."""
+        count = self.invalidate_for_engagement(engagement_id, reason)
+        if self._session_factory:
+            async with self._session_factory() as session, session.begin():
+                stmt = (
+                    update(ApprovalDB)
+                    .where(
+                        ApprovalDB.engagement_id == _safe_uuid(engagement_id),
+                        ApprovalDB.status.in_(
+                            [ApprovalStatus.REQUIRED.value, ApprovalStatus.GRANTED.value]
+                        ),
+                    )
+                    .values(
+                        status=ApprovalStatus.EXPIRED.value,
+                        rejection_reason=reason,
+                        decided_at=utc_now(),
+                    )
+                )
+                await session.execute(stmt)
+        return count

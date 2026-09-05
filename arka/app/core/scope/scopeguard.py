@@ -30,9 +30,58 @@ class ScopeGuard:
         self._excluded_domains = {d.strip().lower() for d in scope.excludes.domains if d.strip()}
         self._included_ips = self._parse_ip_set(scope.includes.ip_addresses)
         self._excluded_ips = self._parse_ip_set(scope.excludes.ip_addresses)
-        self._included_ports = {p for p in scope.includes.ports if 0 <= p <= 65535}
+        self._included_ports = {p for p in scope.includes.ports if 1 <= p <= 65535}
         self._allowed_port_ranges = self._parse_port_ranges(scope.includes.port_ranges)
         self._subdomains_allowed = scope.includes.subdomains_allowed
+
+        # Parse URLs and integrate their hosts/ports
+        self._included_urls = self._parse_urls(scope.includes.urls)
+        self._excluded_urls = self._parse_urls(scope.excludes.urls)
+
+        has_explicit_ports = bool(self._included_ports or self._allowed_port_ranges)
+        for u in self._included_urls:
+            host = u["host"]
+            try:
+                self._included_ips.add(ipaddress.ip_address(host))
+            except ValueError:
+                self._included_domains.add(host)
+            # If ports were not explicitly given, include URL's port
+            if not has_explicit_ports:
+                self._included_ports.add(u["port"])
+
+    @property
+    def scope_version(self) -> int:
+        """Return the authoritative scope version."""
+        return self._scope.version
+
+    def _parse_urls(self, urls: list[str]) -> list[dict]:
+        parsed_list = []
+        for u in urls:
+            u_clean = u.strip()
+            if not u_clean:
+                continue
+            if not u_clean.startswith(("http://", "https://")):
+                u_clean = "http://" + u_clean
+            with contextlib.suppress(Exception):
+                parsed = urlparse(u_clean)
+                host = parsed.hostname
+                if not host:
+                    continue
+                scheme = parsed.scheme.lower()
+                port = (
+                    parsed.port if parsed.port is not None else (443 if scheme == "https" else 80)
+                )
+                path = parsed.path.rstrip("/")
+                parsed_list.append(
+                    {
+                        "raw": u,
+                        "scheme": scheme,
+                        "host": host.lower(),
+                        "port": port,
+                        "path": path,
+                    }
+                )
+        return parsed_list
 
     def _parse_networks(
         self, target: ScopeTarget
@@ -66,7 +115,7 @@ class ScopeGuard:
                 with contextlib.suppress(ValueError):
                     start = int(parts[0].strip())
                     end = int(parts[1].strip())
-                    if 0 <= start <= 65535 and 0 <= end <= 65535 and start <= end:
+                    if 1 <= start <= 65535 and 1 <= end <= 65535 and start <= end:
                         parsed.append((start, end))
         return parsed
 
@@ -83,8 +132,8 @@ class ScopeGuard:
         return domain == parent or domain.endswith("." + parent)
 
     def validate_port(self, port: int) -> bool:
-        """Check if a port is within allowed scope."""
-        if not isinstance(port, int) or port < 0 or port > 65535:
+        """Check if a port is within allowed scope (valid network ports 1-65535)."""
+        if not isinstance(port, int) or port < 1 or port > 65535:
             return False
         if not self._included_ports and not self._allowed_port_ranges:
             return True
@@ -187,7 +236,7 @@ class ScopeGuard:
         return any(self._net_subnet_of(net_obj, inc_net) for inc_net in self._included_networks)
 
     def validate_url(self, url: str) -> bool:
-        """Validate URL host and optional port against scope."""
+        """Validate URL host, port, and path against scope."""
         url_clean = url.strip()
         if not url_clean.startswith(("http://", "https://")):
             url_clean = "http://" + url_clean
@@ -201,8 +250,43 @@ class ScopeGuard:
             raise ScopeViolation(url, "Could not extract host from URL.")
 
         port = parsed.port
-        if port is not None and not self.validate_port(port):
+        if port is None:
+            port = 443 if parsed.scheme.lower() == "https" else 80
+        if not self.validate_port(port):
             return False
+
+        url_path = parsed.path.rstrip("/")
+        if not url_path:
+            url_path = "/"
+
+        # Check URL exclusions with path prefixes
+        for ex_u in self._excluded_urls:
+            if ex_u["host"] == host.lower() and ex_u["port"] == port:
+                ex_path = ex_u["path"]
+                if (
+                    not ex_path
+                    or ex_path == "/"
+                    or url_path == ex_path
+                    or url_path.startswith(ex_path + "/")
+                ):
+                    return False
+
+        # If scope contains explicit URL path constraints for this host:port, enforce path prefix
+        matching_included_urls = [
+            inc
+            for inc in self._included_urls
+            if inc["host"] == host.lower()
+            and inc["port"] == port
+            and inc["path"]
+            and inc["path"] != "/"
+        ]
+        if matching_included_urls:
+            path_allowed = any(
+                url_path == inc["path"] or url_path.startswith(inc["path"] + "/")
+                for inc in matching_included_urls
+            )
+            if not path_allowed:
+                return False
 
         try:
             # Check if host is IP

@@ -64,6 +64,7 @@ class Scope(Base):
     engagement_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("engagements.id"), nullable=False, index=True
     )
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     includes: Mapped[dict] = mapped_column(JSON, default=dict)  # ScopeTarget as JSON
     excludes: Mapped[dict] = mapped_column(JSON, default=dict)
     notes: Mapped[str] = mapped_column(Text, default="")

@@ -79,6 +79,7 @@ class ScopeDefinition(BaseModel):
 
     scope_id: str = Field(default_factory=new_id)
     engagement_id: str
+    version: int = Field(default=1, ge=1)
     includes: ScopeTarget = Field(default_factory=ScopeTarget)
     excludes: ScopeTarget = Field(default_factory=ScopeTarget)
     notes: str = ""
@@ -151,6 +152,7 @@ class PolicyDecision(BaseModel):
     risk_level: RiskLevel = RiskLevel.LOW
     requires_approval: bool = False
     approval_id: str | None = None
+    scope_version: int = 1
     decided_at: datetime = Field(default_factory=utc_now)
 
 
@@ -166,6 +168,7 @@ class ApprovalRequest(BaseModel):
     tool_name: str
     risk_level: RiskLevel
     reason: str
+    scope_version: int = Field(default=1, ge=1)
     details: dict[str, Any] = Field(default_factory=dict)
     status: ApprovalStatus = ApprovalStatus.REQUIRED
     requested_at: datetime = Field(default_factory=utc_now)
