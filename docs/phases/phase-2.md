@@ -155,3 +155,86 @@ graph TD
 - OWASP Agent Matrix adversarial tests (traversal, shell injection, out-of-scope bypass, invariant preservation).
 - Ruff check, format, and Mypy passed with zero warnings or errors.
 - Alembic migration head intact at `003_asset_canonical_models`.
+
+---
+
+## 3. Core Architecture Diagrams
+
+### 3.1 Recon Execution Flow
+
+```mermaid
+flowchart TB
+    User[Authorized Engagement]
+    Agent[ReconAgent]
+    LLM[LLM Gateway]
+    Candidate[CandidateToolRequest]
+    Registry[ToolRegistry]
+    Scope[ScopeGuard]
+    Policy[PolicyEngine]
+    Approval[ApprovalManager]
+    Execution[ExecutionManager]
+    Sandbox[SandboxRuntime]
+    Tool[ToolExecutor]
+    Result[ToolResult]
+    Evidence[EvidenceStore]
+    Normalize[AssetNormalizer]
+    Correlate[Correlation Engine]
+    Validate[Validation Agent]
+
+    User --> Agent
+    Agent --> LLM
+    LLM --> Candidate
+    Candidate --> Registry
+    Registry --> Scope
+    Scope --> Policy
+    Policy --> Approval
+    Approval --> Execution
+    Execution --> Sandbox
+    Sandbox --> Tool
+    Tool --> Result
+    Result --> Evidence
+    Result --> Normalize
+    Normalize --> Correlate
+    Correlate --> Validate
+```
+
+### 3.2 Discovery Versus Authorization
+
+```mermaid
+flowchart LR
+    Discovery[Tool Discovery]
+    Discovered["DISCOVERED Entity\n(Asset / Service)"]
+    Authorization["ScopeGuard &\nPolicyEngine Evaluation"]
+    Authorized[AUTHORIZED Target]
+    Execution[Sandbox Execution]
+
+    Discovery --> Discovered
+    Discovered --> Authorization
+    Authorization -- Within Scope --> Authorized
+    Authorized --> Execution
+```
+
+### 3.3 Canonical Entity Relationships
+
+```mermaid
+graph LR
+    Asset["Asset (Host/IP/Domain)"]
+    Service["Service (Port/Protocol)"]
+    Technology["Technology (CPE/Product)"]
+    Endpoint["Endpoint (URL/Path)"]
+    Finding["Finding (Vuln/CPE)"]
+    Evidence["EvidenceReference (SHA-256)"]
+
+    Asset --> Service
+    Asset --> Technology
+    Asset --> Endpoint
+    Asset --> Finding
+    Service --> Technology
+    Endpoint --> Finding
+    Evidence -.-> Asset
+    Evidence -.-> Service
+    Evidence -.-> Technology
+    Evidence -.-> Endpoint
+    Evidence -.-> Finding
+```
+
