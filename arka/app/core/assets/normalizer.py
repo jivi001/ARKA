@@ -13,23 +13,32 @@ from typing import Any
 from arka.app.core.assets.identity import (
     extract_domain_from_hostname,
     generate_asset_id,
+    generate_endpoint_id,
     generate_service_id,
     generate_technology_id,
     normalize_hostname,
     normalize_ip,
     normalize_protocol,
+    normalize_url,
 )
 from arka.app.core.assets.models import (
     Asset,
     AssetStatus,
     AssetType,
+    Endpoint,
+    Finding,
+    FindingStatus,
     NormalizedAssetBundle,
     ObservationConflict,
     Service,
     Technology,
     utc_now,
 )
+from arka.app.tools.amass.schemas import AmassResult
+from arka.app.tools.ffuf.schemas import FfufResult
 from arka.app.tools.nmap.schemas import NmapHost, NmapPort, NmapResult
+from arka.app.tools.nuclei.schemas import NucleiResult
+from arka.app.tools.whatweb.schemas import WhatWebResult
 
 logger = logging.getLogger(__name__)
 
@@ -426,4 +435,447 @@ class AssetNormalizer:
                 "vendor": vendor,
                 "product": product_name,
             },
+        )
+
+    def normalize_nuclei_result(
+        self,
+        result: NucleiResult,
+        engagement_id: str,
+        task_id: str | None = None,
+        execution_id: str | None = None,
+        request_id: str | None = None,
+        target: str | None = None,
+        evidence_refs: list[str] | None = None,
+        source: str = "nuclei",
+    ) -> NormalizedAssetBundle:
+        """Normalize a NucleiResult into canonical Finding, Asset, and Service models."""
+        evidence_list = list(evidence_refs) if evidence_refs else []
+        provenance_metadata: dict[str, Any] = {
+            "task_id": task_id,
+            "execution_id": execution_id,
+            "request_id": request_id,
+            "target": target,
+            "normalized_at": utc_now().isoformat(),
+        }
+
+        asset_map: dict[str, Asset] = {}
+        service_map: dict[str, Service] = {}
+        findings: list[Finding] = []
+
+        for nf in result.findings:
+            raw_host = (nf.host or target or "").strip()
+            if not raw_host:
+                continue
+
+            # Strip protocol/path from host to find canonical asset
+            clean_host = raw_host.replace("http://", "").replace("https://", "").split("/")[0]
+            port_num = 443 if raw_host.startswith("https://") else 80
+            if ":" in clean_host:
+                parts = clean_host.split(":")
+                clean_host = parts[0]
+                import contextlib
+
+                with contextlib.suppress(ValueError):
+                    port_num = int(parts[1])
+
+            # Identify asset
+            try:
+                norm_addr, _ = normalize_ip(clean_host)
+                asset_type = AssetType.IP
+
+                asset_identifier = norm_addr
+                asset_ip = norm_addr
+                asset_hostname = None
+            except ValueError:
+                norm_name = normalize_hostname(clean_host)
+                asset_type = AssetType.HOST
+                asset_identifier = norm_name
+                asset_ip = None
+                asset_hostname = norm_name
+
+            asset_id = generate_asset_id(engagement_id, asset_type.value, asset_identifier)
+            if asset_id not in asset_map:
+                asset_map[asset_id] = Asset(
+                    asset_id=asset_id,
+                    engagement_id=engagement_id,
+                    asset_type=asset_type,
+                    address=asset_ip,
+                    address_type="ipv4" if asset_ip else None,
+                    hostname=asset_hostname,
+                    domain=extract_domain_from_hostname(asset_hostname) if asset_hostname else None,
+                    status=AssetStatus.ACTIVE.value,
+                    source=source,
+                    confidence=1.0,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata=provenance_metadata,
+                )
+
+            # Link Service
+            service_id = generate_service_id(engagement_id, asset_id, "tcp", port_num)
+            if service_id not in service_map:
+                service_map[service_id] = Service(
+                    service_id=service_id,
+                    asset_id=asset_id,
+                    engagement_id=engagement_id,
+                    port=port_num,
+                    protocol="tcp",
+                    state="open",
+                    service_name="https" if port_num == 443 else "http",
+                    source=source,
+                    confidence=0.9,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata=provenance_metadata,
+                )
+
+            # Create canonical Finding
+            findings.append(
+                Finding(
+                    engagement_id=engagement_id,
+                    asset_id=asset_id,
+                    service_id=service_id,
+                    title=nf.name,
+                    description=nf.description,
+                    severity=nf.severity,
+                    status=FindingStatus.OBSERVED,
+                    confidence=1.0,
+                    template_id=nf.template_id,
+                    cve_id=nf.cve_id,
+                    cvss_score=nf.cvss_score,
+                    matched_at=nf.matched_at,
+                    extracted_results=nf.extracted_results,
+                    curl_command=nf.curl_command,
+                    source=source,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata={
+                        **provenance_metadata,
+                        "type": nf.type,
+                        "reference": nf.reference,
+                    },
+                )
+            )
+
+        return NormalizedAssetBundle(
+            engagement_id=engagement_id,
+            assets=list(asset_map.values()),
+            services=list(service_map.values()),
+            findings=findings,
+        )
+
+    def normalize_ffuf_result(
+        self,
+        result: FfufResult,
+        engagement_id: str,
+        task_id: str | None = None,
+        execution_id: str | None = None,
+        request_id: str | None = None,
+        target: str | None = None,
+        evidence_refs: list[str] | None = None,
+        source: str = "ffuf",
+    ) -> NormalizedAssetBundle:
+        """Normalize a FfufResult into canonical Endpoint and Asset entities."""
+        evidence_list = list(evidence_refs) if evidence_refs else []
+        provenance_metadata: dict[str, Any] = {
+            "task_id": task_id,
+            "execution_id": execution_id,
+            "request_id": request_id,
+            "target": target,
+            "normalized_at": utc_now().isoformat(),
+        }
+
+        asset_map: dict[str, Asset] = {}
+        endpoints: list[Endpoint] = []
+
+        raw_target_url = result.target_url or target or ""
+        scheme, host, port, _ = normalize_url(
+            raw_target_url if "://" in raw_target_url else f"http://{raw_target_url}"
+        )
+
+        if host:
+            try:
+                norm_addr, _ = normalize_ip(host)
+                asset_type = AssetType.IP
+                asset_id = generate_asset_id(engagement_id, asset_type.value, norm_addr)
+                asset = Asset(
+                    asset_id=asset_id,
+                    engagement_id=engagement_id,
+                    asset_type=asset_type,
+                    address=norm_addr,
+                    status=AssetStatus.ACTIVE.value,
+                    source=source,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata=provenance_metadata,
+                )
+            except ValueError:
+                norm_name = normalize_hostname(host)
+                asset_type = AssetType.HOST
+                asset_id = generate_asset_id(engagement_id, asset_type.value, norm_name)
+                asset = Asset(
+                    asset_id=asset_id,
+                    engagement_id=engagement_id,
+                    asset_type=asset_type,
+                    hostname=norm_name,
+                    domain=extract_domain_from_hostname(norm_name),
+                    status=AssetStatus.ACTIVE.value,
+                    source=source,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata=provenance_metadata,
+                )
+            asset_map[asset_id] = asset
+
+            for m in result.matches:
+                m_scheme, m_host, m_port, m_path = normalize_url(
+                    m.url if "://" in m.url else f"{scheme}://{host}:{port}{m.path}"
+                )
+                ep_id = generate_endpoint_id(
+                    engagement_id, asset_id, m_scheme, m_host, m_port, m_path
+                )
+                endpoints.append(
+                    Endpoint(
+                        endpoint_id=ep_id,
+                        engagement_id=engagement_id,
+                        asset_id=asset_id,
+                        scheme=m_scheme,
+                        host=m_host,
+                        port=m_port,
+                        path=m_path,
+                        query_metadata={
+                            "status": m.status,
+                            "length": m.length,
+                            "words": m.words,
+                            "lines": m.lines,
+                            "redirect_location": m.redirect_location,
+                        },
+                        source=source,
+                        confidence=1.0,
+                        first_seen=utc_now(),
+                        last_seen=utc_now(),
+                        evidence_refs=list(evidence_list),
+                        metadata=provenance_metadata,
+                    )
+                )
+
+        return NormalizedAssetBundle(
+            engagement_id=engagement_id,
+            assets=list(asset_map.values()),
+            endpoints=endpoints,
+        )
+
+    def normalize_whatweb_result(
+        self,
+        result: WhatWebResult,
+        engagement_id: str,
+        task_id: str | None = None,
+        execution_id: str | None = None,
+        request_id: str | None = None,
+        target: str | None = None,
+        evidence_refs: list[str] | None = None,
+        source: str = "whatweb",
+    ) -> NormalizedAssetBundle:
+        """Normalize a WhatWebResult into canonical Technology and Service models."""
+        evidence_list = list(evidence_refs) if evidence_refs else []
+        provenance_metadata: dict[str, Any] = {
+            "task_id": task_id,
+            "execution_id": execution_id,
+            "request_id": request_id,
+            "target": target,
+            "normalized_at": utc_now().isoformat(),
+        }
+
+        asset_map: dict[str, Asset] = {}
+        service_map: dict[str, Service] = {}
+        technology_map: dict[str, Technology] = {}
+
+        for wt in result.targets:
+            scheme, host, port, _ = normalize_url(
+                wt.target if "://" in wt.target else f"http://{wt.target}"
+            )
+            if not host:
+                continue
+
+            try:
+                norm_addr, _ = normalize_ip(host)
+                asset_type = AssetType.IP
+                asset_id = generate_asset_id(engagement_id, asset_type.value, norm_addr)
+                asset = Asset(
+                    asset_id=asset_id,
+                    engagement_id=engagement_id,
+                    asset_type=asset_type,
+                    address=norm_addr,
+                    status=AssetStatus.ACTIVE.value,
+                    source=source,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata=provenance_metadata,
+                )
+            except ValueError:
+                norm_name = normalize_hostname(host)
+                asset_type = AssetType.HOST
+                asset_id = generate_asset_id(engagement_id, asset_type.value, norm_name)
+                asset = Asset(
+                    asset_id=asset_id,
+                    engagement_id=engagement_id,
+                    asset_type=asset_type,
+                    hostname=norm_name,
+                    domain=extract_domain_from_hostname(norm_name),
+                    status=AssetStatus.ACTIVE.value,
+                    source=source,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata=provenance_metadata,
+                )
+            asset_map[asset_id] = asset
+
+            port_num = port or (443 if scheme == "https" else 80)
+            service_id = generate_service_id(engagement_id, asset_id, "tcp", port_num)
+            if service_id not in service_map:
+                service_map[service_id] = Service(
+                    service_id=service_id,
+                    asset_id=asset_id,
+                    engagement_id=engagement_id,
+                    port=port_num,
+                    protocol="tcp",
+                    state="open",
+                    service_name="https" if port_num == 443 else "http",
+                    source=source,
+                    confidence=1.0,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata=provenance_metadata,
+                )
+
+            for plug_name, plug in wt.plugins.items():
+                ver = plug.version[0] if plug.version else None
+                tech_id = generate_technology_id(
+                    engagement_id, asset_id, service_id, plug_name, ver
+                )
+                if tech_id not in technology_map:
+                    technology_map[tech_id] = Technology(
+                        technology_id=tech_id,
+                        engagement_id=engagement_id,
+                        asset_id=asset_id,
+                        service_id=service_id,
+                        name=plug_name,
+                        version=ver,
+                        cpe=plug.cpe,
+                        source=source,
+                        confidence=plug.confidence,
+                        first_seen=utc_now(),
+                        last_seen=utc_now(),
+                        evidence_refs=list(evidence_list),
+                        metadata={
+                            **provenance_metadata,
+                            "strings": plug.string,
+                        },
+                    )
+
+        return NormalizedAssetBundle(
+            engagement_id=engagement_id,
+            assets=list(asset_map.values()),
+            services=list(service_map.values()),
+            technologies=list(technology_map.values()),
+        )
+
+    def normalize_amass_result(
+        self,
+        result: AmassResult,
+        engagement_id: str,
+        task_id: str | None = None,
+        execution_id: str | None = None,
+        request_id: str | None = None,
+        target: str | None = None,
+        evidence_refs: list[str] | None = None,
+        source: str = "amass",
+    ) -> NormalizedAssetBundle:
+        """Normalize an AmassResult into canonical Asset observations.
+
+        CRITICAL SECURITY INVARIANT:
+        Discovered assets have status='discovered' and MUST NEVER automatically
+        expand authorization scope.
+        """
+        evidence_list = list(evidence_refs) if evidence_refs else []
+        provenance_metadata: dict[str, Any] = {
+            "task_id": task_id,
+            "execution_id": execution_id,
+            "request_id": request_id,
+            "target": target,
+            "normalized_at": utc_now().isoformat(),
+        }
+
+        asset_map: dict[str, Asset] = {}
+
+        for rec in result.records:
+            norm_name = normalize_hostname(rec.name)
+            if not norm_name:
+                continue
+
+            asset_type = (
+                AssetType.SUBDOMAIN if rec.domain and norm_name != rec.domain else AssetType.DOMAIN
+            )
+            asset_id = generate_asset_id(engagement_id, asset_type.value, norm_name)
+            if asset_id not in asset_map:
+                asset_map[asset_id] = Asset(
+                    asset_id=asset_id,
+                    engagement_id=engagement_id,
+                    asset_type=asset_type,
+                    hostname=norm_name,
+                    domain=rec.domain or extract_domain_from_hostname(norm_name),
+                    status="discovered",  # Observational only
+                    source=source,
+                    confidence=1.0,
+                    first_seen=utc_now(),
+                    last_seen=utc_now(),
+                    evidence_refs=list(evidence_list),
+                    metadata={
+                        **provenance_metadata,
+                        "tag": rec.tag,
+                        "sources": rec.sources,
+                    },
+                )
+
+            # Process associated IP addresses
+            for addr in rec.addresses:
+                try:
+                    norm_ip, ip_type = normalize_ip(addr.ip)
+                    ip_asset_id = generate_asset_id(engagement_id, AssetType.IP.value, norm_ip)
+                    if ip_asset_id not in asset_map:
+                        asset_map[ip_asset_id] = Asset(
+                            asset_id=ip_asset_id,
+                            engagement_id=engagement_id,
+                            asset_type=AssetType.IP,
+                            address=norm_ip,
+                            address_type=ip_type,
+                            hostname=norm_name,
+                            domain=rec.domain,
+                            status="discovered",  # Observational only
+                            source=source,
+                            confidence=1.0,
+                            first_seen=utc_now(),
+                            last_seen=utc_now(),
+                            evidence_refs=list(evidence_list),
+                            metadata={
+                                **provenance_metadata,
+                                "cidr": addr.cidr,
+                                "asn": addr.asn,
+                                "desc": addr.desc,
+                            },
+                        )
+                except ValueError:
+                    pass
+
+        return NormalizedAssetBundle(
+            engagement_id=engagement_id,
+            assets=list(asset_map.values()),
         )

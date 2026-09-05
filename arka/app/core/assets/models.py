@@ -116,6 +116,41 @@ class Endpoint(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class FindingStatus(str, Enum):
+    """Lifecycle status of a security finding."""
+
+    OBSERVED = "observed"
+    SUSPECTED = "suspected"
+    VALIDATING = "validating"
+    VALIDATED = "validated"
+    FALSE_POSITIVE = "false_positive"
+
+
+class Finding(BaseModel):
+    """Canonical security finding produced by vulnerability assessment tools."""
+
+    finding_id: str = Field(default_factory=new_id)
+    engagement_id: str
+    asset_id: str | None = None
+    service_id: str | None = None
+    title: str
+    description: str = ""
+    severity: str = "low"  # "info", "low", "medium", "high", "critical"
+    status: FindingStatus = FindingStatus.OBSERVED
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    template_id: str | None = None
+    cve_id: str | None = None
+    cvss_score: float | None = None
+    matched_at: str | None = None
+    extracted_results: list[str] = Field(default_factory=list)
+    curl_command: str | None = None
+    source: str = "nuclei"
+    first_seen: datetime = Field(default_factory=utc_now)
+    last_seen: datetime = Field(default_factory=utc_now)
+    evidence_refs: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ObservationConflict(BaseModel):
     """Captures conflicting observations across tools or time without overwriting history."""
 
@@ -140,4 +175,5 @@ class NormalizedAssetBundle(BaseModel):
     services: list[Service] = Field(default_factory=list)
     technologies: list[Technology] = Field(default_factory=list)
     endpoints: list[Endpoint] = Field(default_factory=list)
+    findings: list[Finding] = Field(default_factory=list)
     conflicts: list[ObservationConflict] = Field(default_factory=list)

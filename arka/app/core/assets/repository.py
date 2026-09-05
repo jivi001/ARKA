@@ -16,6 +16,8 @@ from arka.app.core.assets.models import (
     Asset,
     AssetType,
     Endpoint,
+    Finding,
+    FindingStatus,
     NormalizedAssetBundle,
     Service,
     Technology,
@@ -37,6 +39,7 @@ class InMemoryAssetRepository:
         self._services: dict[str, Service] = {}
         self._technologies: dict[str, Technology] = {}
         self._endpoints: dict[str, Endpoint] = {}
+        self._findings: dict[str, Finding] = {}
 
     def save_bundle(self, bundle: NormalizedAssetBundle) -> None:
         """Persist a NormalizedAssetBundle in-memory with upsert logic."""
@@ -107,6 +110,19 @@ class InMemoryAssetRepository:
             else:
                 self._endpoints[ep.endpoint_id] = ep.model_copy(deep=True)
 
+        for finding in bundle.findings:
+            if finding.finding_id in self._findings:
+                existing_finding = self._findings[finding.finding_id]
+                existing_finding.last_seen = now
+                existing_finding.status = finding.status
+                existing_finding.confidence = finding.confidence
+                for ref in finding.evidence_refs:
+                    if ref not in existing_finding.evidence_refs:
+                        existing_finding.evidence_refs.append(ref)
+                existing_finding.metadata.update(finding.metadata)
+            else:
+                self._findings[finding.finding_id] = finding.model_copy(deep=True)
+
     def get_assets_by_engagement(self, engagement_id: str) -> list[Asset]:
         """Retrieve all assets associated with an engagement."""
         return [
@@ -133,6 +149,36 @@ class InMemoryAssetRepository:
     def get_endpoints_by_asset(self, asset_id: str) -> list[Endpoint]:
         """Retrieve all endpoints associated with an asset."""
         return [e.model_copy(deep=True) for e in self._endpoints.values() if e.asset_id == asset_id]
+
+    def get_findings_by_engagement(self, engagement_id: str) -> list[Finding]:
+        """Retrieve all findings associated with an engagement."""
+        return [
+            f.model_copy(deep=True)
+            for f in self._findings.values()
+            if f.engagement_id == engagement_id
+        ]
+
+    def get_findings_by_asset(self, asset_id: str) -> list[Finding]:
+        """Retrieve all findings associated with an asset."""
+        return [f.model_copy(deep=True) for f in self._findings.values() if f.asset_id == asset_id]
+
+    def get_finding_by_id(self, finding_id: str) -> Finding | None:
+        """Retrieve a finding by ID."""
+        finding = self._findings.get(finding_id)
+        return finding.model_copy(deep=True) if finding else None
+
+    def update_finding_status(
+        self, finding_id: str, status: FindingStatus | str, confidence: float | None = None
+    ) -> bool:
+        """Update the validation status of a finding."""
+        if finding_id not in self._findings:
+            return False
+        finding = self._findings[finding_id]
+        finding.status = FindingStatus(status) if isinstance(status, str) else status
+        finding.last_seen = utc_now()
+        if confidence is not None:
+            finding.confidence = confidence
+        return True
 
 
 class AssetRepository:

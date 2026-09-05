@@ -247,7 +247,31 @@ def audit(
     console.print(table)
 
 
+# Recon commands
+recon_app = typer.Typer(name="recon", help="Autonomous reconnaissance operations")
+app.add_typer(recon_app)
+
+
+@recon_app.command("run")
+def recon_run(
+    engagement_id: str = typer.Argument(..., help="Engagement ID"),
+    objective: str = typer.Option("Autonomous reconnaissance", help="Recon objective"),
+    max_iterations: int = typer.Option(10, help="Max iterations"),
+) -> None:
+    """Run autonomous reconnaissance on an authorized engagement."""
+    with console.status("Starting reconnaissance..."):
+        result = api_post(
+            f"/engagements/{engagement_id}/recon",
+            {"objective": objective, "max_iterations": max_iterations},
+        )
+    console.print("[green][OK] Reconnaissance initiated[/green]")
+    console.print(f"  Engagement: {result.get('engagement_id')}")
+    console.print(f"  Status: {result.get('status')}")
+    console.print(f"  Objective: {result.get('objective')}")
+
+
 def main() -> None:
+
     app()
 
 

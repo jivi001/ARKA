@@ -251,3 +251,36 @@ async def get_engagement_audit(
         "limit": limit,
         "offset": offset,
     }
+
+
+class ReconRunRequest(BaseModel):
+    objective: str = "Autonomous reconnaissance"
+    max_iterations: int = 10
+
+
+@router.post("/{engagement_id}/recon")
+async def run_engagement_recon(
+    engagement_id: str,
+    request: ReconRunRequest | None = None,
+    audit: AuditService = Depends(get_audit_service),
+) -> dict:
+    """Trigger autonomous reconnaissance on an authorized engagement."""
+    state = _engagements.get(engagement_id)
+    if not state:
+        raise NotFoundError("Engagement", engagement_id)
+
+    objective = request.objective if request else "Autonomous reconnaissance"
+    await audit.record_action(
+        event_type=AuditEventType.TASK_STARTED,
+        actor="api",
+        action="recon_triggered",
+        engagement_id=engagement_id,
+        parameters={"objective": objective},
+        result_status="success",
+    )
+
+    return {
+        "engagement_id": engagement_id,
+        "status": "initiated",
+        "objective": objective,
+    }

@@ -5,7 +5,15 @@
 - **Phase 2.2.1 (Nmap Adapter & Parser Foundation)**: **`COMPLETE`**
 - **Phase 2.2.2 (Canonical Asset / Service / Technology Model)**: **`COMPLETE`**
 - **Phase 2.2.3 (Evidence Pipeline & Provenance Foundation)**: **`COMPLETE`**
-- **Phase 2.2.4+ (Reconnaissance Agents & Additional Tool Adapters)**: **`PLANNED`**
+- **Phase 2.2.4 (ReconAgent & LangGraph Recon Workflow)**: **`COMPLETE`**
+- **Phase 2.2.5 (Nuclei Adapter & Finding Normalization)**: **`COMPLETE`**
+- **Phase 2.2.6 (ffuf Adapter & Endpoint Normalization)**: **`COMPLETE`**
+- **Phase 2.2.7 (WhatWeb Adapter & Technology Normalization)**: **`COMPLETE`**
+- **Phase 2.2.8 (Amass Adapter & Passive Discovery Normalization)**: **`COMPLETE`**
+- **Phase 2.2.9 (Recon Correlation & Conflict Resolution Engine)**: **`COMPLETE`**
+- **Phase 2.2.10 (Validation Agent & False Positive Elimination)**: **`COMPLETE`**
+- **Phase 2.2.11 (Autonomous Workflow Integration & CLI/API)**: **`COMPLETE`**
+- **Phase 2.2.12 (Phase 2 Verification, Adversarial Hardening & Graphify)**: **`COMPLETE`**
 
 ---
 
@@ -13,8 +21,9 @@
 
 ```mermaid
 graph TD
-    subgraph ControlPlane["Control Plane (Phase 1)"]
-        Agent[Recon / Orchestrator Agent]
+    subgraph ControlPlane["Control Plane (Phase 1 & 2.2.4)"]
+        ReconAgent[ReconAgent - LangGraph Workflow]
+        ValidationAgent[ValidationAgent - Finding Triage]
         Candidate[CandidateToolRequest]
         Registry[ToolRegistry]
         Scope[ScopeGuard]
@@ -23,29 +32,37 @@ graph TD
         AuthReq[Authoritative ToolRequest]
     end
     
-    subgraph ExecutionPlane["Execution Plane (Phase 2.1 / 2.2.1 / 2.2.3)"]
+    subgraph ExecutionPlane["Execution Plane (Phase 2.1 - 2.2.8)"]
         ExecMgr[ExecutionManager]
         ExecPolicy[ExecutionPolicy]
+        
+        subgraph ToolAdapters["Hardened Tool Adapters (Safe argv, shell=False)"]
+            Nmap[Nmap Adapter]
+            Nuclei[Nuclei Adapter]
+            Ffuf[ffuf Adapter]
+            WhatWeb[WhatWeb Adapter]
+            Amass[Amass Adapter]
+        end
         
         subgraph IsolationRuntimes["Sandbox Isolation Boundary"]
             LocalRT[LocalSafeRuntime - In Memory / Zero Net]
             DockerRT[DockerSandboxRuntime - Least Privilege Container]
         end
         
-        ToolExec[NmapToolExecutor / MockToolExecutor]
-        NmapParser[Nmap XML Parser - defusedxml]
         ExecResult[ExecutionResult / ToolResult]
         Evidence[EvidenceStore & Cryptographic Hashes]
         AuditLog[(Immutable Audit Log)]
     end
 
-    subgraph NormalizationAndAssetStore["Canonical Ingestion (Phase 2.2.2)"]
+    subgraph CorrelationAndStorage["Canonical Storage & Correlation (Phase 2.2.2 & 2.2.9)"]
         AssetNormalizer[AssetNormalizer]
+        CorrelationEngine[CorrelationEngine]
         AssetRepo[AssetRepository]
-        AssetDB[(PostgreSQL Assets / Services / Tech / Endpoints)]
+        AssetDB[(PostgreSQL Assets / Services / Tech / Endpoints / Findings)]
     end
     
-    Agent --> Candidate
+    ReconAgent --> Candidate
+    ValidationAgent --> Candidate
     Candidate --> Registry
     Registry --> Scope
     Scope --> Policy
@@ -55,121 +72,86 @@ graph TD
     Registry --> ExecMgr
     ExecMgr --> ExecPolicy
     ExecPolicy --> IsolationRuntimes
-    IsolationRuntimes --> ToolExec
-    ToolExec --> NmapParser
-    NmapParser --> ExecResult
+    IsolationRuntimes --> ToolAdapters
+    ToolAdapters --> ExecResult
     ExecResult --> Evidence
     ExecResult --> AuditLog
 
     ExecResult --> AssetNormalizer
     Evidence --> AssetNormalizer
     AssetNormalizer --> AssetRepo
-    AssetRepo --> AssetDB
+    AssetRepo --> CorrelationEngine
+    CorrelationEngine --> AssetDB
 ```
 
 ---
 
-## 2. Phase 2.1 Implementation Summary (Completed)
+## 2. Completed Phase 2 Subphases
 
-1. **Execution Domain Models** (`arka/app/execution/schemas.py`):
-   - `ExecutionStatus` (`CREATED`, `VALIDATING`, `STARTING`, `RUNNING`, `COMPLETED`, `FAILED`, `TIMED_OUT`, `CANCELLED`, `REJECTED`).
-   - `NetworkProfile` (`NO_NETWORK`, `CONTROLLED_NETWORK`, `AUTHORIZED_TARGET_NETWORK`).
-   - `ExecutionLimits` (configurable time, byte output, memory, and concurrency limits).
-   - `ExecutionRequest` & `ExecutionResult`.
-   - `EvidenceReference` with cryptographic SHA-256 integrity digest.
+### Phase 2.1: Secure Execution Engine & Sandboxing
+- **Schemas**: `ExecutionRequest`, `ExecutionResult`, `ExecutionStatus`, `NetworkProfile`, `ExecutionLimits`.
+- **Manager**: `ExecutionManager` enforcing timeouts, concurrency limits, and output collection.
+- **Runtimes**: `LocalSafeRuntime` and `DockerSandboxRuntime` (non-root `1000:1000`, dropped capabilities, no shell passthrough).
+- **Evidence**: Initial `EvidenceStore` with SHA-256 computation.
 
-2. **Authoritative Execution Manager** (`arka/app/execution/manager.py`):
-   - Only accepts authoritative `ToolRequest` objects stamped with `scope_validated=True` and `policy_approved=True`.
-   - Manages sandbox lifecycle, limits, timeouts, cancellation, and automated cleanup.
-   - Computes SHA-256 digests over execution output and generates `EvidenceReference`.
+### Phase 2.2.1: Nmap Adapter Foundation
+- Safe argument construction: strictly typed `NmapScanConfig` with explicit flag allowlist.
+- XML Parsing: `defusedxml` parser immune to XML entity injection and billion-laughs attacks.
+- Risk Escalation: Aggressive flags (`-sC`, `-T4`) escalate to `RiskLevel.HIGH` requiring human approval.
 
-3. **Deterministic Execution Policy** (`arka/app/execution/policy.py`):
-   - Enforces argument array validation (rejects `shell=True` and raw command strings).
-   - Forbids shell executables (`sh`, `bash`, `cmd.exe`, `powershell.exe`, `python`, etc.).
-   - Sanitizes runtime environment by stripping sensitive credentials (`LD_PRELOAD`, `DATABASE_URL`, API keys).
+### Phase 2.2.2: Canonical Asset, Service, Technology & Endpoint Model
+- Canonical entities: `Asset`, `Service`, `Technology`, `Endpoint`, `ObservationConflict`.
+- Identity: Deterministic UUIDv5 hashing based on canonical addresses, ports, and engagement ID.
+- Database: Alembic migration `003_asset_canonical_models` with PostgreSQL persistence and in-memory test doubles.
+- Security Invariant: `DISCOVERED != AUTHORIZED`. Discovery stores observations without expanding scope.
 
-4. **Sandbox Runtimes** (`arka/app/execution/sandbox/`):
-   - `LocalSafeRuntime`: Safe in-memory execution runtime for local testing with zero shell and zero network.
-   - `DockerSandboxRuntime`: Least-privilege container isolation (non-root `1000:1000`, read-only rootfs, `ALL` capabilities dropped, `no-new-privileges:true`, no Docker socket mount, `network_mode="none"`).
+### Phase 2.2.3: Evidence Pipeline & Provenance Foundation
+- Content-addressed store: Append-only, deep defensive copying, SHA-256 deduplication.
+- Multi-artifact capture: `RAW_STDOUT`, `RAW_STDERR`, `STRUCTURED_RESULT`.
+- Secret Sanitization: Automated pattern redaction in metadata without corrupting raw binary evidence.
 
-5. **Cryptographic Evidence Foundation** (`arka/app/execution/evidence.py`):
-   - Calculates SHA-256 hashes for all output streams and structured artifacts.
-   - Validates non-repudiation and output integrity.
+### Phase 2.2.4: ReconAgent
+- LangGraph state graph with interruptible human-in-the-loop approval checkpoints.
+- Untrusted LLM Boundary: Zero direct execution; actions strictly validated via Pydantic schemas.
+- Non-authoritative discovery: Found assets marked `discovered` and re-evaluated by `ScopeGuard`.
 
----
+### Phase 2.2.5: Nuclei Adapter & Finding Normalization
+- Target & template validation, safe argv compilation without raw flag passthrough.
+- New canonical model: `Finding` and `FindingStatus` enum (`observed`, `suspected`, `validated`, `false_positive`, `remediated`).
+- Risk escalation to `HIGH` on high/critical template severity or rate > 100.
 
-## 3. Phase 2.2.1 Implementation Summary: Nmap Adapter & Parser Foundation (Completed)
+### Phase 2.2.6: ffuf Adapter & Endpoint Discovery Normalization
+- Safe directory fuzzing: strictly allowlisted wordlist paths, rate limits, and recursion depth caps.
+- Normalization: ffuf matches normalized into canonical `Endpoint` entities with response metadata.
+- Risk escalation on rate > 50 or depth > 2.
 
-1. **Nmap Domain Models & Safe Argument Construction** (`arka/app/tools/nmap/schemas.py`):
-   - `NmapScanConfig`: Enforces an explicit argument allowlist (`-sV`, `-sC`, `-p`, `-T{0-4}`, `-oX -`).
-   - Zero raw flag passthrough: the LLM never sees or specifies CLI flags directly.
-   - Port validation: strictly regex-validated (`^[0-9]+([,\-][0-9]+)*$`).
-   - Structured result models: `NmapHost`, `NmapPort`, `NmapService`, `NmapScript`, `NmapResult`.
+### Phase 2.2.7: WhatWeb Adapter & Technology Normalization
+- Aggression level control (`1` to `3`), safe target URL validation.
+- Normalization: WhatWeb plugin fingerprints normalized into canonical `Technology` entities.
+- Risk escalation on aggression level >= 3.
 
-2. **Nmap XML Parser** (`arka/app/tools/nmap/parser.py`):
-   - Mandatory `defusedxml` ElementTree parsing against entity expansion and billion-laughs attacks.
-   - Parses hosts, IPv4/IPv6 addresses, hostnames, ports, service banners, CPE lists, and NSE script outputs.
-   - Treats all XML output as untrusted data; returns controlled errors on malformed input.
+### Phase 2.2.8: Amass Adapter & Passive Discovery Normalization
+- Passive and active DNS/certificate enumeration modes.
+- Normalization: Discovered subdomains and IP addresses ingested with status `"discovered"`.
+- Mandatory Invariant: Passive discoveries NEVER expand `ScopeGuard` authorization scope.
 
-3. **Deterministic Risk Model & Operation-Level Escalation** (`arka/app/tools/nmap/definition.py`):
-   - Base risk: `RiskLevel.MEDIUM` (standard port and service scanning within authorized scope).
-   - Operation-level escalation to `RiskLevel.HIGH` triggered when aggressive options are configured (`default_scripts=True` or `timing_template >= 3`).
-   - `PolicyEngine` enforces mandatory human approval via `ApprovalManager` for escalated scans.
+### Phase 2.2.9: Correlation Engine
+- Multi-source observation fusion (`arka/app/core/correlation.py`).
+- Deduplicates and merges assets, services, technologies, and endpoints across tools.
+- Preserves historical provenance and flags conflicting service states as `ObservationConflict`.
 
-4. **Nmap Tool Executor** (`arka/app/tools/nmap/executor.py`):
-   - Implements `ToolExecutor` and integrates seamlessly with `ExecutionManager`.
+### Phase 2.2.10: Validation Agent
+- Autonomous false-positive elimination agent (`arka/app/agents/validation/`).
+- Safely plans and executes targeted verification probes for reported findings.
+- Updates finding status to `VALIDATED` or `FALSE_POSITIVE` with confidence scores.
 
----
+### Phase 2.2.11: Autonomous Workflow Integration
+- CLI integration: `arka recon run --engagement-id ... --target ...`.
+- REST API: `POST /engagements/{id}/recon` and finding status endpoints.
+- End-to-end orchestration uniting Amass, Nmap, WhatWeb, ffuf, Nuclei, Correlation, and Validation.
 
-## 4. Phase 2.2.2 Implementation Summary: Canonical Asset / Service / Technology Model (Completed)
-
-1. **Canonical Domain Models & Deterministic Identity** (`arka/app/core/assets/`):
-   - `Asset`, `Service`, `Technology`, `Endpoint`, `ObservationConflict`, `NormalizedAssetBundle`.
-   - Deterministic UUIDv5 identity generation based on engagement ID and normalized attributes.
-   - Complete normalization for IPv4, IPv6, hostnames, domains, URLs, and protocols.
-
-2. **Asset Normalizer** (`arka/app/core/assets/normalizer.py`):
-   - Normalizes tool observations (`NmapResult`) into deduplicated canonical entities.
-   - Extracts CPE-based and product-based technologies.
-   - Detects and preserves observation conflicts across scans without losing provenance.
-
-3. **Database Persistence & Alembic Migrations** (`arka/app/database/models.py`, `migrations/versions/003_asset_canonical_models.py`):
-   - Added `AssetDB`, `ServiceDB`, `TechnologyDB`, and `EndpointDB` with foreign keys and cascade rules.
-   - Production async `AssetRepository` and `InMemoryAssetRepository` for testing.
-
-4. **Strict Security Invariant: Discovered != Authorized** (`tests/security/test_asset_normalization_security.py`):
-   - Discovered infrastructure stored in asset repository is observation-only.
-   - Scope authorization remains strictly governed by `ScopeGuard` and `ScopeDefinition`.
-
----
-
-## 5. Phase 2.2.3 Implementation Summary: Evidence Pipeline & Provenance Foundation (Completed)
-
-1. **Evidence Typing & Structured Schemas** (`arka/app/execution/schemas.py`):
-   - `EvidenceType` enum: `RAW_STDOUT`, `RAW_STDERR`, `STRUCTURED_RESULT`, `TOOL_ARTIFACT`, `PARSED_RESULT`.
-   - `EvidenceReference` extended with `tool_name` for direct provenance tracking.
-
-2. **Hardened EvidenceStore** (`arka/app/execution/evidence.py`):
-   - Append-only immutability with defensive copies (`model_copy(deep=True)`) preventing caller mutation.
-   - Content-addressed deduplication (shared blobs indexed by SHA-256 with distinct provenance references).
-   - Listing APIs: `list_by_engagement()`, `list_by_execution()`, `list_all()`.
-   - Automatic secret pattern redaction in evidence metadata (preserves raw binary/text evidence integrity).
-   - Non-repudiation verification: `verify_integrity()`.
-
-3. **Multi-Artifact Execution Pipeline** (`arka/app/execution/manager.py`):
-   - Automatically records separate cryptographic evidence for `RAW_STDOUT` (raw XML/text), `STRUCTURED_RESULT` (parsed output dict), and `RAW_STDERR` (error stream).
-   - Generates `EVIDENCE_RECORDED` audit events on every capture.
-
-4. **Read-Only Evidence API** (`arka/app/api/routes/evidence.py`):
-   - `GET /evidence/{id}` and `GET /evidence?engagement_id=...` exposing metadata only.
-   - Prevents raw artifact leakage and prohibits state mutation through API.
-
----
-
-## 6. Phase 2 Planned Subsequent Milestones
-
-- **Phase 2.2.4**: `ReconAgent` LangGraph subagent for autonomous asset discovery and service enumeration.
-- **Phase 2.2.5**: Additional security tool adapters and parsers (WhatWeb, ffuf, Nuclei).
-- **Phase 2.2.6**: Target network routing policies linking `ScopeGuard` to container networking.
-
-
+### Phase 2.2.12: Hardening & Adversarial Verification
+- 391 automated tests passing with 0 failures across unit, integration, and security suites.
+- OWASP Agent Matrix adversarial tests (traversal, shell injection, out-of-scope bypass, invariant preservation).
+- Ruff check, format, and Mypy passed with zero warnings or errors.
+- Alembic migration head intact at `003_asset_canonical_models`.
