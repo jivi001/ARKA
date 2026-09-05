@@ -15,10 +15,41 @@ async def execute_tool_task(ctx: dict, tool_request_data: dict) -> dict:
     return {"status": "completed", "request": tool_request_data}
 
 
-async def run_orchestrator_task(ctx: dict, engagement_id: str, objective: str) -> dict:
-    """Worker function to run the LangGraph orchestrator."""
-    # Phase 1: Orchestrator execution stub
-    return {"status": "completed", "engagement_id": engagement_id}
+async def run_orchestrator_task(
+    ctx: dict, task_id: str, engagement_id: str, objective: str, max_iterations: int = 10
+) -> dict:
+    """Worker function to run the ReconAgent through the full security pipeline.
+
+    Constructs a fresh ReconOrchestrationService and executes the recon workflow.
+    All tool execution flows through ToolRegistry → ScopeGuard → PolicyEngine →
+    ApprovalManager → ExecutionManager. This function NEVER directly invokes tools.
+    """
+    from arka.app.api.deps import (
+        get_approval_manager,
+        get_audit_service,
+        get_llm_gateway,
+        get_scope_repository,
+    )
+    from arka.app.core.tasks.repository import TaskRepository
+    from arka.app.database.session import get_session_factory
+    from arka.app.orchestration.recon_service import ReconOrchestrationService
+
+    task_repo = TaskRepository(session_factory=get_session_factory())
+    orchestrator = ReconOrchestrationService(
+        task_repository=task_repo,
+        scope_repository=get_scope_repository(),
+        audit_service=get_audit_service(),
+        llm_gateway=get_llm_gateway(),
+        approval_manager=get_approval_manager(),
+    )
+
+    try:
+        await orchestrator.execute(task_id)
+        return {"status": "completed", "task_id": task_id, "engagement_id": engagement_id}
+    except Exception as e:
+        # orchestrator.execute() already marks task as failed internally,
+        # but we catch here for the ARQ job result
+        return {"status": "failed", "task_id": task_id, "error": str(e)[:1024]}
 
 
 async def startup(ctx: dict) -> None:
