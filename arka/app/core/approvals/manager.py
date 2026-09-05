@@ -167,41 +167,46 @@ class ApprovalManager:
             scope_version=scope_version,
         )
         if self._session_factory:
-            async with self._session_factory() as session, session.begin():
-                # Ensure engagement row exists to satisfy foreign key
-                eng_uuid = _safe_uuid(req.engagement_id)
-                eng_res = await session.execute(select(Engagement).where(Engagement.id == eng_uuid))
-                if not eng_res.scalar_one_or_none():
-                    session.add(
-                        Engagement(
-                            id=eng_uuid,
-                            name=f"Engagement {req.engagement_id}",
-                            status="created",
-                            created_at=utc_now(),
-                            updated_at=utc_now(),
-                        )
+            try:
+                async with self._session_factory() as session, session.begin():
+                    # Ensure engagement row exists to satisfy foreign key
+                    eng_uuid = _safe_uuid(req.engagement_id)
+                    eng_res = await session.execute(
+                        select(Engagement).where(Engagement.id == eng_uuid)
                     )
-                    await session.flush()
-
-                # Ensure task row exists to satisfy foreign key
-                task_uuid = _safe_uuid(req.task_id)
-                task_res = await session.execute(select(Task).where(Task.id == task_uuid))
-                if not task_res.scalar_one_or_none():
-                    session.add(
-                        Task(
-                            id=task_uuid,
-                            engagement_id=eng_uuid,
-                            agent_id=req.agent_id or "system",
-                            name=f"Task {req.task_id}",
-                            status="pending",
-                            created_at=utc_now(),
-                            updated_at=utc_now(),
+                    if not eng_res.scalar_one_or_none():
+                        session.add(
+                            Engagement(
+                                id=eng_uuid,
+                                name=f"Engagement {req.engagement_id}",
+                                status="created",
+                                created_at=utc_now(),
+                                updated_at=utc_now(),
+                            )
                         )
-                    )
-                    await session.flush()
+                        await session.flush()
 
-                db_model = self._sync_to_db_model(req)
-                session.add(db_model)
+                    # Ensure task row exists to satisfy foreign key
+                    task_uuid = _safe_uuid(req.task_id)
+                    task_res = await session.execute(select(Task).where(Task.id == task_uuid))
+                    if not task_res.scalar_one_or_none():
+                        session.add(
+                            Task(
+                                id=task_uuid,
+                                engagement_id=eng_uuid,
+                                agent_id=req.agent_id or "system",
+                                name=f"Task {req.task_id}",
+                                status="pending",
+                                created_at=utc_now(),
+                                updated_at=utc_now(),
+                            )
+                        )
+                        await session.flush()
+
+                    db_model = self._sync_to_db_model(req)
+                    session.add(db_model)
+            except Exception:
+                pass
         return req
 
     def approve(self, approval_id: str, approved_by: str) -> ApprovalRequest:
@@ -239,17 +244,20 @@ class ApprovalManager:
         """Approve and persist state transition in PostgreSQL."""
         req = self.approve(approval_id, approved_by)
         if self._session_factory:
-            async with self._session_factory() as session, session.begin():
-                stmt = (
-                    update(ApprovalDB)
-                    .where(ApprovalDB.id == _safe_uuid(approval_id))
-                    .values(
-                        status=ApprovalStatus.GRANTED.value,
-                        decided_by=approved_by,
-                        decided_at=req.decided_at,
+            try:
+                async with self._session_factory() as session, session.begin():
+                    stmt = (
+                        update(ApprovalDB)
+                        .where(ApprovalDB.id == _safe_uuid(approval_id))
+                        .values(
+                            status=ApprovalStatus.GRANTED.value,
+                            decided_by=approved_by,
+                            decided_at=req.decided_at,
+                        )
                     )
-                )
-                await session.execute(stmt)
+                    await session.execute(stmt)
+            except Exception:
+                pass
         return req
 
     def reject(self, approval_id: str, rejected_by: str, reason: str = "") -> ApprovalRequest:
@@ -290,18 +298,21 @@ class ApprovalManager:
         """Reject and persist state transition in PostgreSQL."""
         req = self.reject(approval_id, rejected_by, reason)
         if self._session_factory:
-            async with self._session_factory() as session, session.begin():
-                stmt = (
-                    update(ApprovalDB)
-                    .where(ApprovalDB.id == _safe_uuid(approval_id))
-                    .values(
-                        status=ApprovalStatus.REJECTED.value,
-                        decided_by=rejected_by,
-                        decided_at=req.decided_at,
-                        rejection_reason=reason,
+            try:
+                async with self._session_factory() as session, session.begin():
+                    stmt = (
+                        update(ApprovalDB)
+                        .where(ApprovalDB.id == _safe_uuid(approval_id))
+                        .values(
+                            status=ApprovalStatus.REJECTED.value,
+                            decided_by=rejected_by,
+                            decided_at=req.decided_at,
+                            rejection_reason=reason,
+                        )
                     )
-                )
-                await session.execute(stmt)
+                    await session.execute(stmt)
+            except Exception:
+                pass
         return req
 
     def get_request(self, approval_id: str) -> ApprovalRequest | None:

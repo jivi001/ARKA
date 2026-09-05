@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 
@@ -642,7 +642,11 @@ class ReconRunRequest(BaseModel):
     max_iterations: int = 10
 
 
-@router.post("/{engagement_id}/recon")
+@router.post(
+    "/{engagement_id}/recon",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Trigger autonomous reconnaissance (202 Accepted)",
+)
 async def run_engagement_recon(
     engagement_id: str,
     request: ReconRunRequest | None = None,
@@ -653,6 +657,9 @@ async def run_engagement_recon(
     audit: AuditService = Depends(get_audit_service),
 ) -> dict:
     """Trigger autonomous reconnaissance on an authorized active engagement.
+
+    Returns HTTP 202 Accepted immediately with the queued task identifier.
+    The task is executed asynchronously by the configured worker backend.
 
     Enforces:
     1. Engagement exists and status is 'active'

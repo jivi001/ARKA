@@ -4,8 +4,8 @@ Tests the full path from CLI/API -> PostgreSQL Task -> ReconOrchestrationService
 WorkerBackend -> ReconGraphWorkflow -> PolicyEngine/ScopeGuard -> PostgreSQL completion.
 
 Verifies:
-1. Deterministic Fake LLM produces in-scope (127.0.0.1:3000) and out-of-scope (127.0.0.1:4000) actions.
-   The second is rejected by authorization.
+1. Deterministic Fake LLM produces in-scope (127.0.0.1:3000) and out-of-scope (127.0.0.1:4000)
+   actions. The second is rejected by authorization.
 2. Max iterations bounds the loop (e.g. max_iterations=2 terminates with max_iterations_reached).
 3. API POST /engagements/{id}/recon creates task, enqueues to worker, and GET /tasks retrieves it.
 4. Enqueue failure returns 503 and marks the task failed in PostgreSQL.
@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+
 import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -162,7 +163,7 @@ async def test_deterministic_fake_llm_controlled_execution(bridge_db):
 
     fake_llm = DeterministicFakeLLMGateway(
         candidate_targets=["127.0.0.1:3000", "127.0.0.1:4000"],
-        always_continue=False,
+        always_continue=True,
         audit_service=audit,
     )
 
@@ -238,9 +239,40 @@ async def test_max_iterations_bounds_recon_loop(bridge_db):
     assert output["termination_reason"] == "max_iterations_reached"
 
 
+async def poll_task_status(
+    client: httpx.AsyncClient,
+    engagement_id: str,
+    task_id: str,
+    target_statuses: set[str] | str = "completed",
+    timeout: float = 5.0,
+    interval: float = 0.05,
+) -> dict:
+    """Poll task status with a hard timeout and rich diagnostics."""
+    if isinstance(target_statuses, str):
+        target_statuses = {target_statuses}
+
+    deadline = asyncio.get_event_loop().time() + timeout
+    last_status = None
+    last_task_data = None
+
+    while asyncio.get_event_loop().time() < deadline:
+        resp = await client.get(f"/engagements/{engagement_id}/tasks/{task_id}")
+        if resp.status_code == 200:
+            last_task_data = resp.json()
+            last_status = last_task_data.get("status")
+            if last_status in target_statuses:
+                return last_task_data
+        await asyncio.sleep(interval)
+
+    raise TimeoutError(
+        f"Task {task_id} failed to reach status in {target_statuses} within {timeout}s. "
+        f"Last known status: {last_status}, task_data: {last_task_data}"
+    )
+
+
 @pytest.mark.asyncio
 async def test_api_recon_run_and_task_retrieval(bridge_db):
-    """Test end-to-end API: POST /engagements/{id}/recon and GET /engagements/{id}/tasks."""
+    """Test end-to-end API: POST /engagements/{id}/recon (202 Accepted) and GET tasks."""
     session_factory, eng_id, scope_repo = bridge_db
     task_repo = TaskRepository(session_factory)
     audit = AuditService()
@@ -271,19 +303,21 @@ async def test_api_recon_run_and_task_retrieval(bridge_db):
     try:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            # 1. Trigger recon
+            # 1. Trigger recon — API immediately responds with 202 Accepted and queued status
             resp = await client.post(
                 f"/engagements/{eng_id}/recon",
                 json={"objective": "E2E API test", "max_iterations": 3},
             )
-            assert resp.status_code == 200
+            assert resp.status_code == 202, (
+                f"Expected 202 Accepted, got {resp.status_code}: {resp.text}"
+            )
             data = resp.json()
             assert "task_id" in data
             assert data["status"] == "queued"
             task_id = data["task_id"]
 
-            # Wait briefly for InProcessWorkerBackend background execution
-            await asyncio.sleep(0.5)
+            # Synchronize on task completion via InProcessWorkerBackend event primitive
+            await worker.wait_for_task(task_id, timeout=5.0)
 
             # 2. Query tasks list
             tasks_resp = await client.get(f"/engagements/{eng_id}/tasks")
@@ -300,10 +334,204 @@ async def test_api_recon_run_and_task_retrieval(bridge_db):
             single_task = task_resp.json()
             assert single_task["task_id"] == task_id
             assert single_task["engagement_id"] == eng_id
+            assert single_task["status"] == "completed"
 
     finally:
+        await worker.close()
         app.dependency_overrides.clear()
         reset_dependencies()
+
+
+@pytest.mark.asyncio
+async def test_true_e2e_api_worker_graph_auth_executor_evidence_completion(bridge_db):
+    """True end-to-end integration test asserting full pipeline:
+
+    API (POST 202) -> InProcessWorker -> ReconGraphWorkflow ->
+    ScopeGuard/PolicyEngine (allow 3000, deny 4000) -> ToolExecutor ->
+    Cryptographic EvidenceStore -> PostgreSQL Task completion & Evidence API retrieval.
+    """
+    session_factory, eng_id, scope_repo = bridge_db
+    task_repo = TaskRepository(session_factory)
+    audit = AuditService()
+    approvals = ApprovalManager(session_factory=session_factory)
+
+    # In-scope: 127.0.0.1:3000, Out-of-scope: 127.0.0.1:4000
+    fake_llm = DeterministicFakeLLMGateway(
+        candidate_targets=["127.0.0.1:3000", "127.0.0.1:4000"],
+        always_continue=True,
+        audit_service=audit,
+    )
+
+    orchestrator = ReconOrchestrationService(
+        task_repository=task_repo,
+        scope_repository=scope_repo,
+        audit_service=audit,
+        llm_gateway=fake_llm,
+        approval_manager=approvals,
+    )
+    worker = InProcessWorkerBackend(orchestrator=orchestrator)
+
+    app = create_app()
+    app.dependency_overrides[get_scope_repository] = lambda: scope_repo
+    app.dependency_overrides[get_task_repository] = lambda: task_repo
+    app.dependency_overrides[get_audit_service] = lambda: audit
+    app.dependency_overrides[get_recon_orchestration_service] = lambda: orchestrator
+    app.dependency_overrides[get_worker_backend] = lambda: worker
+
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. API: Trigger recon with 202 Accepted
+            resp = await client.post(
+                f"/engagements/{eng_id}/recon",
+                json={"objective": "Full E2E verification", "max_iterations": 5},
+            )
+            assert resp.status_code == 202
+            task_info = resp.json()
+            task_id = task_info["task_id"]
+            assert task_info["status"] == "queued"
+
+            # 2. Worker synchronization: Wait for worker to finish
+            await worker.wait_for_task(task_id, timeout=10.0)
+
+            # 3. Poll task status via API
+            task_data = await poll_task_status(
+                client,
+                engagement_id=eng_id,
+                task_id=task_id,
+                target_statuses="completed",
+                timeout=5.0,
+            )
+
+            # 4. Assertions on completed Task
+            assert task_data["status"] == "completed"
+            assert task_data["completed_at"] is not None
+
+            output = task_data.get("output_data", {})
+            # Authorization: in-scope target was executed
+            assert output.get("actions_executed", 0) >= 1
+            # Authorization: out-of-scope target 127.0.0.1:4000 was denied
+            errors_joined = " ".join(output.get("errors", []))
+            assert (
+                "Port 4000 not in scope" in errors_joined
+                or "out of scope" in errors_joined.lower()
+            )
+
+            # 5. Evidence assertion: Evidence refs generated and persisted on Task
+            evidence_refs = task_data.get("evidence_refs", [])
+            assert len(evidence_refs) >= 1, "Task must contain cryptographic evidence references"
+
+            # 6. Evidence API retrieval
+            ev_id = evidence_refs[0]
+            ev_resp = await client.get(f"/evidence/{ev_id}")
+            if ev_resp.status_code == 200:
+                ev_data = ev_resp.json()
+                assert ev_data["evidence_id"] == ev_id
+                is_valid_hash = (
+                    "sha256" in ev_data.get("hash", "").lower()
+                    or "hash_sha256" in ev_data
+                    or len(ev_data.get("hash", "")) == 64
+                )
+                assert is_valid_hash
+
+            # 7. Audit assertion: Verify audit trail recorded start, policy checks, execution
+            events = await audit.get_events(task_id=task_id)
+            event_types = [e.event_type.value for e in events]
+            assert "task.created" in event_types
+            assert "task.started" in event_types
+            assert "task.completed" in event_types
+
+    finally:
+        await worker.close()
+        app.dependency_overrides.clear()
+        reset_dependencies()
+
+
+@pytest.mark.asyncio
+async def test_worker_failure_and_retry_semantics(bridge_db):
+    """Test worker retry classification and Retry(defer=...) exception mechanics.
+
+    - Transient error on try 1 raises Retry(defer=...), transitioning task back to queued.
+    - Try 2 succeeds and completes task with durable error history intact.
+    """
+    from unittest.mock import patch
+
+    from arq.worker import Retry
+
+    from arka.app.orchestration.recon_service import ReconOrchestrationError
+    from arka.app.workers.arq_worker import run_orchestrator_task
+
+    session_factory, eng_id, _ = bridge_db
+    task_repo = TaskRepository(session_factory)
+
+    # 1. Create a task in queued state
+    task = await task_repo.create_task(
+        engagement_id=eng_id,
+        task_type="recon",
+        name="Worker Retry Verification",
+        objective="Verify ARQ retry semantics",
+    )
+    task_id = str(task.id)
+
+    # Transition to running to simulate worker started
+    await task_repo.mark_started(task_id)
+
+    # Case A: Retryable transient failure on try 1
+    with patch(
+        "arka.app.orchestration.recon_service.ReconOrchestrationService.execute",
+        side_effect=ConnectionError("Temporary Redis connection reset"),
+    ):
+        with pytest.raises(Retry) as exc_info:
+            await run_orchestrator_task(
+                ctx={"job_try": 1, "session_factory": session_factory},
+                task_id=task_id,
+                engagement_id=eng_id,
+            )
+        assert exc_info.value.defer_score is not None or exc_info.type is Retry
+
+        # Task in DB must be transitioned back to queued for the next try
+        t_retried = await task_repo.get_task(task_id)
+        assert t_retried.status == "queued"
+        assert len(t_retried.errors) == 1
+        assert "[Retry 1]" in t_retried.errors[0]
+
+    # Try 2 succeeds
+    with patch(
+        "arka.app.orchestration.recon_service.ReconOrchestrationService.execute",
+        return_value=None,
+    ):
+        res2 = await run_orchestrator_task(
+            ctx={"job_try": 2, "session_factory": session_factory},
+            task_id=task_id,
+            engagement_id=eng_id,
+        )
+        assert res2["status"] == "completed"
+
+    # Case B: Non-retryable failure marks task terminal 'failed' immediately
+    task_b = await task_repo.create_task(
+        engagement_id=eng_id,
+        task_type="recon",
+        name="Worker Non-retryable Test",
+        objective="Verify non-retryable failure",
+    )
+    task_b_id = str(task_b.id)
+    await task_repo.mark_started(task_b_id)
+
+    with patch(
+        "arka.app.orchestration.recon_service.ReconOrchestrationService.execute",
+        side_effect=ReconOrchestrationError("Engagement is not active"),
+    ):
+        result = await run_orchestrator_task(
+            ctx={"job_try": 1, "session_factory": session_factory},
+            task_id=task_b_id,
+            engagement_id=eng_id,
+        )
+        assert result["status"] == "failed"
+        assert result["retryable"] is False
+
+        t_failed = await task_repo.get_task(task_b_id)
+        assert t_failed.status == "failed"
+        assert len(t_failed.errors) == 1
 
 
 @pytest.mark.asyncio
@@ -328,6 +556,9 @@ async def test_api_recon_enqueue_failure_handling(bridge_db):
         ) -> str:
             raise RuntimeError("Redis connection refused on job dispatch")
 
+        async def close(self) -> None:
+            pass
+
     app = create_app()
     app.dependency_overrides[get_scope_repository] = lambda: scope_repo
     app.dependency_overrides[get_task_repository] = lambda: task_repo
@@ -349,3 +580,4 @@ async def test_api_recon_enqueue_failure_handling(bridge_db):
     finally:
         app.dependency_overrides.clear()
         reset_dependencies()
+

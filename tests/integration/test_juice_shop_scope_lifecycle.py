@@ -240,6 +240,12 @@ class TestJuiceShopLiveAcceptanceLifecycle:
         assert "Scope version mismatch" in str(exc.value)
 
         # New authorization evaluated against Scope v2 -> Allowed
+        guard_v2 = ScopeGuard(ScopeDefinition(**scope_v2))
+        policy_v2 = PolicyEngine(guard_v2)
+        registry_v2 = ToolRegistry(policy_v2, audit)
+        registry_v2.register(mock_def, EchoToolExecutor())
+        engine_v2 = ExecutionEngine(tool_registry=registry_v2, audit_service=audit)
+
         tool_req_v2 = ToolRequest(
             engagement_id=eng_id,
             task_id="task-juice-2",
@@ -251,7 +257,7 @@ class TestJuiceShopLiveAcceptanceLifecycle:
             policy_approved=True,
             scope_version=2,
         )
-        exec_result = await engine.execute(tool_req_v2, expected_scope_version=2)
+        exec_result = await engine_v2.execute(tool_req_v2, expected_scope_version=2)
         assert exec_result.success is True
 
 
@@ -259,6 +265,16 @@ class TestFreshProcessPostgreSQLPersistence:
     """Directly proves PostgreSQL as authoritative source of truth across process restarts."""
 
     def test_fresh_process_scope_rehydration(self):
+        import socket
+
+        sock = socket.socket()
+        try:
+            sock.settimeout(1.0)
+            sock.connect(("localhost", 5432))
+            sock.close()
+        except OSError:
+            pytest.skip("PostgreSQL server is not running on localhost:5432")
+
         # Session 1: Process A creates engagement and persists scope v1
         reset_dependencies()
         _engagements.clear()

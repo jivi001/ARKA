@@ -121,103 +121,109 @@ class ScopeRepository:
                 eng_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, eng_id_str)
                 scope_uuid = uuid.uuid4()
 
-            async with self._session_factory() as session:
-                async with session.begin():
-                    # 1. Ensure Engagement row exists in DB to satisfy foreign key
-                    eng_stmt = select(Engagement).where(Engagement.id == eng_uuid)
-                    eng_res = await session.execute(eng_stmt)
-                    eng_row = eng_res.scalar_one_or_none()
-                    if not eng_row:
-                        eng_row = Engagement(
-                            id=eng_uuid,
-                            name=f"Engagement {eng_id_str}",
-                            description="Auto-registered engagement container",
-                            status="created",
-                            created_at=now,
-                            updated_at=now,
-                        )
-                        session.add(eng_row)
-                        await session.flush()
+            try:
+                async with self._session_factory() as session:
+                    async with session.begin():
+                        # 1. Ensure Engagement row exists in DB to satisfy foreign key
+                        eng_stmt = select(Engagement).where(Engagement.id == eng_uuid)
+                        eng_res = await session.execute(eng_stmt)
+                        eng_row = eng_res.scalar_one_or_none()
+                        if not eng_row:
+                            eng_row = Engagement(
+                                id=eng_uuid,
+                                name=f"Engagement {eng_id_str}",
+                                description="Auto-registered engagement container",
+                                status="created",
+                                created_at=now,
+                                updated_at=now,
+                            )
+                            session.add(eng_row)
+                            await session.flush()
 
-                    # 2. Query existing scope row with lock
-                    scope_stmt = (
-                        select(Scope).where(Scope.engagement_id == eng_uuid).with_for_update()
+                        # 2. Query existing scope row with lock
+                        scope_stmt = (
+                            select(Scope).where(Scope.engagement_id == eng_uuid).with_for_update()
+                        )
+                        scope_res = await session.execute(scope_stmt)
+                        existing_row = scope_res.scalar_one_or_none()
+
+                        if existing_row:
+                            if (
+                                expected_version is not None
+                                and existing_row.version != expected_version
+                            ):
+                                raise ScopeConflictError(
+                                    f"Scope version conflict: expected version {expected_version}, "
+                                    f"but current scope version is {existing_row.version}."
+                                )
+                            new_version = existing_row.version + 1
+                            existing_row.version = new_version
+                            existing_row.includes = scope.includes.model_dump()
+                            existing_row.excludes = scope.excludes.model_dump()
+                            existing_row.notes = scope.notes
+                            existing_row.updated_at = now
+                            saved_scope_id = str(existing_row.id)
+                            created_at = existing_row.created_at
+                        else:
+                            new_version = 1
+                            new_scope_db = Scope(
+                                id=scope_uuid,
+                                engagement_id=eng_uuid,
+                                version=new_version,
+                                includes=scope.includes.model_dump(),
+                                excludes=scope.excludes.model_dump(),
+                                notes=scope.notes,
+                                created_at=now,
+                                updated_at=now,
+                            )
+                            session.add(new_scope_db)
+                            saved_scope_id = str(scope_uuid)
+                            created_at = now
+
+                        # 3. If requested, atomically invalidate active approvals
+                        if invalidate_approvals:
+                            inval_stmt = (
+                                update(ApprovalDB)
+                                .where(
+                                    ApprovalDB.engagement_id == eng_uuid,
+                                    ApprovalDB.status.in_(
+                                        [
+                                            ApprovalStatus.REQUIRED.value,
+                                            ApprovalStatus.GRANTED.value,
+                                        ]
+                                    ),
+                                )
+                                .values(
+                                    status=ApprovalStatus.EXPIRED.value,
+                                    rejection_reason=f"Scope mutated to version {new_version}",
+                                    decided_at=now,
+                                )
+                            )
+                            await session.execute(inval_stmt)
+
+                    # Committed successfully
+                    final_scope = ScopeDefinition(
+                        scope_id=saved_scope_id,
+                        engagement_id=eng_id_str,
+                        version=new_version,
+                        includes=scope.includes,
+                        excludes=scope.excludes,
+                        notes=scope.notes,
+                        created_at=created_at,
+                        updated_at=now,
                     )
-                    scope_res = await session.execute(scope_stmt)
-                    existing_row = scope_res.scalar_one_or_none()
-
-                    if existing_row:
-                        if (
-                            expected_version is not None
-                            and existing_row.version != expected_version
-                        ):
-                            raise ScopeConflictError(
-                                f"Scope version conflict: expected version {expected_version}, "
-                                f"but current scope version is {existing_row.version}."
-                            )
-                        new_version = existing_row.version + 1
-                        existing_row.version = new_version
-                        existing_row.includes = scope.includes.model_dump()
-                        existing_row.excludes = scope.excludes.model_dump()
-                        existing_row.notes = scope.notes
-                        existing_row.updated_at = now
-                        saved_scope_id = str(existing_row.id)
-                        created_at = existing_row.created_at
-                    else:
-                        new_version = 1
-                        new_scope_db = Scope(
-                            id=scope_uuid,
-                            engagement_id=eng_uuid,
-                            version=new_version,
-                            includes=scope.includes.model_dump(),
-                            excludes=scope.excludes.model_dump(),
-                            notes=scope.notes,
-                            created_at=now,
-                            updated_at=now,
+                    self._cache[eng_id_str] = final_scope
+                    if invalidate_approvals and approval_manager:
+                        approval_manager.invalidate_for_engagement(
+                            eng_id_str,
+                            reason=f"Scope mutated to version {new_version}",
                         )
-                        session.add(new_scope_db)
-                        saved_scope_id = str(scope_uuid)
-                        created_at = now
-
-                    # 3. If requested, atomically invalidate active approvals
-                    if invalidate_approvals:
-                        inval_stmt = (
-                            update(ApprovalDB)
-                            .where(
-                                ApprovalDB.engagement_id == eng_uuid,
-                                ApprovalDB.status.in_(
-                                    [
-                                        ApprovalStatus.REQUIRED.value,
-                                        ApprovalStatus.GRANTED.value,
-                                    ]
-                                ),
-                            )
-                            .values(
-                                status=ApprovalStatus.EXPIRED.value,
-                                rejection_reason=f"Scope mutated to version {new_version}",
-                                decided_at=now,
-                            )
-                        )
-                        await session.execute(inval_stmt)
-
-                # Committed successfully
-                final_scope = ScopeDefinition(
-                    scope_id=saved_scope_id,
-                    engagement_id=eng_id_str,
-                    version=new_version,
-                    includes=scope.includes,
-                    excludes=scope.excludes,
-                    notes=scope.notes,
-                    created_at=created_at,
-                    updated_at=now,
-                )
-                self._cache[eng_id_str] = final_scope
-                if invalidate_approvals and approval_manager:
-                    approval_manager.invalidate_for_engagement(
-                        eng_id_str,
-                        reason=f"Scope mutated to version {new_version}",
-                    )
-                return final_scope
+                    return final_scope
+            except ScopeConflictError:
+                raise
+            except Exception:
+                # Fall back to in-memory if DB fails (offline mode without postgres)
+                pass
 
         # In-memory only fallback (e.g. offline testing mode without postgres)
         existing_cached = self._cache.get(eng_id_str)

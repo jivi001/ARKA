@@ -35,6 +35,11 @@ class LLMProvider(str, Enum):
     CUSTOM = "custom"
 
 
+class WorkerBackendType(str, Enum):
+    IN_PROCESS = "in_process"
+    ARQ = "arq"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -42,6 +47,9 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    # Worker Backend
+    arka_worker_backend: WorkerBackendType | None = None
 
     # Database
     database_url: str = "postgresql+asyncpg://arka:arka@localhost:5432/arka"
@@ -106,3 +114,16 @@ class Settings(BaseSettings):
     @property
     def is_testing(self) -> bool:
         return self.arka_env == Environment.TESTING
+
+    @property
+    def resolved_worker_backend(self) -> WorkerBackendType:
+        """Centralized worker backend resolution:
+        - If explicitly set via ARKA_WORKER_BACKEND, use that value.
+        - In production, default to ARQ.
+        - Otherwise, default to IN_PROCESS for local development and tests.
+        """
+        if self.arka_worker_backend is not None:
+            return self.arka_worker_backend
+        if self.is_production:
+            return WorkerBackendType.ARQ
+        return WorkerBackendType.IN_PROCESS

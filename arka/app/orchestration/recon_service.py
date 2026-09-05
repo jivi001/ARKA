@@ -120,12 +120,12 @@ class ReconOrchestrationService:
             "objective": objective,
         }
 
-    async def execute(self, task_id: str) -> None:
+    async def execute(self, task_id: str, auto_mark_failed: bool = True) -> None:
         """Execute the complete recon workflow for a persistent task.
 
         Sole authoritative owner of task status transitions.
         Uses atomic CAS to ensure exactly ONE transition to 'running'.
-        Guaranteed to mark task as completed or failed.
+        Guaranteed to mark task as completed or failed (if auto_mark_failed=True).
         """
         task = await self._task_repo.get_task(task_id)
         if not task:
@@ -297,14 +297,16 @@ class ReconOrchestrationService:
                 exc_info=True,
             )
 
-            await self._task_repo.mark_failed(task_id=task_id, error=safe_error)
+            if auto_mark_failed:
+                await self._task_repo.mark_failed(task_id=task_id, error=safe_error)
 
-            await self._audit.record_action(
-                event_type=AuditEventType.TASK_FAILED,
-                actor="orchestrator",
-                action="fail_recon_execution",
-                engagement_id=engagement_id,
-                task_id=task_id,
-                result_status="failed",
-                error=safe_error,
-            )
+                await self._audit.record_action(
+                    event_type=AuditEventType.TASK_FAILED,
+                    actor="orchestrator",
+                    action="fail_recon_execution",
+                    engagement_id=engagement_id,
+                    task_id=task_id,
+                    result_status="failed",
+                    error=safe_error,
+                )
+            raise

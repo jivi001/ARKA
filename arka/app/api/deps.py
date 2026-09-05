@@ -1,6 +1,6 @@
-"""FastAPI dependency injection for ARKA."""
-
 from __future__ import annotations
+
+from arq.connections import ArqRedis
 
 from arka.app.audit.service import AuditService
 from arka.app.core.approvals.manager import ApprovalManager
@@ -8,7 +8,7 @@ from arka.app.core.scope.repository import ScopeRepository
 from arka.app.core.tasks.repository import TaskRepository
 from arka.app.llm.gateway.gateway import LLMGateway
 from arka.app.orchestration.recon_service import ReconOrchestrationService
-from arka.app.workers.backend import InProcessWorkerBackend, WorkerBackend
+from arka.app.workers.backend import ArqWorkerBackend, InProcessWorkerBackend, WorkerBackend
 
 # Singleton instances for application lifetime
 _audit_service: AuditService | None = None
@@ -18,6 +18,15 @@ _approval_manager: ApprovalManager | None = None
 _task_repository: TaskRepository | None = None
 _recon_orchestration_service: ReconOrchestrationService | None = None
 _worker_backend: WorkerBackend | None = None
+_arq_redis_pool: ArqRedis | None = None
+
+
+def set_arq_redis_pool(pool: ArqRedis | None) -> None:
+    """Set the shared ArqRedis connection pool owned by the FastAPI lifespan."""
+    global _arq_redis_pool
+    _arq_redis_pool = pool
+    if isinstance(_worker_backend, ArqWorkerBackend):
+        _worker_backend.set_redis_pool(pool, owns_pool=False)
 
 
 def get_audit_service() -> AuditService:
@@ -92,21 +101,29 @@ def get_recon_orchestration_service() -> ReconOrchestrationService:
 def get_worker_backend() -> WorkerBackend:
     """Get or create the singleton WorkerBackend.
 
-    Uses InProcessWorkerBackend for development.
-    Production should configure ArqWorkerBackend.
+    Centralized resolution:
+    - IN_PROCESS remains the default for local development and tests.
+    - Production resolves to ARQ unless explicitly overridden.
     """
     global _worker_backend
     if _worker_backend is None:
-        _worker_backend = InProcessWorkerBackend(
-            orchestrator=get_recon_orchestration_service(),
-        )
+        from arka.app.core.config import get_settings
+        from arka.app.core.config.settings import WorkerBackendType
+
+        settings = get_settings()
+        if settings.resolved_worker_backend == WorkerBackendType.ARQ:
+            _worker_backend = ArqWorkerBackend(redis_pool=_arq_redis_pool, owns_pool=False)
+        else:
+            _worker_backend = InProcessWorkerBackend(
+                orchestrator=get_recon_orchestration_service(),
+            )
     return _worker_backend
 
 
 def reset_dependencies() -> None:
     """Reset all singleton instances. Used in testing."""
     global _audit_service, _llm_gateway, _scope_repository, _approval_manager
-    global _task_repository, _recon_orchestration_service, _worker_backend
+    global _task_repository, _recon_orchestration_service, _worker_backend, _arq_redis_pool
     _audit_service = None
     _llm_gateway = None
     _scope_repository = None
@@ -114,3 +131,4 @@ def reset_dependencies() -> None:
     _task_repository = None
     _recon_orchestration_service = None
     _worker_backend = None
+    _arq_redis_pool = None

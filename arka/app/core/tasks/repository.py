@@ -40,6 +40,7 @@ class TaskRepository:
 
     Enforces strict state machine:
       queued -> running
+      running -> queued (retry with durable error tracking)
       queued -> failed (dispatch / enqueue failure)
       running -> completed
       running -> failed
@@ -185,6 +186,49 @@ class TaskRepository:
                 )
             return row
 
+    async def mark_retrying(
+        self,
+        task_id: str,
+        error: str,
+        retry_count: int,
+    ) -> Task | None:
+        """Transition task from 'running' back to 'queued' for retry.
+
+        Preserves existing errors and appends the retry error to durable history.
+        Enforces that task must currently be in 'running' state.
+        Returns None if task is not in 'running' state or not found.
+        """
+        safe_error = error[:4096] if error else "Transient execution failure"
+        retry_entry = f"[Retry {retry_count}] {safe_error}"
+
+        async with self._session_factory() as session, session.begin():
+            result = await session.execute(
+                select(Task)
+                .where(Task.id == uuid.UUID(task_id), Task.status == "running")
+                .with_for_update()
+            )
+            task = result.scalar_one_or_none()
+            if not task:
+                logger.warning(
+                    f"Task {task_id} cannot transition to retry "
+                    "(not found or not in 'running' state)"
+                )
+                return None
+
+            existing_errors = list(task.errors or [])
+            existing_errors.append(retry_entry)
+
+            output_data = dict(task.output_data or {})
+            output_data["retry_count"] = retry_count
+
+            task.status = "queued"
+            task.updated_at = datetime.now(UTC)
+            task.errors = existing_errors
+            task.output_data = output_data
+
+            logger.info(f"Task {task_id} transitioned back to queued for retry #{retry_count}")
+            return task
+
     async def mark_failed(
         self,
         task_id: str,
@@ -192,32 +236,36 @@ class TaskRepository:
     ) -> Task | None:
         """Transition task from 'queued' or 'running' to 'failed'.
 
+        Preserves existing errors and appends the terminal failure error.
         Returns None if task is already in a terminal state ('completed', 'failed', 'cancelled').
         """
         safe_error = error[:4096] if error else "Unknown error"
         async with self._session_factory() as session, session.begin():
             result = await session.execute(
-                update(Task)
+                select(Task)
                 .where(
                     Task.id == uuid.UUID(task_id),
                     Task.status.in_(["queued", "running"]),
                 )
-                .values(
-                    status="failed",
-                    completed_at=datetime.now(UTC),
-                    updated_at=datetime.now(UTC),
-                    errors=[safe_error],
-                )
-                .returning(Task)
+                .with_for_update()
             )
-            row = result.scalar_one_or_none()
-            if row:
-                logger.warning(f"Task {task_id} marked as failed: {safe_error[:200]}")
-            else:
+            task = result.scalar_one_or_none()
+            if not task:
                 logger.warning(
                     f"Task {task_id} cannot transition to 'failed' (already terminal or not found)"
                 )
-            return row
+                return None
+
+            existing_errors = list(task.errors or [])
+            existing_errors.append(safe_error)
+
+            task.status = "failed"
+            task.completed_at = datetime.now(UTC)
+            task.updated_at = datetime.now(UTC)
+            task.errors = existing_errors
+
+            logger.warning(f"Task {task_id} marked as failed: {safe_error[:200]}")
+            return task
 
     async def mark_cancelled(
         self,
