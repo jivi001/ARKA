@@ -4723,3 +4723,4 @@ The architecture is ready for the next major phase only when:
 
 **Architecture principle:** ARKA's intelligence may become increasingly autonomous; its authority must not.
 >>>>>>> efcaa89b635a2842cdd01e4215ad6be9403053ef
+The Next.js console is an operator interface, not a security authority. All state-changing and security-sensitive operations must traverse the FastAPI API and existing ARKA deterministic control plane. The frontend must never directly access PostgreSQL, Redis, execution runtimes, security tools, credentials, or internal agent execution interfaces. REST provides authoritative resource state; SSE/WebSocket provides live events; PostgreSQL remains authoritative for security-sensitive persisted state.

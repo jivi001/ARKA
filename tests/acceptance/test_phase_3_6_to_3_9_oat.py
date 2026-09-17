@@ -9,41 +9,24 @@ Validates:
 
 from __future__ import annotations
 
-import json
-import uuid
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 from aiohttp import web
 from pydantic import SecretStr
 
-from arka.app.agents.web.agent import WebSecurityAgent
 from arka.app.agents.web.models import (
     InvalidStateTransitionError,
-    WebAction,
     WebActionBudget,
     WebActionBudgetUsed,
     WebAgentState,
     WebSecurityState,
     compute_web_action_fingerprint,
 )
-from arka.app.audit.service import AuditService
-from arka.app.core.approvals.manager import ApprovalManager
-from arka.app.core.assets.repository import InMemoryAssetRepository
-from arka.app.core.policies.engine import PolicyEngine
 from arka.app.core.scope.scopeguard import ScopeGuard
 from arka.app.core.state.models import (
-    PolicyDecisionType,
-    RiskLevel,
     ScopeDefinition,
     ScopeTarget,
 )
-from arka.app.execution.evidence import EvidenceStore
 from arka.app.execution.schemas import CapabilityContext, ExecutionRequest
-from arka.app.llm.gateway.gateway import LLMGateway
-from arka.app.llm.schemas.llm_schemas import LLMResponse
-from arka.app.tools.registry.registry import ToolRegistry
-from arka.app.tools.schemas.tool_schemas import CandidateToolRequest
 from arka.app.web.analysis.api_analyzer import APIQualityAnalyzer
 from arka.app.web.analysis.cors_analyzer import CORSAnalyzer
 from arka.app.web.analysis.engine import WebSecurityAnalysisEngine
@@ -60,36 +43,19 @@ from arka.app.web.business_logic.models import (
     WorkflowStep,
 )
 from arka.app.web.business_logic.safety import (
-    BusinessLogicSafetyValidator,
     DestructiveOperationBlocked,
 )
 from arka.app.web.business_logic.workflow import WorkflowEngine
 from arka.app.web.client.client import ControlledHTTPClient
 from arka.app.web.models.auth import (
-    AuthenticationProfile,
-    AuthType,
-    CookieJar,
     CredentialReference,
     CredentialType,
     CredentialVault,
     SecureCookie,
     SessionContext,
 )
-from arka.app.web.models.http import HTTPMethod, HTTPRequest, HTTPResponse
+from arka.app.web.models.http import HTTPMethod, HTTPRequest
 from arka.app.web.session.manager import SessionManager
-from arka.app.web.tools.definitions import (
-    get_graphql_analyze_tool_definition,
-    get_http_request_tool_definition,
-    get_openapi_analyze_tool_definition,
-    get_web_crawler_tool_definition,
-)
-from arka.app.web.tools.executors import (
-    GraphQLAnalyzeToolExecutor,
-    HTTPRequestToolExecutor,
-    OpenAPIAnalyzeToolExecutor,
-    WebCrawlerToolExecutor,
-)
-
 
 # ---------------------------------------------------------------------------
 # Simulated Local Target Fixture
