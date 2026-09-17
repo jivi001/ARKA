@@ -8,11 +8,19 @@ from fastapi import FastAPI
 
 from arka.app.api.deps import get_evidence_store, get_worker_backend, set_arq_redis_pool
 from arka.app.api.errors import ArkaAPIError, arka_exception_handler, generic_exception_handler
+from arka.app.api.routes.approvals import router as approvals_router
+from arka.app.api.routes.attack_surface import router as attack_surface_router
+from arka.app.api.routes.configuration import router as configuration_router
 from arka.app.api.routes.engagements import router as engagements_router
 from arka.app.api.routes.evidence import router as evidence_router
 from arka.app.api.routes.evidence import set_evidence_store
+from arka.app.api.routes.findings import router as findings_router
+from arka.app.api.routes.graph import router as graph_router
 from arka.app.api.routes.health import router as health_router
 from arka.app.api.routes.llm import router as llm_router
+from arka.app.api.routes.policy_decisions import router as policy_decisions_router
+from arka.app.api.routes.reports import router as reports_router
+from arka.app.api.routes.stream import router as stream_router
 from arka.app.core.config import get_settings
 from arka.app.core.config.settings import WorkerBackendType
 from arka.app.observability.logging import get_logger
@@ -90,11 +98,26 @@ def create_app() -> FastAPI:
     # Initialize evidence store for API access
     set_evidence_store(get_evidence_store())
 
-    # Routers
-    app.include_router(health_router)
-    app.include_router(engagements_router)
-    app.include_router(evidence_router)
-    app.include_router(llm_router)
+    # Core Routers
+    routers = [
+        health_router,
+        engagements_router,
+        evidence_router,
+        llm_router,
+        approvals_router,
+        findings_router,
+        attack_surface_router,
+        policy_decisions_router,
+        configuration_router,
+        stream_router,
+        graph_router,
+        reports_router,
+    ]
+
+    for r in routers:
+        app.include_router(r)
+        # Also mount under /api for frontend standard pathing
+        app.include_router(r, prefix="/api")
 
     return app
 

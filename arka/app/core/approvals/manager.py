@@ -4,6 +4,8 @@ Enforces deterministic approval state transitions and binds authorizations
 to exact engagement, task, tool, and target operations.
 """
 
+import hashlib
+import json
 import uuid
 
 from sqlalchemy import select, update
@@ -17,6 +19,19 @@ from arka.app.core.state.models import (
     utc_now,
 )
 from arka.app.database.models import ApprovalDB, Engagement, Task
+
+
+def compute_arguments_hash(arguments: dict | None) -> str:
+    """Compute deterministic SHA-256 hash of canonical arguments."""
+    if not arguments:
+        return hashlib.sha256(b"{}").hexdigest()
+    try:
+        canonical_bytes = json.dumps(
+            arguments, sort_keys=True, separators=(",", ":"), default=str
+        ).encode("utf-8")
+        return hashlib.sha256(canonical_bytes).hexdigest()
+    except Exception:
+        return hashlib.sha256(str(arguments).encode("utf-8")).hexdigest()
 
 
 def _safe_uuid(val: str) -> uuid.UUID:
@@ -50,6 +65,7 @@ class ApprovalManager:
         """Convert domain ApprovalRequest to database ApprovalDB."""
         details = dict(req.details or {})
         details["scope_version"] = req.scope_version
+        arg_hash = req.arguments_hash or details.get("arguments_hash")
         return ApprovalDB(
             id=_safe_uuid(req.approval_id),
             engagement_id=_safe_uuid(req.engagement_id),
@@ -63,6 +79,8 @@ class ApprovalManager:
             else req.risk_level,
             reason=req.reason,
             details=details,
+            arguments_hash=arg_hash,
+            scope_version=req.scope_version,
             status=req.status.value if isinstance(req.status, ApprovalStatus) else req.status,
             requested_at=req.requested_at,
             decided_at=req.decided_at,
@@ -75,7 +93,8 @@ class ApprovalManager:
     def _from_db_model(self, db_obj: ApprovalDB) -> ApprovalRequest:
         """Convert database ApprovalDB to domain ApprovalRequest."""
         details = db_obj.details or {}
-        scope_ver = details.get("scope_version", 1)
+        scope_ver = getattr(db_obj, "scope_version", None) or details.get("scope_version", 1)
+        arg_hash = getattr(db_obj, "arguments_hash", None) or details.get("arguments_hash")
         return ApprovalRequest(
             approval_id=str(db_obj.id),
             engagement_id=str(db_obj.engagement_id),
@@ -94,6 +113,7 @@ class ApprovalManager:
             decided_by=db_obj.decided_by,
             rejection_reason=db_obj.rejection_reason,
             correlation_id=db_obj.correlation_id,
+            arguments_hash=arg_hash,
             expiry_seconds=db_obj.expiry_seconds,
         )
 
@@ -112,8 +132,19 @@ class ApprovalManager:
         correlation_id: str | None = None,
         approval_id: str | None = None,
         scope_version: int = 1,
+        arguments: dict | None = None,
+        arguments_hash: str | None = None,
     ) -> ApprovalRequest:
         """Create a new pending approval request in REQUIRED state."""
+        det = dict(details or {})
+        if arguments is not None and not arguments_hash:
+            arguments_hash = compute_arguments_hash(arguments)
+        if arguments_hash:
+            det["arguments_hash"] = arguments_hash
+        elif "arguments" in det and not arguments_hash:
+            arguments_hash = compute_arguments_hash(det["arguments"])
+            det["arguments_hash"] = arguments_hash
+
         request = ApprovalRequest(
             approval_id=approval_id or new_id(),
             engagement_id=engagement_id,
@@ -125,7 +156,8 @@ class ApprovalManager:
             risk_level=risk_level,
             reason=reason,
             scope_version=scope_version,
-            details=details or {},
+            details=det,
+            arguments_hash=arguments_hash,
             status=ApprovalStatus.REQUIRED,
             requested_at=utc_now(),
             expiry_seconds=expiry_seconds,
@@ -149,6 +181,8 @@ class ApprovalManager:
         correlation_id: str | None = None,
         approval_id: str | None = None,
         scope_version: int = 1,
+        arguments: dict | None = None,
+        arguments_hash: str | None = None,
     ) -> ApprovalRequest:
         """Create and persist an approval request to PostgreSQL."""
         req = self.create_request(
@@ -165,6 +199,8 @@ class ApprovalManager:
             correlation_id=correlation_id,
             approval_id=approval_id,
             scope_version=scope_version,
+            arguments=arguments,
+            arguments_hash=arguments_hash,
         )
         if self._session_factory:
             try:
@@ -394,10 +430,12 @@ class ApprovalManager:
         tool_name: str,
         target: str,
         scope_version: int | None = None,
+        arguments: dict | None = None,
+        arguments_hash: str | None = None,
     ) -> bool:
-        """Verify an approval is valid, GRANTED, non-expired, and bound to the exact operation.
+        """Verify an approval is valid, GRANTED, non-expired, and bound to the exact operation and arguments.
 
-        Prevents cross-engagement, cross-task, cross-tool, cross-target, or version reuse.
+        Prevents cross-engagement, cross-task, cross-tool, cross-target, argument tampering, or version reuse.
         """
         if not approval_id:
             return False
@@ -421,7 +459,19 @@ class ApprovalManager:
         if req.target.strip() != target.strip():
             return False
 
-        return scope_version is None or req.scope_version == scope_version
+        if scope_version is not None and req.scope_version != scope_version:
+            return False
+
+        # Verify argument binding if hash was bound to approval
+        expected_hash = req.arguments_hash or (req.details or {}).get("arguments_hash")
+        if expected_hash:
+            actual_hash = arguments_hash
+            if not actual_hash and arguments is not None:
+                actual_hash = compute_arguments_hash(arguments)
+            if actual_hash and actual_hash != expected_hash:
+                return False
+
+        return True
 
     async def validate_approval_for_request_async(
         self,
@@ -431,8 +481,10 @@ class ApprovalManager:
         tool_name: str,
         target: str,
         scope_version: int | None = None,
+        arguments: dict | None = None,
+        arguments_hash: str | None = None,
     ) -> bool:
-        """Asynchronously verify an approval is valid, GRANTED, non-expired, and scope-bound."""
+        """Asynchronously verify an approval is valid, GRANTED, non-expired, scope-bound, and argument-bound."""
         if not approval_id:
             return False
 
@@ -455,7 +507,18 @@ class ApprovalManager:
         if req.target.strip() != target.strip():
             return False
 
-        return scope_version is None or req.scope_version == scope_version
+        if scope_version is not None and req.scope_version != scope_version:
+            return False
+
+        expected_hash = req.arguments_hash or (req.details or {}).get("arguments_hash")
+        if expected_hash:
+            actual_hash = arguments_hash
+            if not actual_hash and arguments is not None:
+                actual_hash = compute_arguments_hash(arguments)
+            if actual_hash and actual_hash != expected_hash:
+                return False
+
+        return True
 
     def invalidate_for_engagement(self, engagement_id: str, reason: str = "Scope modified") -> int:
         """Transition all active approvals (REQUIRED or GRANTED) for an engagement to EXPIRED."""

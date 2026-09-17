@@ -177,6 +177,7 @@ class ApprovalRequest(BaseModel):
     expiry_seconds: int = 3600  # 1 hour default
     rejection_reason: str | None = None
     correlation_id: str | None = None
+    arguments_hash: str | None = None
 
     @property
     def is_expired(self) -> bool:

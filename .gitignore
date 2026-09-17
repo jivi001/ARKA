@@ -1,5 +1,5 @@
 # ==============================================================================
-# ARKA .gitignore
+# ARKA .gitignore — Autonomous Risk Knowledge & Assessment
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ env.bak/
 venv.bak/
 
 # ------------------------------------------------------------------------------
-# 3. Build, Distribution & Packaging
+# 3. Python Build, Distribution & Packaging
 # ------------------------------------------------------------------------------
 build/
 develop-eggs/
@@ -67,27 +67,17 @@ coverage.xml
 .hypothesis/
 
 # ------------------------------------------------------------------------------
-# 6. AI Assistants, Skills & Agent Customizations
+# 6. AI Assistants & Tool Workspaces
 # ------------------------------------------------------------------------------
-# Skills and agent configurations
-skills/
-.skills/
-**/skills/
-*.skill
-.agents/
-.agents
-.agent/
-agent-skills/
-
-# AI tool workspaces and metadata
+# NOTE: .agents/ at project root is TRACKED (contains rules/ and workflows/).
+# Only ignore AI-tool-specific metadata directories.
 .gemini/
-.gemini
 .antigravity/
-.antigravity
 .claude/
 .cursor/
 .windsurf/
 .copilot/
+.amazonq/
 graphify-out/
 
 # ------------------------------------------------------------------------------
@@ -101,17 +91,49 @@ logs/
 *.log.*
 
 # ------------------------------------------------------------------------------
-# 8. Frontend, Node & Next.js Console (Operator UI)
+# 8. Frontend — Next.js / pnpm / Tailwind (Operator Console)
 # ------------------------------------------------------------------------------
+# Dependencies
 node_modules/
+
+# Next.js build output
 .next/
 out/
+
+# Turbopack / Turborepo
 .turbo/
-.npm
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Next.js auto-generated type declarations
+next-env.d.ts
+
+# pnpm
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Package manager debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnpm-debug.log*
+.npm
+
+# Vercel deployment
+.vercel
+
+# Tailwind / PostCSS (if generated caches appear)
+.postcss-cache/
+
+# Frontend test coverage
+frontend/coverage/
 
 # ------------------------------------------------------------------------------
 # 9. Local Databases & In-Memory Queues
@@ -129,6 +151,8 @@ dump.rdb
 .env
 .env.*
 !.env.example
+
+# Certificates and private keys
 *.pem
 *.key
 *.cert
@@ -157,3 +181,10 @@ Desktop.ini
 # 12. Notebooks & Misc
 # ------------------------------------------------------------------------------
 .ipynb_checkpoints/
+
+# ------------------------------------------------------------------------------
+# 13. Docker (local build context artifacts)
+# ------------------------------------------------------------------------------
+*.tar
+*.tar.gz
+.agents/

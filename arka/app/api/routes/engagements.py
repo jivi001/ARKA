@@ -119,6 +119,7 @@ class EngagementResponse(BaseModel):
     """Response for a single engagement."""
 
     engagement_id: str
+    id: str | None = None
     name: str
     description: str
     objective: str
@@ -134,6 +135,7 @@ class EngagementResponse(BaseModel):
         """Create response from EngagementState."""
         return cls(
             engagement_id=state.engagement_id,
+            id=state.engagement_id,
             name=state.name,
             description=state.description,
             objective=state.objective,
@@ -278,6 +280,39 @@ async def create_engagement(
     )
 
     return EngagementResponse.from_state(state)
+
+
+@router.get("", response_model=list[EngagementResponse])
+async def list_engagements(
+    scope_repo: ScopeRepository = Depends(get_scope_repository),
+) -> list[EngagementResponse]:
+    """List all engagements."""
+    results: list[EngagementResponse] = []
+    seen_ids: set[str] = set()
+
+    # 1. Fetch from PostgreSQL if available
+    if scope_repo._session_factory:
+        try:
+            async with scope_repo._session_factory() as session:
+                stmt = select(Engagement).order_by(Engagement.created_at.desc())
+                res = await session.execute(stmt)
+                db_engs = res.scalars().all()
+                for db_eng in db_engs:
+                    eng_id = str(db_eng.id)
+                    state = await _get_or_load_engagement(eng_id, scope_repo)
+                    if state:
+                        results.append(EngagementResponse.from_state(state))
+                        seen_ids.add(eng_id)
+        except Exception:
+            pass
+
+    # 2. Add any in-memory engagements not yet seen
+    for eng_id, state in _engagements.items():
+        if eng_id not in seen_ids:
+            results.append(EngagementResponse.from_state(state))
+            seen_ids.add(eng_id)
+
+    return results
 
 
 @router.get("/{engagement_id}", response_model=EngagementResponse)

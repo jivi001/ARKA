@@ -125,6 +125,7 @@ class ToolRegistry:
                     tool_name=candidate.tool_name,
                     target=candidate.target,
                     scope_version=decision.scope_version,
+                    arguments=candidate.arguments,
                 )
 
             if not is_approved:
@@ -298,6 +299,7 @@ class ToolRegistry:
                     tool_name=request.tool_name,
                     target=request.target,
                     scope_version=decision.scope_version,
+                    arguments=request.arguments,
                 )
 
             if not is_valid_approval:

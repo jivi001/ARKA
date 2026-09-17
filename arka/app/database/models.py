@@ -55,6 +55,9 @@ class Engagement(Base):
     assets: Mapped[list["AssetDB"]] = relationship(
         back_populates="engagement", cascade="all, delete-orphan"
     )
+    findings: Mapped[list["FindingDB"]] = relationship(
+        back_populates="engagement", cascade="all, delete-orphan"
+    )
 
 
 class Scope(Base):
@@ -223,6 +226,8 @@ class ApprovalDB(Base):
     risk_level: Mapped[str] = mapped_column(String(20), nullable=False)
     reason: Mapped[str] = mapped_column(Text, default="")
     details: Mapped[dict] = mapped_column(JSON, default=dict)
+    arguments_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scope_version: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(String(50), default="required")
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -418,3 +423,55 @@ class EndpointDB(Base):
 
     # Relationships
     asset: Mapped["AssetDB"] = relationship(back_populates="endpoints")
+
+
+class FindingDB(Base):
+    __tablename__ = "findings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    engagement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    endpoint_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("endpoints.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    severity: Mapped[str] = mapped_column(String(20), default="medium", index=True)
+    lifecycle_stage: Mapped[str] = mapped_column(String(50), default="OBSERVED", index=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.5)
+    target: Mapped[str] = mapped_column(String(1024), nullable=False)
+    check_type: Mapped[str] = mapped_column(String(100), default="generic")
+    detection_sources: Mapped[list] = mapped_column(JSON, default=list)
+    evidence_refs: Mapped[list] = mapped_column(JSON, default=list)
+    llm_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    validation_method: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    validation_details: Mapped[dict] = mapped_column(JSON, default=dict)
+    human_confirmed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    human_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    remediation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+    # Relationships
+    engagement: Mapped["Engagement"] = relationship(back_populates="findings")
+    asset: Mapped["AssetDB | None"] = relationship()
+    endpoint: Mapped["EndpointDB | None"] = relationship()
