@@ -413,8 +413,7 @@ async def test_true_e2e_api_worker_graph_auth_executor_evidence_completion(bridg
             # Authorization: out-of-scope target 127.0.0.1:4000 was denied
             errors_joined = " ".join(output.get("errors", []))
             assert (
-                "Port 4000 not in scope" in errors_joined
-                or "out of scope" in errors_joined.lower()
+                "Port 4000 not in scope" in errors_joined or "out of scope" in errors_joined.lower()
             )
 
             # 5. Evidence assertion: Evidence refs generated and persisted on Task
@@ -580,4 +579,3 @@ async def test_api_recon_enqueue_failure_handling(bridge_db):
     finally:
         app.dependency_overrides.clear()
         reset_dependencies()
-

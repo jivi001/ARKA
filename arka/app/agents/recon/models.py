@@ -80,7 +80,7 @@ class ReconPlan(BaseModel):
     objective: str = Field(..., description="High-level reconnaissance objective")
     reasoning_summary: str = Field(default="", description="Summary of reasoning")
     candidate_actions: list[ReconAction] = Field(
-        default_factory=list, description="Ordered list of proposed candidate actions"
+        ..., description="Ordered list of proposed candidate actions"
     )
     stop_condition: str | None = Field(
         default=None, description="Condition under which recon should terminate"

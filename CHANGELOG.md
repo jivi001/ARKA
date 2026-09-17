@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-09-06
+
+### Phase 3.1 → 3.5: Web & API Security Analysis Subsystem (Complete)
+
+### Added
+- **Web Security Domain Models & Sandboxed HTTP Client** (`arka/app/web/models/`, `arka/app/web/client/`):
+  - `HTTPRequest`, `HTTPResponse`, and `HTTPTransaction` models with strict header and body size caps, sensitive credential auto-redaction, and URL normalization.
+  - `WebSSRFValidator` enforcing DNS resolution validation and blocking loopback, RFC 1918 private subnets, link-local addresses, and cloud metadata targets (`169.254.169.254`, `metadata.google.internal`).
+  - `ControlledHTTPClient` providing hop-by-hop redirect validation against `ScopeGuard` and SSRF controls, body truncation bounds, and automatic cryptographic evidence capture in `EvidenceStore`.
+- **Hardened Web Crawler** (`arka/app/web/crawler/`):
+  - `SafeHTMLParser` utilizing Python stdlib `html.parser` for safe link, form, script, and stylesheet extraction.
+  - Safe `robots.txt` and `sitemap.xml` parsing (via `defusedxml`).
+  - `WebCrawler` engine with bounded BFS queues, depth limits, page count caps, and same-origin enforcement.
+- **Discovery to Canonical Asset Integration** (`arka/app/web/discovery/integrator.py`):
+  - `WebDiscoveryIntegrator` converting discovered endpoints and forms into canonical Phase 2 `Endpoint`, `Asset`, and `Service` models.
+  - Enforced `discovered_not_authorized=True` invariant and attached SHA-256 evidence provenance links.
+- **Safe OpenAPI / Swagger Discovery & Analysis** (`arka/app/web/openapi/`):
+  - `SafeOpenAPIParser` with safe JSON and YAML parsing, 5MB document cap, recursion limit (20), and strict blocking of external `$ref` URIs.
+  - `OpenAPIAnalyzer` extracting paths, methods, parameters, and validating schema servers against `ScopeGuard`.
+- **GraphQL Schema & Introspection Analysis** (`arka/app/web/graphql/`):
+  - `GraphQLAnalyzer` probing `/graphql` with bounded introspection queries, extracting queries, mutations, and types, and classifying destructive mutations as `RiskLevel.HIGH`.
+- **Web Security Agent & Tool Integration** (`arka/app/agents/web/`, `arka/app/web/tools/`):
+  - Autonomous `WebSecurityAgent` proposing candidate web actions without execution authority.
+  - Tool definitions and executors for `web_crawler`, `http_request`, `openapi_analyze`, and `graphql_analyze`.
+  - CLI commands `arka web crawl`, `arka web openapi`, `arka web graphql`, and `arka web endpoints`.
+- **Comprehensive Automated & Adversarial Tests**:
+  - 73 dedicated web tests across `tests/unit/web/` and `tests/security/web/`.
+  - Adversarial suite verifying prompt injection resistance, forged approval rejection, hop-by-hop redirect SSRF interception, external reference blocking, and strict preservation of `DISCOVERED != AUTHORIZED`.
+
+---
+
+## [0.3.0] - 2026-09-05
+
+### Universal LLM Subsystem & Recon Orchestration Bridge (Complete)
+
+### Added
+- **Universal LLM Subsystem** (`arka/app/llm/`): Unified provider-agnostic abstraction supporting 7 production LLM vendors:
+  - OpenAI (`openai/` - GPT-4o, GPT-4o-mini, o1, o3-mini)
+  - Anthropic / Claude (`anthropic/` - Claude 3.5 Sonnet, Claude 3.7 Sonnet, Claude 3 Haiku)
+  - OpenRouter (`openrouter/` - Multi-vendor aggregator; first-class regression anchor for NVIDIA Nemotron 3 Ultra)
+  - Groq (`groq/` - Llama 3.3 70B, Mixtral 8x7B)
+  - NVIDIA API / NIM (`nvidia_nim/` - Nemotron-4 340B, Llama 3.1 70B Instruct)
+  - DeepSeek (`deepseek/` - DeepSeek V3, DeepSeek R1)
+  - Google Gemini (`gemini/` - Gemini 1.5 Pro, Gemini 1.5 Flash, Gemini 2.0 Flash)
+- **SSRF Endpoint Defense** (`arka/app/llm/security/ssrf.py`): Enforced strict URL and IP address validation on custom `base_url` endpoints, blocking loopback, RFC 1918 subnets, link-local addresses, and cloud metadata services (`169.254.169.254`, `metadata.google.internal`).
+- **Model-Specific Capabilities Resolution** (`arka/app/llm/schemas/capabilities.py`): Structured detection of `vision`, `reasoning`, `tool_calling`, and `json_mode` attributes per model identifier.
+- **Unified Profile & Fallbacks** (`arka/app/llm/schemas/profile.py`): `LLMProfile` model with automatic model prefix formatting, credential validation, and nested fallback configurations.
+- **Provider Adapters & Registry** (`arka/app/llm/providers/`): Dedicated adapter classes for each provider with canonical alias normalization (`claude` -> `anthropic`, `google` -> `gemini`, `nvidia-api` -> `nvidia`).
+- **REST Management Endpoints** (`arka/app/api/routes/llm.py`):
+  - `GET /llm/providers`: Enumerates supported and configured providers without leaking credentials.
+  - `GET /llm/status`: Operational health, latency measurement, and token-free status checks.
+- **CLI Commands** (`arka/app/cli/main.py`): Added `arka llm providers`, `arka llm config`, and `arka llm test` with rich terminal tabular output.
+- **Recon Orchestration Bridge** (`arka/app/core/orchestration/recon.py`): Persistent task lifecycle tracking, `InProcessWorkerBackend` and Arq worker integration, `ReconGraphWorkflow` execution, and complete end-to-end evidence creation.
+- **Comprehensive Automated Tests**:
+  - `tests/integration/test_nemotron_regression.py` (Regression anchor for Nemotron 3 Ultra via OpenRouter).
+  - `tests/security/test_llm_ssrf.py` (SSRF attack vector verification across 15 attack patterns).
+  - `tests/unit/test_llm_providers.py` (Provider adapters, alias mapping, capability schemas).
+  - `tests/unit/test_llm_gateway_matrix.py` (Mock completion matrix across all 7 providers and fallbacks).
+  - `tests/security/test_llm_security.py` (Untrusted LLM reasoning invariant and provider invariance).
+  - `tests/integration/llm/test_live_providers.py` (Opt-in live provider network integration tests).
+
+### Security
+- **Untrusted Reasoning Engine Invariant**: Enforced and proved that LLM outputs across all 7 providers remain strictly untrusted proposals with zero execution or authorization authority.
+- **Credential Hygiene**: Sanitized API keys and tokens from all audit logs, CLI tables, and REST responses. Opt-in raw responses recursively scrub sensitive keys.
+
+---
+
 ## [0.2.2] - 2026-09-01
 
 ### Phase 2.2.2: Canonical Asset / Service / Technology Model (Complete)

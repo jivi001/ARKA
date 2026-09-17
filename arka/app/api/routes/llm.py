@@ -1,7 +1,9 @@
 """LLM provider management API endpoints."""
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from typing import Any
+
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 
 from arka.app.api.deps import get_llm_gateway
 from arka.app.llm.gateway.gateway import LLMGateway, LLMGatewayError
@@ -34,9 +36,24 @@ class ProviderInfo(BaseModel):
     """Information about a configured LLM provider."""
 
     name: str
-    model: str
-    role: str
-    configured: bool
+    model: str = ""
+    role: str = ""
+    status: str = ""
+    configured: bool = False
+    aliases: list[str] = Field(default_factory=list)
+    capabilities: dict[str, Any] = Field(default_factory=dict)
+
+
+class LLMStatusResponse(BaseModel):
+    """Status and health of the active LLM provider configuration."""
+
+    status: str
+    provider: str = ""
+    model: str = ""
+    configured: bool = False
+    available: bool = False
+    latency_ms: int | None = None
+    error: str | None = None
 
 
 @router.post("/llm/test", response_model=LLMTestResponse)
@@ -81,9 +98,26 @@ async def test_llm(
 
 
 @router.get("/providers", response_model=list[ProviderInfo])
+@router.get("/llm/providers", response_model=list[ProviderInfo])
 async def list_providers(
     gateway: LLMGateway = Depends(get_llm_gateway),
 ) -> list[ProviderInfo]:
-    """List configured LLM providers."""
+    """List supported and configured LLM providers without revealing credentials."""
     providers = await gateway.get_providers()
     return [ProviderInfo(**p) for p in providers]
+
+
+@router.get("/llm/status", response_model=LLMStatusResponse)
+async def get_llm_status(
+    check_connectivity: bool = Query(
+        default=False,
+        description=(
+            "If True, verifies connectivity with a ping request. "
+            "Defaults to False to avoid token spend."
+        ),
+    ),
+    gateway: LLMGateway = Depends(get_llm_gateway),
+) -> LLMStatusResponse:
+    """Get active LLM provider health and configuration status without credentials."""
+    status_dict = await gateway.health_check(check_connectivity=check_connectivity)
+    return LLMStatusResponse(**status_dict)

@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-orange.svg)](https://github.com/langchain-ai/langgraph)
 [![License: Proprietary / Authorized](https://img.shields.io/badge/license-Authorized_Use_Only-red.svg)](LICENSE)
-[![Tests: 137 Passing](https://img.shields.io/badge/tests-137%20passed%20(100%25)-brightgreen.svg)](tests/)
+[![Tests: 610 Passing](https://img.shields.io/badge/tests-610%20passed%20(100%25)-brightgreen.svg)](tests/)
 [![Coverage: 78%](https://img.shields.io/badge/coverage-78%25-green.svg)](tests/)
 
 **ARKA** is an enterprise-grade AI-orchestrated autonomous penetration testing and risk assessment platform. It coordinates multi-agent reasoning, deterministic scoping, policy enforcement, human approval workflows, and isolated tool execution to evaluate the security posture of modern networks and applications.
@@ -25,8 +25,8 @@
 | Phase | Milestone | Status | Core Deliverables |
 |---|---|:---:|---|
 | **Phase 1** | **Secure Agent Control Plane** | **`IMPLEMENTED`** | Zero-trust LangGraph orchestrator, deterministic ScopeGuard, PolicyEngine, persistent PostgreSQL approvals, LiteLLM gateway, append-only audit, safe mock tools. |
-| **Phase 2** | **Secure Tool Execution & Reconnaissance** | **`PLANNED`** | Ephemeral Docker runner, network namespace filtering, Nmap/Nuclei/ffuf adapters, structured output parsers, Reconnaissance Agent, asset normalization. |
-| **Phase 3** | **Web/API Security Analysis** | **`PLANNED`** | Web crawling, OpenAPI/GraphQL schema fuzzing, authenticated session handling, business logic flaw detection, Web Security Agent. |
+| **Phase 2** | **Secure Tool Execution & Reconnaissance** | **`IMPLEMENTED`** | Ephemeral Docker runner, network namespace filtering, Nmap/Nuclei/ffuf/WhatWeb/Amass adapters, structured output parsers, Reconnaissance Agent, canonical asset normalization, correlation engine. |
+| **Phase 3** | **Web/API Security Analysis (3.1–3.5)** | **`IMPLEMENTED`** | Sandboxed HTTP client with comprehensive SSRF protection, hardened web crawler, OpenAPI/Swagger & GraphQL schema analyzers, WebSecurityAgent, endpoint discovery integrator. |
 | **Phase 4** | **Controlled Exploitation & Validation** | **`PLANNED`** | PoC validation engine, strict human-in-the-loop exploit gating, non-destructive validation payloads, Exploitation Agent. |
 | **Phase 5** | **Attack Graph & Autonomous Attack Paths** | **`PLANNED`** | Graph-based attack path modeling (Neo4j / NetworkX), multi-hop scenario planning, risk calculation, automated executive reporting. |
 | **Phase 6** | **Advanced Multimodal & Enterprise** | **`PLANNED`** | UI/UX screenshot analysis, SSO/RBAC integration, SIEM event streaming, multi-tenant fleet orchestration. |
@@ -130,8 +130,12 @@ The ARKA CLI (`arka`) provides full operational control over the platform:
 uv run arka health
 
 # Manage LLM Providers
-uv run arka provider list
-uv run arka provider test --prompt "Ping test"
+uv run arka llm providers
+uv run arka llm config
+uv run arka llm test --prompt "Ping test"
+
+# Run Autonomous Reconnaissance
+uv run arka recon run <engagement_id>
 
 # Manage Engagements
 uv run arka engagement create "Q3 Penetration Test" --objective "Assess perimeter and web assets"

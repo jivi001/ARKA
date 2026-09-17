@@ -25,7 +25,7 @@ def get_api_url() -> str:
     return os.environ.get("ARKA_API_URL", DEFAULT_API_URL)
 
 
-def api_get(path: str) -> dict:
+def api_get(path: str, silent: bool = False) -> dict:
     """Make a GET request to the ARKA API."""
     url = f"{get_api_url()}{path}"
     try:
@@ -33,8 +33,9 @@ def api_get(path: str) -> dict:
         response.raise_for_status()
         return response.json()
     except httpx.ConnectError:
-        console.print("[red]Error: Cannot connect to ARKA API.[/red]")
-        console.print(f"Make sure the server is running at {get_api_url()}")
+        if not silent:
+            console.print("[red]Error: Cannot connect to ARKA API.[/red]")
+            console.print(f"Make sure the server is running at {get_api_url()}")
         raise typer.Exit(1) from None
     except httpx.HTTPStatusError as e:
         data = (
@@ -483,8 +484,217 @@ def recon_run(
     console.print(f"  Objective: {result.get('objective')}")
 
 
-def main() -> None:
+# LLM commands
+llm_app = typer.Typer(name="llm", help="Universal LLM provider subsystem management")
+app.add_typer(llm_app)
 
+
+@llm_app.command("providers")
+def llm_providers() -> None:
+    """List supported LLM providers and their configuration status."""
+    providers: list[dict[str, Any]] = []
+    try:
+        data = api_get("/llm/providers", silent=True)
+        if isinstance(data, list):
+            providers = [p for p in data if isinstance(p, dict)]
+    except (typer.Exit, Exception):
+        # Fall back to local registry and settings
+        from arka.app.core.config import get_settings
+        from arka.app.llm.providers.registry import ProviderRegistry
+
+        settings = get_settings()
+        supported = ProviderRegistry.list_supported()
+        active_provider = ProviderRegistry.normalize_provider_name(settings.arka_llm_provider.value)
+        providers = []
+        for name in supported:
+            key = settings.get_effective_llm_api_key(name)
+            is_configured = bool(key and key.get_secret_value())
+            role = "primary" if name == active_provider else "available"
+            status = (
+                "ACTIVE"
+                if (name == active_provider and is_configured)
+                else ("CONFIGURED" if is_configured else "SUPPORTED")
+            )
+            providers.append(
+                {
+                    "name": name,
+                    "role": role,
+                    "status": status,
+                    "configured": is_configured,
+                    "model": settings.arka_llm_model if name == active_provider else "",
+                }
+            )
+
+    table = Table(title="Supported LLM Providers")
+    table.add_column("Provider", style="cyan bold")
+    table.add_column("Status")
+    table.add_column("Role")
+    table.add_column("Configured Model")
+    for p in providers:
+        status_val = str(p.get("status", "SUPPORTED"))
+        if status_val in ("ACTIVE", "AVAILABLE"):
+            styled_status = f"[green bold]{status_val}[/green bold]"
+        elif status_val == "CONFIGURED":
+            styled_status = f"[yellow]{status_val}[/yellow]"
+        else:
+            styled_status = f"[dim]{status_val}[/dim]"
+
+        table.add_row(
+            str(p.get("name", "")).capitalize(),
+            styled_status,
+            str(p.get("role", "available")),
+            str(p.get("model", "-") or "-"),
+        )
+    console.print(table)
+
+
+@llm_app.command("config")
+def llm_config() -> None:
+    """Display active LLM provider configuration without credentials."""
+    from arka.app.core.config import get_settings
+
+    settings = get_settings()
+    profile = settings.get_primary_llm_profile()
+
+    table = Table(title="Active LLM Configuration")
+    table.add_column("Setting", style="cyan")
+    table.add_column("Value", style="bold")
+    table.add_row("Primary Provider", profile.provider.capitalize())
+    table.add_row("Primary Model", profile.model)
+    table.add_row("Endpoint (Base URL)", profile.base_url or "(default)")
+    table.add_row("Timeout (s)", str(profile.timeout))
+    table.add_row("Max Retries", str(profile.max_retries))
+    has_key = bool(profile.api_key.get_secret_value() if profile.api_key else False)
+    table.add_row(
+        "API Key Configured",
+        "[green]Yes[/green]" if has_key else "[red]No[/red]",
+    )
+    if profile.fallbacks:
+        fb_summary = ", ".join(f"{fb.provider}:{fb.model}" for fb in profile.fallbacks)
+        table.add_row("Fallbacks", fb_summary)
+    else:
+        table.add_row("Fallbacks", "(none)")
+    console.print(table)
+
+
+@llm_app.command("test")
+def llm_test(
+    provider: str | None = typer.Option(None, help="Override provider"),
+    model: str | None = typer.Option(None, help="Override model"),
+    prompt: str = typer.Option(
+        "Say 'ARKA is operational' and nothing else.", help="Prompt to test"
+    ),
+) -> None:
+    """Test LLM provider connectivity safely."""
+    with console.status("Testing LLM connectivity..."):
+        try:
+            result = api_post(
+                "/llm/test",
+                {"prompt": prompt, "provider": provider, "model": model},
+            )
+            if result.get("status") == "success":
+                console.print("[green][OK] LLM Provider is operational[/green]")
+                console.print(f"  Provider: {result.get('provider')}")
+                console.print(f"  Model: {result.get('model')}")
+                console.print(f"  Latency: {result.get('latency_ms')} ms")
+                console.print(f"  Response: {result.get('response')}")
+            else:
+                console.print(f"[red][X] LLM test failed: {result.get('error')}[/red]")
+        except Exception as e:
+            console.print(f"[red]Error contacting API: {e}[/red]")
+
+
+# Web Security Subcommands
+web_app = typer.Typer(name="web", help="Web & API security analysis commands")
+app.add_typer(web_app, name="web")
+
+
+@web_app.command("crawl")
+def web_crawl(
+    target: str = typer.Argument(..., help="Seed URL to crawl"),
+    max_pages: int = typer.Option(30, help="Maximum pages to crawl"),
+    max_depth: int = typer.Option(3, help="Maximum traversal depth"),
+) -> None:
+    """Run an authorized, scope-bounded web crawl against a target."""
+    console.print(f"[bold blue]Starting Web Crawler on {target}[/bold blue]")
+    try:
+        result = api_post(
+            "/web/crawl",
+            {"target": target, "max_pages": max_pages, "max_depth": max_depth},
+        )
+        table = Table(title="Crawl Results")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="bold")
+        table.add_row("Pages Crawled", str(result.get("pages_crawled", 0)))
+        table.add_row("Endpoints Discovered", str(result.get("endpoints_count", 0)))
+        table.add_row("Forms Discovered", str(result.get("forms_count", 0)))
+        console.print(table)
+    except Exception as e:
+        console.print(f"[red]Crawl failed or API unavailable: {e}[/red]")
+
+
+@web_app.command("openapi")
+def web_openapi(
+    target: str = typer.Argument(..., help="Target base URL or OpenAPI specification URL"),
+) -> None:
+    """Discover and analyze OpenAPI/Swagger specifications."""
+    console.print(f"[bold blue]Probing OpenAPI specifications on {target}[/bold blue]")
+    try:
+        result = api_post("/web/openapi", {"target": target})
+        console.print(f"[green]Schemas found: {result.get('schemas_found', 0)}[/green]")
+        console.print(f"Endpoints extracted: {result.get('endpoints_discovered', 0)}")
+    except Exception as e:
+        console.print(f"[red]OpenAPI discovery failed: {e}[/red]")
+
+
+@web_app.command("graphql")
+def web_graphql(
+    target: str = typer.Argument(..., help="Target base URL or GraphQL endpoint URL"),
+) -> None:
+    """Discover and introspect GraphQL endpoints."""
+    console.print(f"[bold blue]Probing GraphQL endpoint on {target}[/bold blue]")
+    try:
+        result = api_post("/web/graphql", {"target": target})
+        if result.get("graphql_detected"):
+            console.print("[green]GraphQL detected[/green]")
+            console.print(f"Introspection: {result.get('introspection_enabled')}")
+            console.print(f"Queries: {result.get('queries_count', 0)}")
+            console.print(f"Mutations: {result.get('mutations_count', 0)}")
+        else:
+            console.print("[yellow]No active GraphQL endpoint detected[/yellow]")
+    except Exception as e:
+        console.print(f"[red]GraphQL analysis failed: {e}[/red]")
+
+
+@web_app.command("endpoints")
+def web_endpoints(
+    engagement_id: str = typer.Argument(..., help="Engagement ID to query"),
+) -> None:
+    """List discovered web endpoints for an engagement."""
+    try:
+        result = api_get(f"/engagements/{engagement_id}/endpoints")
+        endpoints = result.get("endpoints", [])
+        table = Table(title=f"Discovered Endpoints ({len(endpoints)})")
+        table.add_column("Scheme", style="cyan")
+        table.add_column("Host", style="bold")
+        table.add_column("Path", style="green")
+        table.add_column("Source")
+        table.add_column("Authorized Scope")
+        for ep in endpoints:
+            in_scope = ep.get("metadata", {}).get("in_authorized_scope", False)
+            table.add_row(
+                ep.get("scheme", "http"),
+                ep.get("host", ""),
+                ep.get("path", "/"),
+                ep.get("source", ""),
+                "[green]Yes[/green]" if in_scope else "[yellow]No (Discovered)[/yellow]",
+            )
+        console.print(table)
+    except Exception as e:
+        console.print(f"[red]Failed to retrieve endpoints: {e}[/red]")
+
+
+def main() -> None:
     app()
 
 

@@ -150,6 +150,14 @@ class InMemoryAssetRepository:
         """Retrieve all endpoints associated with an asset."""
         return [e.model_copy(deep=True) for e in self._endpoints.values() if e.asset_id == asset_id]
 
+    def get_endpoints_by_engagement(self, engagement_id: str) -> list[Endpoint]:
+        """Retrieve all endpoints associated with an engagement."""
+        return [
+            e.model_copy(deep=True)
+            for e in self._endpoints.values()
+            if e.engagement_id == engagement_id
+        ]
+
     def get_findings_by_engagement(self, engagement_id: str) -> list[Finding]:
         """Retrieve all findings associated with an engagement."""
         return [
@@ -442,6 +450,32 @@ class AssetRepository:
         """Query all endpoints for an asset."""
         asset_uuid = uuid.UUID(asset_id)
         stmt = select(EndpointDB).where(EndpointDB.asset_id == asset_uuid)
+        result = await self.session.execute(stmt)
+        rows = result.scalars().all()
+        return [
+            Endpoint(
+                endpoint_id=str(row.id),
+                engagement_id=str(row.engagement_id),
+                asset_id=str(row.asset_id),
+                scheme=row.scheme,
+                host=row.host,
+                port=row.port,
+                path=row.path,
+                query_metadata=row.query_metadata or {},
+                source=row.source,
+                confidence=row.confidence,
+                first_seen=row.first_seen,
+                last_seen=row.last_seen,
+                evidence_refs=row.evidence_refs or [],
+                metadata=row.metadata_ or {},
+            )
+            for row in rows
+        ]
+
+    async def get_endpoints_by_engagement(self, engagement_id: str) -> list[Endpoint]:
+        """Query all endpoints for an engagement."""
+        eng_uuid = uuid.UUID(engagement_id)
+        stmt = select(EndpointDB).where(EndpointDB.engagement_id == eng_uuid)
         result = await self.session.execute(stmt)
         rows = result.scalars().all()
         return [

@@ -87,14 +87,10 @@ class TaskRepository:
     async def get_task(self, task_id: str) -> Task | None:
         """Load a task by its primary key."""
         async with self._session_factory() as session:
-            result = await session.execute(
-                select(Task).where(Task.id == uuid.UUID(task_id))
-            )
+            result = await session.execute(select(Task).where(Task.id == uuid.UUID(task_id)))
             return result.scalar_one_or_none()
 
-    async def get_task_by_id_and_engagement(
-        self, task_id: str, engagement_id: str
-    ) -> Task | None:
+    async def get_task_by_id_and_engagement(self, task_id: str, engagement_id: str) -> Task | None:
         """Load a task by ID ensuring it belongs to the given engagement (isolation)."""
         async with self._session_factory() as session:
             result = await session.execute(

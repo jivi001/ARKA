@@ -270,4 +270,3 @@ async def test_task_retry_exhaustion_to_failed(async_db):
     assert len(failed.errors) == 2
     assert "[Retry 1] Attempt 1 failed" in failed.errors[0]
     assert "Attempt 2 failed permanently" in failed.errors[1]
-

@@ -3,6 +3,8 @@
 Defines execution requests, results, statuses, limits, and evidence references.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -103,6 +105,33 @@ class ExecutionRequest(BaseModel):
     environment: dict[str, str] = Field(default_factory=dict)  # Sanitized environment
     limits: ExecutionLimits = Field(default_factory=ExecutionLimits)
     network_profile: NetworkProfile = NetworkProfile.NO_NETWORK
+    capability_context: CapabilityContext | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class CapabilityContext(BaseModel):
+    """Minimal capability context required to authorize an execution (Section 6.1)."""
+
+    capability_id: str = Field(default_factory=new_id)
+    engagement_id: str = Field(..., min_length=1)
+    task_id: str = Field(..., min_length=1)
+    scope_version: int = Field(default=1, ge=1)
+    tool_name: str = Field(..., min_length=1)
+    target: str = Field(..., min_length=1)
+    allowed_methods: list[str] = Field(
+        default_factory=lambda: [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS",
+            "HEAD",
+            "PATCH",
+        ]
+    )
+    network_profile: NetworkProfile = Field(default=NetworkProfile.CONTROLLED_NETWORK)
+    resource_limits: ExecutionLimits = Field(default_factory=ExecutionLimits)
+    approval_id: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
 
 

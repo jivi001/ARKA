@@ -53,6 +53,7 @@ class LLMRequest(BaseModel):
     max_tokens: int | None = None
     response_format: dict[str, Any] | None = None  # structured output schema
     timeout: int | None = None
+    include_raw: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
     requested_at: datetime = Field(default_factory=utc_now)
 
@@ -76,6 +77,8 @@ class LLMResponse(BaseModel):
     content: str
     structured_output: dict[str, Any] | None = None
     usage: TokenUsage = Field(default_factory=TokenUsage)
+    finish_reason: str | None = None
+    raw_response: dict[str, Any] | None = None
     latency_ms: int = 0
     success: bool = True
     error: str | None = None

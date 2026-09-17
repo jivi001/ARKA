@@ -253,10 +253,13 @@ class TestLLMGatewayIntegration:
         with patch("arka.app.llm.gateway.gateway.get_settings", return_value=mock_settings):
             gateway = LLMGateway()
             providers = await gateway.get_providers()
-            assert len(providers) == 2
-            assert providers[0]["name"] == "openai"
-            assert providers[0]["role"] == "primary"
-            assert providers[0]["configured"] is True
-            assert providers[1]["name"] == "anthropic"
-            assert providers[1]["role"] == "fallback"
-            assert providers[1]["configured"] is True
+            assert len(providers) == 7
+            by_name = {p["name"]: p for p in providers}
+            assert "openai" in by_name
+            assert by_name["openai"]["role"] == "primary"
+            assert by_name["openai"]["configured"] is True
+            assert by_name["openai"]["status"] == "ACTIVE"
+            assert "anthropic" in by_name
+            assert by_name["anthropic"]["role"] == "fallback"
+            assert by_name["anthropic"]["configured"] is True
+            assert by_name["anthropic"]["status"] == "AVAILABLE"
