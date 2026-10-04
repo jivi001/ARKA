@@ -1,0 +1,190 @@
+# ==============================================================================
+# ARKA .gitignore — Autonomous Risk Knowledge & Assessment Platform
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Python & Bytecode
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# ------------------------------------------------------------------------------
+# 2. Virtual Environments & Packages
+# ------------------------------------------------------------------------------
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ------------------------------------------------------------------------------
+# 3. Python Build, Distribution & Packaging
+# ------------------------------------------------------------------------------
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ------------------------------------------------------------------------------
+# 4. Typing, Linting & Formatting
+# ------------------------------------------------------------------------------
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# ------------------------------------------------------------------------------
+# 5. Testing, Coverage & Profiling
+# ------------------------------------------------------------------------------
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# ------------------------------------------------------------------------------
+# 6. AI Assistants & Tool Workspaces
+# ------------------------------------------------------------------------------
+.agents/
+.gemini/
+.antigravity/
+.claude/
+.cursor/
+.windsurf/
+.copilot/
+.amazonq/
+graphify-out/
+
+# ------------------------------------------------------------------------------
+# 7. Verification, Scratch & Local Audit Artifacts
+# ------------------------------------------------------------------------------
+/verification/
+/function_inventory.json
+scratch/
+logs/
+*.log
+*.log.*
+sbom*.json
+pip-audit*.json
+
+# ------------------------------------------------------------------------------
+# 8. Frontend — Next.js / pnpm / Tailwind (Operator Console)
+# ------------------------------------------------------------------------------
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+out/
+frontend/out/
+
+# Turbopack / Turborepo
+.turbo/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Next.js auto-generated type declarations
+next-env.d.ts
+
+# pnpm
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Package manager debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+.npm
+
+# Vercel deployment
+.vercel
+
+# Tailwind / PostCSS caches
+.postcss-cache/
+
+# Frontend test coverage
+frontend/coverage/
+
+# ------------------------------------------------------------------------------
+# 9. Local Databases & In-Memory Queues
+# ------------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+dump.rdb
+
+# ------------------------------------------------------------------------------
+# 10. Secrets & Environment Files (Strictly Ignored)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# Certificates and private keys
+*.pem
+*.key
+*.cert
+*.crt
+
+# ------------------------------------------------------------------------------
+# 11. Operating System & Editor Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+
+# ------------------------------------------------------------------------------
+# 12. Notebooks & Misc
+# ------------------------------------------------------------------------------
+.ipynb_checkpoints/
+
+# ------------------------------------------------------------------------------
+# 13. Docker & Archives
+# ------------------------------------------------------------------------------
+*.tar
+*.tar.gz
