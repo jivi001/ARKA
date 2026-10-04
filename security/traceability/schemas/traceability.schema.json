@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Security Traceability Matrix Schema",
+  "type": "object",
+  "required": ["traceability_matrix"],
+  "properties": {
+    "traceability_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "threat",
+          "control",
+          "component",
+          "implementation",
+          "test",
+          "acceptance",
+          "ci",
+          "phase",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^TRACE-[A-Z0-9-]+$"
+          },
+          "threat": {
+            "type": "string",
+            "pattern": "^THREAT-[A-Z0-9-]+$"
+          },
+          "control": {
+            "type": "string",
+            "pattern": "^CTRL-[A-Z0-9-]+$"
+          },
+          "component": {
+            "type": "string",
+            "pattern": "^COMP-[A-Z0-9-]+$"
+          },
+          "implementation": {
+            "type": "object",
+            "required": ["phase", "status"],
+            "properties": {
+              "phase": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "status": {
+                "type": "string",
+                "pattern": "^(IMPLEMENTED_PASSING|PENDING\\(phase=[0-9]+\\)|FAILING|BLOCKED\\(.+\\))$"
+              },
+              "target_path": {
+                "type": ["string", "null"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "test": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^TEST-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "acceptance": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^GATE-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "ci": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^CI-SEC-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "phase": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "status": {
+            "type": "string",
+            "pattern": "^(IMPLEMENTED_PASSING|PENDING\\(phase=[0-9]+\\)|FAILING|BLOCKED\\(.+\\))$"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

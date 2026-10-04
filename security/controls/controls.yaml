@@ -1,0 +1,686 @@
+controls:
+  - id: "CTRL-CONTENT-ISOLATION-001"
+    name: "Target Content Quarantine and Untrusted Tagging"
+    description: "Enforces strict tagging of all ingested target content as untrusted evidence, stripping executable elements and preventing direct inclusion in system prompt context (INV-007)."
+    threats:
+      - "THREAT-MALICIOUS-TARGET-CONTENT"
+    components:
+      - "COMP-EVID"
+    phase: 3
+    security_property: "Target content cannot alter system prompt instructions or execution permissions."
+    enforcement_layer:
+      - "evidence-pipeline"
+      - "content-sanitizer"
+    test_ids:
+      - "TEST-EVIDENCE-PARSER-001"
+    gate_ids:
+      - "GATE-CONTENT-ISOLATION-001"
+    status: "PENDING(phase=3)"
+
+  - id: "CTRL-PROMPT-GUARD-001"
+    name: "Dual-Boundary Prompt Injection Defense"
+    description: "Applies structural delimitation and semantic validation on LLM inputs, preventing user/target prompt injection from escaping data contexts (INV-001, INV-007)."
+    threats:
+      - "THREAT-PROMPT-INJECTION"
+    components:
+      - "COMP-LLM-GW"
+    phase: 3
+    security_property: "Natural language instructions in data payloads cannot authorize actions."
+    enforcement_layer:
+      - "llm-gateway"
+      - "prompt-boundary"
+    test_ids:
+      - "TEST-PROMPT-INJECTION-001"
+    gate_ids:
+      - "GATE-PROMPT-GUARD-001"
+    status: "PENDING(phase=3)"
+
+  - id: "CTRL-TOOL-OUTPUT-SANITIZATION-001"
+    name: "Tool Output Normalization and Control Code Scrubbing"
+    description: "Sanitizes raw stdout/stderr and network output from worker tools, stripping ANSI escape codes, terminal escape sequences, and delimiter sequences (INV-007, INV-010)."
+    threats:
+      - "THREAT-TOOL-OUTPUT-POISONING"
+    components:
+      - "COMP-SANDBOX"
+      - "COMP-EVID"
+    phase: 3
+    security_property: "Tool execution output cannot inject control codes or forge structured evidence."
+    enforcement_layer:
+      - "sandbox-wrapper"
+      - "evidence-parser"
+    test_ids:
+      - "TEST-TOOL-POISONING-001"
+    gate_ids:
+      - "GATE-TOOL-OUTPUT-001"
+    status: "PENDING(phase=3)"
+
+  - id: "CTRL-AGENT-SUPERVISION-001"
+    name: "Deterministic Kernel Autonomous Loop Throttling"
+    description: "Enforces proposal rate-limiting, maximum recursion depth, and loop detection on agent actions, preventing infinite autonomous action loops (INV-001, INV-002, INV-004)."
+    threats:
+      - "THREAT-ROGUE-AGENT"
+    components:
+      - "COMP-KERNEL"
+      - "COMP-RES-GOV"
+    phase: 1
+    security_property: "Rogue or looping agents cannot exceed task execution budgets or self-authorize."
+    enforcement_layer:
+      - "deterministic-kernel"
+      - "resource-governor"
+    test_ids:
+      - "TEST-RESOURCE-001"
+    gate_ids:
+      - "GATE-ROGUE-AGENT-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-A2A-AUTH-001"
+    name: "Cryptographic Inter-Agent Mutual Authentication"
+    description: "Requires all inter-agent messages to carry cryptographic signatures and mission-scoped identity tokens issued by the security kernel (INV-002, INV-004)."
+    threats:
+      - "THREAT-FORGED-A2A-MESSAGE"
+    components:
+      - "COMP-AUTH"
+    phase: 3
+    security_property: "Inter-agent messages cannot be spoofed, forged, or replayed across missions."
+    enforcement_layer:
+      - "a2a-protocol"
+      - "token-authenticator"
+    test_ids:
+      - "TEST-A2A-FORGERY-001"
+    gate_ids:
+      - "GATE-A2A-AUTH-001"
+    status: "PENDING(phase=3)"
+
+  - id: "CTRL-TOKEN-PROTECTION-001"
+    name: "Capability Token Sealing and Ephemeral Lifetime"
+    description: "Capability tokens are sealed in kernel process memory, limited to 15-minute validity, and strictly excluded from logs and LLM prompt context (INV-001, INV-011)."
+    threats:
+      - "THREAT-TOKEN-THEFT"
+    components:
+      - "COMP-AUTH"
+      - "COMP-KERNEL"
+    phase: 1
+    security_property: "Tokens cannot be exfiltrated via prompt leakage, logs, or persistent storage."
+    enforcement_layer:
+      - "token-signer"
+      - "log-redactor"
+    test_ids:
+      - "TEST-CAPABILITY-SCOPE-001"
+    gate_ids:
+      - "GATE-TOKEN-PROTECTION-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-REPLAY-001"
+    name: "Action Proposal Replay Prevention"
+    description: "Kernel assigns unique cryptographic action IDs and tracks state transitions in SQLite WAL, ensuring completed/expired proposals cannot re-execute (INV-006, INV-010)."
+    threats:
+      - "THREAT-REPLAY"
+    components:
+      - "COMP-KERNEL"
+    phase: 1
+    security_property: "Completed, denied, or expired actions cannot execute again under any circumstances."
+    enforcement_layer:
+      - "deterministic-kernel"
+    test_ids:
+      - "TEST-REPLAY-001"
+    gate_ids:
+      - "GATE-REPLAY-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-SCOPE-ENFORCEMENT-001"
+    name: "Quad-Check Scope Verification Engine"
+    description: "Validates targets at proposal, authorization, dispatch, and socket connection against CIDR/domain allowlists; denies out-of-scope access (INV-003, INV-004)."
+    threats:
+      - "THREAT-SCOPE-EXPANSION"
+    components:
+      - "COMP-SCOPE"
+      - "COMP-BROKER"
+    phase: 1
+    security_property: "Discovered assets cannot be targeted without explicit operator scope approval."
+    enforcement_layer:
+      - "deterministic-kernel"
+      - "scope-engine"
+    test_ids:
+      - "TEST-CAPABILITY-SCOPE-001"
+    gate_ids:
+      - "GATE-SCOPE-ENFORCEMENT-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-SSRF-001"
+    name: "Broker SSRF and Private Range Blocking"
+    description: "Execution broker resolves targets and rejects RFC 1918, RFC 3927 (link-local), loopback (127.0.0.0/8), cloud metadata (169.254.169.254), and multicast ranges (INV-003, INV-015)."
+    threats:
+      - "THREAT-SSRF"
+    components:
+      - "COMP-BROKER"
+    phase: 2
+    security_property: "Requests cannot reach internal, private, loopback, or metadata network addresses."
+    enforcement_layer:
+      - "execution-broker"
+      - "network-filter"
+    test_ids:
+      - "TEST-SSRF-001"
+    gate_ids:
+      - "GATE-SSRF-001"
+    status: "PENDING(phase=2)"
+
+  - id: "CTRL-DNS-PINNING-001"
+    name: "Synchronous DNS Resolution Pinning and Rebinding Prevention"
+    description: "Broker resolves hostnames prior to validation and connects strictly to pinned, validated IP addresses, preventing DNS rebinding TOCTOU attacks (INV-003, INV-015)."
+    threats:
+      - "THREAT-DNS-REBINDING"
+    components:
+      - "COMP-BROKER"
+    phase: 2
+    security_property: "DNS rebinding cannot divert authorized connections to unauthorized IP addresses."
+    enforcement_layer:
+      - "execution-broker"
+    test_ids:
+      - "TEST-DNS-REBIND-001"
+    gate_ids:
+      - "GATE-DNS-REBIND-001"
+    status: "PENDING(phase=2)"
+
+  - id: "CTRL-CRED-ISOLATION-001"
+    name: "Credential Vault Session Isolation and Dynamic Injection"
+    description: "Credentials encrypted at rest under CREDENTIAL-KEK; injected into sandbox workers as ephemeral environment variables; zero raw LLM exposure (INV-010, INV-011)."
+    threats:
+      - "THREAT-CREDENTIAL-THEFT"
+    components:
+      - "COMP-CRED"
+    phase: 6
+    security_property: "Raw credentials are never logged, persisted in plaintext, or exposed to LLM context."
+    enforcement_layer:
+      - "credential-vault"
+      - "broker-injector"
+    test_ids:
+      - "TEST-CREDENTIAL-ISOLATION-001"
+    gate_ids:
+      - "GATE-CRED-ISOLATION-001"
+    status: "PENDING(phase=6)"
+
+  - id: "CTRL-SANDBOX-CONTAINMENT-001"
+    name: "Rootless Container Sandbox Isolation"
+    description: "Workers run in rootless Linux containers with dropped capabilities, read-only rootfs, isolated namespaces (PID/net/IPC/mount), and strict seccomp profiles (INV-008, INV-010)."
+    threats:
+      - "THREAT-SANDBOX-ESCAPE"
+    components:
+      - "COMP-SANDBOX"
+      - "COMP-WORKER"
+    phase: 2
+    security_property: "Sandboxed processes cannot escape containment or access host filesystem/namespaces."
+    enforcement_layer:
+      - "container-runtime"
+      - "seccomp-profile"
+    test_ids:
+      - "TEST-SANDBOX-PRIV-001"
+    gate_ids:
+      - "GATE-SANDBOX-CONTAINMENT-001"
+    status: "PENDING(phase=2)"
+
+  - id: "CTRL-HOST-PROTECTION-001"
+    name: "MicroVM Hardware Virtualization Isolation"
+    description: "High-risk controlled exploitation executes within dedicated Firecracker microVMs or gVisor sandbox runtimes, isolating kernel attack surfaces from host (INV-008, INV-010)."
+    threats:
+      - "THREAT-HOST-COMPROMISE"
+    components:
+      - "COMP-SANDBOX"
+    phase: 9
+    security_property: "Container kernel vulnerabilities cannot compromise host operating system."
+    enforcement_layer:
+      - "microvm-runtime"
+    test_ids:
+      - "TEST-SANDBOX-PRIV-001"
+    gate_ids:
+      - "GATE-HOST-PROTECTION-001"
+    status: "PENDING(phase=9)"
+
+  - id: "CTRL-MISSION-ISOLATION-001"
+    name: "Mission-Scoped Cryptographic and Database Separation"
+    description: "Every query, cache key, evidence record, and credential session enforces mission_id tenancy checks in SQL and memory; cross-mission access fails closed (INV-004, INV-010)."
+    threats:
+      - "THREAT-CROSS-MISSION-LEAKAGE"
+    components:
+      - "COMP-KERNEL"
+    phase: 1
+    security_property: "Data, credentials, and evidence from mission A cannot be accessed by mission B."
+    enforcement_layer:
+      - "deterministic-kernel"
+      - "database-rls"
+    test_ids:
+      - "TEST-MISSION-ISOLATION-001"
+    gate_ids:
+      - "GATE-MISSION-ISOLATION-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-AUDIT-INTEGRITY-001"
+    name: "Append-Only Cryptographic Audit Hash Chain"
+    description: "Audit events serialized to RFC 8785 canonical JSON, hashed into SHA-256 chain H_n = H(H_{n-1} || payload), and signed under AUDIT-SIGNING key (INV-012, INV-010)."
+    threats:
+      - "THREAT-AUDIT-TAMPERING"
+    components:
+      - "COMP-AUDIT"
+    phase: 1
+    security_property: "Historical audit log events cannot be rewritten, truncated, or removed without detection."
+    enforcement_layer:
+      - "audit-service"
+      - "crypto-key-provider"
+    test_ids:
+      - "TEST-AUDIT-INTEGRITY-001"
+    gate_ids:
+      - "GATE-AUDIT-INTEGRITY-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-EVIDENCE-INTEGRITY-001"
+    name: "Content-Addressed Immutable Evidence Storage"
+    description: "Evidence stored by content hash; subsequent reads verify SHA-256 integrity hash against catalog database before ingestion into agents or reports (INV-010)."
+    threats:
+      - "THREAT-EVIDENCE-TAMPERING"
+    components:
+      - "COMP-EVID"
+    phase: 1
+    security_property: "Evidence artifacts cannot be modified after initial storage without triggering hash mismatch."
+    enforcement_layer:
+      - "evidence-pipeline"
+    test_ids:
+      - "TEST-EVIDENCE-INTEGRITY-001"
+    gate_ids:
+      - "GATE-EVIDENCE-INTEGRITY-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-RESOURCE-LIMIT-001"
+    name: "Deterministic Resource and Token Quota Enforcer"
+    description: "Applies cgroup CPU, memory, PID, and disk quotas on workers alongside LLM token and API budget limits; enforces automatic termination upon exhaustion (INV-010)."
+    threats:
+      - "THREAT-RESOURCE-EXHAUSTION"
+    components:
+      - "COMP-RES-GOV"
+    phase: 1
+    security_property: "Excessive resource consumption terminates offending tasks without affecting kernel."
+    enforcement_layer:
+      - "resource-governor"
+      - "cgroup-enforcer"
+    test_ids:
+      - "TEST-RESOURCE-001"
+    gate_ids:
+      - "GATE-RESOURCE-LIMIT-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-EGRESS-FILTER-001"
+    name: "LLM Gateway Data Loss Prevention and Key Obfuscation"
+    description: "Proxies all LLM traffic through COMP-LLM-GW; strips platform API keys, redact PII/credentials, and logs prompt token metadata (INV-001, INV-011)."
+    threats:
+      - "THREAT-LLM-PROVIDER-EXPOSURE"
+    components:
+      - "COMP-LLM-GW"
+    phase: 3
+    security_property: "Platform credentials and sensitive target data are not leaked to external LLM providers."
+    enforcement_layer:
+      - "llm-gateway"
+      - "dlp-filter"
+    test_ids:
+      - "TEST-LLM-EGRESS-001"
+    gate_ids:
+      - "GATE-EGRESS-FILTER-001"
+    status: "PENDING(phase=3)"
+
+  - id: "CTRL-SUPPLY-CHAIN-AUDIT-001"
+    name: "Automated Supply Chain and Dependency Scanning"
+    description: "Automated CI scanning using pip-audit for Python and pnpm audit for Frontend, enforcing zero known vulnerabilities before merge (INV-010)."
+    threats:
+      - "THREAT-DEPENDENCY-COMPROMISE"
+    components:
+      - "COMP-CI"
+    phase: 0
+    security_property: "Dependencies with known CVEs cannot enter production builds."
+    enforcement_layer:
+      - "ci-cd-pipeline"
+    test_ids:
+      - "TEST-SUPPLY-CHAIN-001"
+    gate_ids:
+      - "GATE-SUPPLY-CHAIN-001"
+    status: "IMPLEMENTED_PASSING"
+
+  - id: "CTRL-DUAL-AUTHORIZATION-001"
+    name: "Operator Dual Approval and Explicit Parameter Confirmation"
+    description: "High-risk actions require human operator confirmation displaying normalized target, capability, and parameter hash; prevents operator confusion (INV-005, INV-010)."
+    threats:
+      - "THREAT-OPERATOR-MISUSE"
+    components:
+      - "COMP-APPROV"
+    phase: 1
+    security_property: "Operators cannot accidentally approve un-inspected or mutated destructive actions."
+    enforcement_layer:
+      - "approval-manager"
+      - "ui-console"
+    test_ids:
+      - "TEST-APPROVAL-EXPIRY-001"
+    gate_ids:
+      - "GATE-DUAL-AUTHORIZATION-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-TOCTOU-BINDING-001"
+    name: "Canonical RFC 8785 Parameter Hash Dispatch Binding"
+    description: "Binds approvals to canonical RFC 8785 JSON parameter hash; broker recomputes hash at execution time and halts if mutation is detected (INV-005, INV-010)."
+    threats:
+      - "THREAT-TOCTOU-PARAMETER-MUTATION"
+    components:
+      - "COMP-APPROV"
+      - "COMP-BROKER"
+    phase: 1
+    security_property: "Actions cannot execute with parameters different from the approved parameter hash."
+    enforcement_layer:
+      - "deterministic-kernel"
+      - "execution-broker"
+    test_ids:
+      - "TEST-PARAM-MUTATION-001"
+    gate_ids:
+      - "GATE-TOCTOU-BINDING-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-EMERGENCY-STOP-001"
+    name: "Hardware-Style Immediate Execution Kill Switch"
+    description: "Atomic emergency stop flag in kernel; upon activation, broker sends SIGKILL to all active containers, revokes network tokens, and halts scheduling (INV-010)."
+    threats:
+      - "THREAT-EMERGENCY-STOP-BYPASS"
+    components:
+      - "COMP-ESTOP"
+    phase: 1
+    security_property: "Emergency stop immediately terminates all target interactions and prevents new proposals."
+    enforcement_layer:
+      - "deterministic-kernel"
+      - "execution-broker"
+    test_ids:
+      - "TEST-ESTOP-001"
+    gate_ids:
+      - "GATE-EMERGENCY-STOP-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-PARSER-SANDBOX-001"
+    name: "Sandboxed Isolated Evidence Parsing"
+    description: "Parsers for complex formats (XML, HTML, JSON, raw tool text) run in memory-limited unprivileged sandboxes to prevent parser exploits from compromising the host (INV-007, INV-010)."
+    threats:
+      - "THREAT-EVIDENCE-PARSER-COMPROMISE"
+    components:
+      - "COMP-SANDBOX"
+      - "COMP-EVID"
+    phase: 3
+    security_property: "Exploits in evidence parsing libraries cannot escape parser sandbox or access kernel."
+    enforcement_layer:
+      - "sandbox-wrapper"
+    test_ids:
+      - "TEST-EVIDENCE-PARSER-001"
+    gate_ids:
+      - "GATE-PARSER-SANDBOX-001"
+    status: "PENDING(phase=3)"
+
+  - id: "CTRL-GRAPH-INTEGRITY-001"
+    name: "Knowledge Graph Assertion Provenance Validation"
+    description: "Requires all graph nodes and edges to record evidence hash pointers and origin task IDs; unevidenced assertions cannot influence agent planning (INV-007, INV-003)."
+    threats:
+      - "THREAT-GRAPHIFY-POISONING"
+    components:
+      - "COMP-KG"
+    phase: 3
+    security_property: "Unverified target data cannot inject false topology or rogue authority into knowledge graph."
+    enforcement_layer:
+      - "knowledge-graph"
+    test_ids:
+      - "TEST-GRAPHIFY-POISONING-001"
+    gate_ids:
+      - "GATE-GRAPH-INTEGRITY-001"
+    status: "PENDING(phase=3)"
+
+  - id: "CTRL-LLM-EGRESS-DLP-001"
+    name: "Outbound LLM Request Token and Leakage Filtering"
+    description: "Inspects outbound prompt payloads for accidental inclusion of internal system tokens, secrets, or sensitive target data before external network transit (INV-001, INV-011)."
+    threats:
+      - "THREAT-LLM-EGRESS-DATA-LEAKAGE"
+    components:
+      - "COMP-LLM-GW"
+    phase: 3
+    security_property: "Internal tokens, private keys, and credential secrets cannot be transmitted to LLM endpoints."
+    enforcement_layer:
+      - "llm-gateway"
+    test_ids:
+      - "TEST-LLM-EGRESS-001"
+    gate_ids:
+      - "GATE-LLM-EGRESS-001"
+    status: "PENDING(phase=3)"
+
+  - id: "CTRL-CI-GATE-PROTECTION-001"
+    name: "Protected CI Gates and Baseline Manifest Verification"
+    description: "CI pipeline verifies SHA-256 hashes of all security schemas, threat models, and validators against baseline.manifest; prevents silent gate alteration (INV-010)."
+    threats:
+      - "THREAT-CI-GATE-MANIPULATION"
+    components:
+      - "COMP-CI"
+    phase: 0
+    security_property: "Security gates, schemas, and validators cannot be modified without manifest re-sealing."
+    enforcement_layer:
+      - "ci-cd-pipeline"
+      - "validator"
+    test_ids:
+      - "TEST-P0-CI-GATE-INTEGRITY-001"
+    gate_ids:
+      - "GATE-CI-INTEGRITY-001"
+    status: "IMPLEMENTED_PASSING"
+
+  - id: "CTRL-CI-SUPPLY-CHAIN-001"
+    name: "Immutable Commit-SHA Pinned GitHub Actions"
+    description: "All GitHub Actions in CI workflows are pinned to 40-character commit SHAs, minimal permissions (contents: read), and gitleaks secret scanning (INV-010)."
+    threats:
+      - "THREAT-CI-SUPPLY-CHAIN-COMPROMISE"
+    components:
+      - "COMP-CI"
+    phase: 0
+    security_property: "Third-party action compromise or tag-floating cannot poison CI build environments."
+    enforcement_layer:
+      - "ci-cd-pipeline"
+    test_ids:
+      - "TEST-SUPPLY-CHAIN-001"
+    gate_ids:
+      - "GATE-CI-SUPPLY-CHAIN-001"
+    status: "IMPLEMENTED_PASSING"
+
+  - id: "CTRL-METADATA-BLOCK-001"
+    name: "Cloud Metadata and Link-Local Endpoint Blocking"
+    description: "Kernel and broker explicitly block access to 169.254.169.254, fd00::/8, and cloud metadata service hostnames across all network calls (INV-003, INV-015)."
+    threats:
+      - "THREAT-METADATA-ENDPOINT-ACCESS"
+    components:
+      - "COMP-BROKER"
+    phase: 2
+    security_property: "Workloads cannot query cloud instance metadata or IAM credentials."
+    enforcement_layer:
+      - "execution-broker"
+      - "network-filter"
+    test_ids:
+      - "TEST-METADATA-001"
+    gate_ids:
+      - "GATE-METADATA-BLOCK-001"
+    status: "PENDING(phase=2)"
+
+  - id: "CTRL-IPV6-POLICY-001"
+    name: "Dual-Stack IPv6 Scope and Policy Filtering"
+    description: "Enforces identical scope validation and private address blocking for IPv6 addresses (::1, fe80::/10, fc00::/7) as applied to IPv4 (INV-003, INV-015)."
+    threats:
+      - "THREAT-IPV6-POLICY-BYPASS"
+    components:
+      - "COMP-BROKER"
+      - "COMP-SCOPE"
+    phase: 2
+    security_property: "IPv6 connections cannot bypass IPv4 scope controls or access un-scoped internal interfaces."
+    enforcement_layer:
+      - "execution-broker"
+      - "scope-engine"
+    test_ids:
+      - "TEST-IPV6-BYPASS-001"
+    gate_ids:
+      - "GATE-IPV6-POLICY-001"
+    status: "PENDING(phase=2)"
+
+  - id: "CTRL-REDIRECT-FILTER-001"
+    name: "HTTP Redirect Destination Scope Re-Validation"
+    description: "HTTP client intercepts all 3xx redirects and subjects the Location header target to full ScopeGuard and SSRF re-evaluation prior to following (INV-003, INV-015)."
+    threats:
+      - "THREAT-REDIRECT-VALIDATION-BYPASS"
+    components:
+      - "COMP-BROKER"
+    phase: 2
+    security_property: "HTTP redirects cannot pivot an in-scope request to an out-of-scope or private target."
+    enforcement_layer:
+      - "execution-broker"
+      - "http-client"
+    test_ids:
+      - "TEST-REDIRECT-001"
+    gate_ids:
+      - "GATE-REDIRECT-FILTER-001"
+    status: "PENDING(phase=2)"
+
+  - id: "CTRL-BROWSER-SANDBOX-001"
+    name: "Headless Browser Network and IPC Isolation"
+    description: "Browser engines (Playwright/Chromium) run in dedicated sandbox network namespaces with socket routing bound through the execution broker proxy (INV-002, INV-008, INV-009)."
+    threats:
+      - "THREAT-BROWSER-EXECUTION-BYPASS"
+    components:
+      - "COMP-SANDBOX"
+      - "COMP-BROKER"
+    phase: 2
+    security_property: "Browser execution cannot bypass the execution broker or make unmediated network requests."
+    enforcement_layer:
+      - "container-runtime"
+      - "browser-proxy"
+    test_ids:
+      - "TEST-SANDBOX-NET-001"
+    gate_ids:
+      - "GATE-BROWSER-SANDBOX-001"
+    status: "PENDING(phase=2)"
+
+  - id: "CTRL-CAPABILITY-SIGNING-001"
+    name: "Cryptographic Capability Token Verification"
+    description: "Execution broker verifies Ed25519 signature of capability token against TOKEN-SIGNING public key before dispatching any tool action (INV-001, INV-004, INV-016)."
+    threats:
+      - "THREAT-CAPABILITY-FORGERY"
+    components:
+      - "COMP-AUTH"
+      - "COMP-BROKER"
+    phase: 1
+    security_property: "Actions without valid, non-expired cryptographic capability tokens are immediately rejected."
+    enforcement_layer:
+      - "execution-broker"
+      - "crypto-key-provider"
+    test_ids:
+      - "TEST-CAPABILITY-FORGERY-001"
+    gate_ids:
+      - "GATE-CAPABILITY-SIGNING-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-SANDBOX-CLEANUP-001"
+    name: "Guaranteed Container Lifecycle Post-Execution Teardown"
+    description: "Broker guarantees termination, ephemeral storage wiping, and cgroup release upon tool success, failure, timeout, or cancellation (INV-011, INV-010)."
+    threats:
+      - "THREAT-SANDBOX-CLEANUP-FAILURE"
+    components:
+      - "COMP-SANDBOX"
+      - "COMP-WORKER"
+    phase: 2
+    security_property: "Worker containers cannot linger, leak memory, or retain credentials across tasks."
+    enforcement_layer:
+      - "execution-broker"
+      - "container-runtime"
+    test_ids:
+      - "TEST-SANDBOX-CLEANUP-001"
+    gate_ids:
+      - "GATE-SANDBOX-CLEANUP-001"
+    status: "PENDING(phase=2)"
+
+  - id: "CTRL-BUDGET-ENFORCEMENT-001"
+    name: "Hierarchical Task and Mission Budget Governance"
+    description: "Enforces max action limits, wall-clock timeouts, and LLM token budgets; tasks exceeding budgets enter BLOCKED state immediately (INV-010)."
+    threats:
+      - "THREAT-BUDGET-OVERRUN"
+    components:
+      - "COMP-RES-GOV"
+    phase: 1
+    security_property: "No task can run unbounded or consume unallocated platform resources."
+    enforcement_layer:
+      - "resource-governor"
+    test_ids:
+      - "TEST-RESOURCE-001"
+    gate_ids:
+      - "GATE-BUDGET-ENFORCEMENT-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-FAIL-CLOSED-DEFAULT-001"
+    name: "Systemic Fail-Closed Error and Exception Handling"
+    description: "Any internal error, timeout, unparseable input, policy ambiguity, or unexpected exception in the authorization path resolves to DENY (INV-010)."
+    threats:
+      - "THREAT-FAIL-CLOSED-VIOLATION"
+    components:
+      - "COMP-KERNEL"
+    phase: 1
+    security_property: "Failures in security components result in complete denial of execution."
+    enforcement_layer:
+      - "deterministic-kernel"
+    test_ids:
+      - "TEST-FAIL-CLOSED-001"
+    gate_ids:
+      - "GATE-FAIL-CLOSED-001"
+    status: "PENDING(phase=1)"
+
+  - id: "CTRL-P0-MODEL-INTEGRITY-001"
+    name: "Machine-Readable Threat Model and Schema Enforcement"
+    description: "Enforces strict JSON schema validation, referential integrity across assets, actors, boundaries, surfaces, and threats, and stable ID conventions (INV-010)."
+    threats:
+      - "THREAT-CI-GATE-MANIPULATION"
+    components:
+      - "COMP-KERNEL"
+      - "COMP-CI"
+    phase: 0
+    security_property: "Security model is machine-verifiable with zero broken foreign keys or schema violations."
+    enforcement_layer:
+      - "validator"
+      - "ci-cd-pipeline"
+    test_ids:
+      - "TEST-P0-MODEL-INTEGRITY-001"
+    gate_ids:
+      - "GATE-P0-FOUNDATION-001"
+    status: "IMPLEMENTED_PASSING"
+
+  - id: "CTRL-P0-TRACEABILITY-001"
+    name: "Comprehensive Threat-to-Gate Security Traceability"
+    description: "Enforces 100% bidirectional traceability from threat to control, component, test contract, acceptance gate, and CI check (INV-010)."
+    threats:
+      - "THREAT-CI-GATE-MANIPULATION"
+    components:
+      - "COMP-KERNEL"
+      - "COMP-CI"
+    phase: 0
+    security_property: "Every identified threat has an owning control, test contract, and blocking gate."
+    enforcement_layer:
+      - "validator"
+      - "ci-cd-pipeline"
+    test_ids:
+      - "TEST-P0-TRACEABILITY-001"
+    gate_ids:
+      - "GATE-P0-FOUNDATION-001"
+    status: "IMPLEMENTED_PASSING"
+
+  - id: "CTRL-P0-KEY-POLICY-001"
+    name: "Cryptographic Key Domain Separation and Interface Contract"
+    description: "Enforces formal separation across the 6 key domains and provides abstract KeyProvider contract with DevelopmentKeyProvider safeguards (INV-011, INV-010)."
+    threats:
+      - "THREAT-TOKEN-THEFT"
+      - "THREAT-CREDENTIAL-THEFT"
+    components:
+      - "COMP-KERNEL"
+    phase: 0
+    security_property: "Cryptographic keys cannot be shared across domains or used outside their assigned operations."
+    enforcement_layer:
+      - "crypto-key-provider"
+    test_ids:
+      - "TEST-P0-CRYPTO-KEY-POLICY-001"
+    gate_ids:
+      - "GATE-P0-FOUNDATION-001"
+    status: "IMPLEMENTED_PASSING"
