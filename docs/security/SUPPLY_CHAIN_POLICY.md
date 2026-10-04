@@ -11,7 +11,7 @@ As established in TRD Section 52 and PRD Section 12, the repository and build pi
 |---|---|---|---|---|---|
 | **pip-audit** | Python dependency vulnerability scanner | PyPI release / action | `pip-audit` | **FAIL-CLOSED (Exit Code 1)**: Any known vulnerability terminates CI pipeline. | Relies on OSV and PyPI advisory databases; cannot detect 0-day supply chain malicious code. |
 | **pnpm audit** | Next.js frontend dependency scanner | Built-in pnpm v9+ | `pnpm audit --prod --audit-level=high` | **FAIL-CLOSED (Exit Code 1)**: High/Critical severity advisories block the merge. | Limited to npm registry security advisories; dev-only dependencies exempted if `--prod` used. |
-| **gitleaks** | Static secret and credential leak detection | Action SHA `b04eb32` | `gitleaks detect --verbose` | **FAIL-CLOSED (Exit Code 1)**: Prevents committing API keys, private keys, or tokens. | Regex and entropy heuristics; custom internal secret formats require dedicated rules. |
+| **gitleaks** | Static secret and credential leak detection | Action SHA `ff98106` (v2.3.9) | `gitleaks detect --verbose` | **FAIL-CLOSED (Exit Code 1)**: Prevents committing API keys, private keys, or tokens. | Regex and entropy heuristics; custom internal secret formats require dedicated rules. |
 | **CycloneDX** | Software Bill of Materials (SBOM) generation | `cyclonedx-bom` | `cyclonedx-py environment -o sbom.json` | **FAIL-CLOSED**: Failure to generate machine-readable SBOM blocks build. | Reflects installed packages in the build environment; must run after clean dependency resolution. |
 
 ---
