@@ -46,7 +46,7 @@ class TestFoundationSuite(unittest.TestCase):
 
         # Enforce SHA-pinned third-party actions
         self.assertIn("actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", content)
-        self.assertIn("gitleaks/gitleaks-action@b04eb32d2011ea354c46f366113b2e59ba33527a", content)
+        self.assertIn("gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7", content)
 
         # Enforce CODEOWNERS existence
         codeowners_path = os.path.join(REPO_ROOT, ".github", "CODEOWNERS")
