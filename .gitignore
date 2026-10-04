@@ -1,5 +1,5 @@
 # ==============================================================================
-# ARKA .gitignore — Autonomous Risk Knowledge & Assessment
+# ARKA .gitignore — Autonomous Risk Knowledge & Assessment Platform
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -69,8 +69,7 @@ coverage.xml
 # ------------------------------------------------------------------------------
 # 6. AI Assistants & Tool Workspaces
 # ------------------------------------------------------------------------------
-# NOTE: .agents/ at project root is TRACKED (contains rules/ and workflows/).
-# Only ignore AI-tool-specific metadata directories.
+.agents/
 .gemini/
 .antigravity/
 .claude/
@@ -89,16 +88,18 @@ scratch/
 logs/
 *.log
 *.log.*
+sbom*.json
+pip-audit*.json
 
 # ------------------------------------------------------------------------------
 # 8. Frontend — Next.js / pnpm / Tailwind (Operator Console)
 # ------------------------------------------------------------------------------
-# Dependencies
 node_modules/
-
-# Next.js build output
+frontend/node_modules/
 .next/
+frontend/.next/
 out/
+frontend/out/
 
 # Turbopack / Turborepo
 .turbo/
@@ -129,7 +130,7 @@ pnpm-debug.log*
 # Vercel deployment
 .vercel
 
-# Tailwind / PostCSS (if generated caches appear)
+# Tailwind / PostCSS caches
 .postcss-cache/
 
 # Frontend test coverage
@@ -146,7 +147,7 @@ frontend/coverage/
 dump.rdb
 
 # ------------------------------------------------------------------------------
-# 10. Secrets & Environment Files
+# 10. Secrets & Environment Files (Strictly Ignored)
 # ------------------------------------------------------------------------------
 .env
 .env.*
@@ -183,8 +184,7 @@ Desktop.ini
 .ipynb_checkpoints/
 
 # ------------------------------------------------------------------------------
-# 13. Docker (local build context artifacts)
+# 13. Docker & Archives
 # ------------------------------------------------------------------------------
 *.tar
 *.tar.gz
-.agents/

@@ -1,205 +1,237 @@
-# ARKA — Autonomous Risk Knowledge & Assessment
+# ARKA — Autonomous Risk Knowledge & Assessment Platform
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-orange.svg)](https://github.com/langchain-ai/langgraph)
+[![Security Foundation: Phase 0](https://img.shields.io/badge/security%20foundation-P0%20established-brightgreen.svg)](docs/security/P0_SECURITY_FOUNDATION_REPORT.md)
+[![Traceability: 100%](https://img.shields.io/badge/traceability-100%25%20(35%2F35%20threats)-brightgreen.svg)](security/traceability/security-traceability.yaml)
 [![License: Proprietary / Authorized](https://img.shields.io/badge/license-Authorized_Use_Only-red.svg)](LICENSE)
-[![Tests: 610 Passing](https://img.shields.io/badge/tests-610%20passed%20(100%25)-brightgreen.svg)](tests/)
-[![Coverage: 78%](https://img.shields.io/badge/coverage-78%25-green.svg)](tests/)
 
-**ARKA** is an enterprise-grade AI-orchestrated autonomous penetration testing and risk assessment platform. It coordinates multi-agent reasoning, deterministic scoping, policy enforcement, human approval workflows, and isolated tool execution to evaluate the security posture of modern networks and applications.
+**ARKA** is an enterprise-grade AI-orchestrated autonomous risk assessment and penetration testing platform governed by a deterministic, zero-trust security kernel. It coordinates multi-agent reasoning, strict cryptographic domain separation, immutable audit ledgers, human-in-the-loop approvals, and isolated sandbox execution to assess complex network perimeters and modern web architectures.
 
 ---
 
 > [!CAUTION]
-> **LEGAL AND AUTHORIZED-USE NOTICE**
-> 
+> ### LEGAL & AUTHORIZED-USE NOTICE
 > ARKA is designed **EXCLUSIVELY FOR AUTHORIZED SECURITY ASSESSMENTS**.
 > 
-> You must only run this software against systems and networks that you explicitly own or have documented, legal authorization to test (such as a signed Rules of Engagement or Statement of Work). Unauthorized scanning, penetration testing, or exploitation of computer systems is illegal and may violate local, national, and international cybercrime laws.
+> You must only run this software against systems, applications, and networks that you explicitly own or have documented, legal authorization to test (such as a signed Rules of Engagement or Statement of Work). Unauthorized scanning, penetration testing, or exploitation of computer systems is strictly illegal and may violate local, national, and international cybercrime laws.
 
 ---
 
-## Current Status & Roadmap
+## Core Security Invariant & Authority Model
 
-| Phase | Milestone | Status | Core Deliverables |
-|---|---|:---:|---|
-| **Phase 1** | **Secure Agent Control Plane** | **`IMPLEMENTED`** | Zero-trust LangGraph orchestrator, deterministic ScopeGuard, PolicyEngine, persistent PostgreSQL approvals, LiteLLM gateway, append-only audit, safe mock tools. |
-| **Phase 2** | **Secure Tool Execution & Reconnaissance** | **`IMPLEMENTED`** | Ephemeral Docker runner, network namespace filtering, Nmap/Nuclei/ffuf/WhatWeb/Amass adapters, structured output parsers, Reconnaissance Agent, canonical asset normalization, correlation engine. |
-| **Phase 3** | **Web/API Security Analysis (3.1–3.5)** | **`IMPLEMENTED`** | Sandboxed HTTP client with comprehensive SSRF protection, hardened web crawler, OpenAPI/Swagger & GraphQL schema analyzers, WebSecurityAgent, endpoint discovery integrator. |
-| **Phase 4** | **Controlled Exploitation & Validation** | **`PLANNED`** | PoC validation engine, strict human-in-the-loop exploit gating, non-destructive validation payloads, Exploitation Agent. |
-| **Phase 5** | **Attack Graph & Autonomous Attack Paths** | **`PLANNED`** | Graph-based attack path modeling (Neo4j / NetworkX), multi-hop scenario planning, risk calculation, automated executive reporting. |
-| **Phase 6** | **Advanced Multimodal & Enterprise** | **`PLANNED`** | UI/UX screenshot analysis, SSO/RBAC integration, SIEM event streaming, multi-tenant fleet orchestration. |
+The foundational principle of ARKA's architecture is:
 
----
+$$\mathbf{DISCOVERED \neq AUTHORIZED}$$
 
-## Core Principles & Trust Model
+**The LLM and agent reasoning plane have ZERO direct execution authority.**
 
-The central invariant of ARKA's security architecture is: **The LLM is an untrusted reasoning engine and has ZERO authorization authority.**
-
-```
+```text
 LLM proposes
-    ↓
-CandidateToolRequest (untrusted)
-    ↓
-Deterministic validation & Input schema checking
-    ↓
-ScopeGuard (IPv4/IPv6/CIDR/Domain/URL/Port validation; exclusions override inclusions)
-    ↓
-PolicyEngine (Authoritative risk evaluation & single source of truth)
-    ↓
-ApprovalManager (if required; persistent PostgreSQL state machine with strict transition guards)
-    ↓
-Authoritative ToolRequest (trusted validation booleans stamped ONLY by security boundary)
-    ↓
-ToolRegistry (execution boundary, timeouts, exception safety)
-    ↓
-ToolResult
-    ↓
-Append-Only Audit Trail (immutable, secret-redacted, defensive copies)
+     ↓
+Deterministic Security Kernel authorizes (INV-001, INV-002, INV-010)
+     ↓
+Execution Broker mediates (INV-009 SSRF Guard, DNS Pinning)
+     ↓
+Rootless Container Sandbox contains (INV-008, INV-014)
+     ↓
+Append-Only Audit Ledger records (INV-012 SHA-256 Hash Chain)
+     ↓
+Human Controls High-Risk Actions (INV-005 Parameter Hash Binding)
 ```
 
-- **Scope Exclusions Override Inclusions**: If any target matches an exclusion rule, it is immediately denied.
-- **Persistent Human Gates**: Operations classified as `HIGH` or `CRITICAL` risk require explicit operator approval stored in PostgreSQL and bound to the exact operational context `(engagement_id, task_id, tool_name, target)`.
-- **Append-Only Immutability**: All security actions produce an append-only audit record with credential sanitization and defensive memory copying.
-- **Zero Real Offense in Tests**: Automated test suites operate 100% in-memory with safe mock tools, executing zero network scanning or subshell commands.
+- **Deterministic Kernel Authority**: The Rust Security Kernel is the sole cryptographic authority for issuing capability tokens and granting access.
+- **Fail-Closed Default (INV-010)**: Any error, unhandled exception, timeout, or ambiguity in policy evaluation immediately defaults to unconditional `DENY`.
+- **Zero Raw LLM Secret Exposure (INV-013)**: Credentials and cryptographic signing keys are never exposed in prompt contexts, application logs, or persistent databases.
+- **Synchronous Emergency Stop (INV-014)**: Triggering emergency stop broadcasts an immediate signal cascade terminating all active worker processes and revoking tokens within 500ms.
 
 ---
 
-## Technology Stack
+## Roadmap & Phase Status (TRD v2.1 Lifecycle)
 
-- **Core Runtime**: Python 3.13+
-- **API Framework**: FastAPI & Pydantic v2
-- **Agent Orchestration**: LangGraph (cyclical graphs, durable checkpoints, `interrupt()`)
-- **LLM Gateway**: LiteLLM (OpenAI, Anthropic, Gemini, Nvidia NIM, custom endpoints, fallback routing)
-- **Data Persistence**: PostgreSQL 16+ & SQLAlchemy 2.0 (asyncpg)
-- **Schema Migrations**: Alembic
-- **Task Queue & Cache**: Arq & Redis 7+
-- **CLI Interface**: Typer & Rich
-- **Observability**: Structlog & Langfuse
-- **Quality Gates**: Pytest, Ruff, Mypy
+In strict accordance with the ARKA Security Baseline, phase statuses are governed by verifiable repository evidence and acceptance gates recorded in [`security/acceptance/phase-status.yaml`](security/acceptance/phase-status.yaml):
+
+| Phase | Milestone | Status | Core Architecture & Deliverables |
+|:---:|---|:---:|---|
+| **Phase 0** | **P0 Security Foundation** | **`COMPLETE_WITH_WARNINGS`** | 35 canonical threats, 38 controls, 36 blocking gates, 100% bidirectional traceability, 6-domain key policy, hardened CI supply chain, 43 test contracts, and validator meta-testing. *(Warning: GitHub branch protection requires manual activation by repo owner).* |
+| **Phase 1** | **Deterministic Security Kernel** | `NOT_STARTED` | Rust kernel state machine, single-use nonce replay protection (`CTRL-REPLAY-001`), RFC 8785 canonical hash binding (`CTRL-TOCTOU-BINDING-001`), Ed25519 token minting, and SQLite WAL persistence. |
+| **Phase 2** | **Execution Broker & Sandboxing** | `NOT_STARTED` | Pre-connect SSRF guard (`CTRL-SSRF-001`), DNS pinning (`CTRL-DNS-PINNING-001`), HTTP redirect interception (`CTRL-REDIRECT-FILTER-001`), rootless Linux container isolation (`CTRL-SANDBOX-CONTAINMENT-001`). |
+| **Phase 3** | **Intelligence & Multi-Agent Plane** | `NOT_STARTED` | Inter-agent message signing (`CTRL-A2A-AUTH-001`), dual-boundary prompt framing (`CTRL-PROMPT-GUARD-001`), ANSI terminal stripping, quarantined evidence parsing (`CTRL-PARSER-SANDBOX-001`). |
+| **Phase 6** | **Credential Vault & Session Broker** | `NOT_STARTED` | Hardware/KMS Key Encryption Key (KEK) wrapping (`CTRL-CRED-ISOLATION-001`), ephemeral in-memory POSIX secret injection, zero plain-text storage. |
+| **Phase 9+** | **Strong Virtualization Isolation** | `NOT_STARTED` | Hardware-assisted microVM hypervisor isolation (Firecracker / gVisor) for controlled high-risk exploitation. |
+
+> [!IMPORTANT]
+> **Active Operational Invariant**: `PRODUCTION_EXECUTION_ALLOWED = false`. Production tool execution and automated network penetration testing remain blocked until Phase 1+ deterministic security kernel gates are satisfied.
 
 ---
 
-## Quick Start & Installation
+## Security Foundation Architecture (`security/`)
+
+The repository contains a machine-readable security foundation that makes development traceable, testable, and resistant to bypass:
+
+```text
+security/
+├── baseline.manifest               # SHA-256 cryptographic seal over 24 security files
+├── threat-model/
+│   ├── assets.yaml                 # 11 canonical platform assets
+│   ├── actors.yaml                 # 13 platform actors and execution roles
+│   ├── trust-boundaries.yaml       # 10 formal trust boundaries (TB-EXT to TB-HOST)
+│   ├── attack-surfaces.yaml        # 10 exposed attack surfaces
+│   ├── threats.yaml                # 35 canonical threats (STRIDE / OWASP / ATLAS)
+│   └── schemas/                    # Draft-07 JSON schemas for all models
+├── controls/
+│   ├── controls.yaml               # 38 concrete security controls
+│   └── schemas/                    # JSON schema for control definitions
+├── acceptance/
+│   ├── gates.yaml                  # 36 blocking security acceptance gates
+│   ├── phase-status.yaml           # Authoritative phase lifecycle registry
+│   └── schemas/                    # Schemas for gates and phase status
+├── traceability/
+│   ├── security-traceability.yaml  # 100% bidirectional threat-to-gate matrix (35 entries)
+│   └── schemas/                    # Schema enforcing full referential integrity
+├── keys/
+│   ├── key-management-policy.yaml  # 6 independent cryptographic key domains
+│   ├── key_provider.rs             # Formal Rust trait specification for Phase 1 Kernel
+│   └── schemas/                    # Key management policy schema
+├── tests/
+│   ├── tests.yaml                  # 43 test contracts (Phase 1+ strictly PENDING)
+│   └── schemas/                    # Test contract schema
+└── validator/
+    └── validate_security_model.py  # Authoritative model validator & meta-test runner
+```
+
+### Cryptographic Key Management (6 Isolated Domains)
+In compliance with **INV-011**, ARKA isolates keys into 6 non-overlapping domains:
+1. `ROOT-ANCHOR`: Master offline signing anchor (HSM / M-of-N quorum).
+2. `TOKEN-SIGNING`: Ephemeral capability and authorization token signing (Rust Kernel process memory).
+3. `AUDIT-SIGNING`: Immutable audit hash-chain signing (Audit Ledger process).
+4. `CREDENTIAL-KEK`: AES-256-GCM Key Encryption Key for credential enveloping.
+5. `MISSION-DATA-ENCRYPTION`: Ephemeral per-mission AES-256-GCM data encryption.
+6. `WORKER-IDENTITY`: Ephemeral Ed25519 mTLS identity for worker containers ($\le$ 300s).
+
+### Audit Anchoring Pipeline (6 Stages)
+$$\text{Event} \longrightarrow \text{RFC 8785 JCS} \longrightarrow \text{SHA-256 Hash Chain} \longrightarrow \text{Ed25519 Audit Sign} \longrightarrow \text{Persistent WAL} \longrightarrow \text{RFC 3161 Anchor}$$
+
+---
+
+## Supply Chain & Hardened CI Pipeline
+
+All merges to `main` are guarded by six dedicated, blocking CI checks in [`.github/workflows/security-foundation.yml`](.github/workflows/security-foundation.yml):
+
+```text
+┌───────────────────────┐
+│     CI-SEC-MODEL      │ Threat Model JSON schema compliance & referential integrity
+└──────────┬────────────┘
+           │
+┌──────────▼────────────┐
+│  CI-SEC-TRACEABILITY  │ 100% Bidirectional threat-to-gate matrix verification
+└──────────┬────────────┘
+           │
+┌──────────▼────────────┐
+│   CI-SEC-VALIDATOR    │ Baseline manifest SHA-256 verification & negative meta-tests
+└───────────────────────┘
+┌───────────────────────┐
+│    CI-SEC-SECRETS     │ Full-history Gitleaks secret and token leak detection
+└───────────────────────┘
+┌───────────────────────┐
+│  CI-SEC-DEPENDENCIES  │ pip-audit (Python) and pnpm audit (Frontend) vulnerability gates
+└───────────────────────┘
+┌───────────────────────┐
+│      CI-SEC-SBOM      │ CycloneDX machine-readable SBOM generation and retention
+└───────────────────────┘
+```
+
+- **Zero Write Tokens**: Global workflow `permissions: contents: read`.
+- **Commit-SHA Pinning**: All third-party actions pinned to full 40-character SHAs (e.g., `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683`).
+- **Fork Protection**: Standard `pull_request` execution prevents secret exfiltration (`pull_request_target` is strictly prohibited).
+- **Human Governance**: [`.github/CODEOWNERS`](.github/CODEOWNERS) assigns `@jivi001` review authority over all security files.
+- **Branch Protection**: Required settings documented in [`docs/security/BRANCH_PROTECTION.md`](docs/security/BRANCH_PROTECTION.md).
+
+---
+
+## Quick Start & Verification
 
 ### 1. Prerequisites
-- Python 3.13+
-- `uv` (recommended) or `pip`
-- Docker & Docker Compose (for PostgreSQL & Redis)
+- **Python 3.13+** (Runtime & Security Validator)
+- **Node.js 20+ & pnpm v9+** (Frontend Operator Console)
+- **Docker & Docker Compose** (PostgreSQL 16+, Redis 7+)
 
-### 2. Setup
+### 2. Verify the Security Foundation
+Run the authoritative security validator and test suites directly:
+
+```bash
+# 1. Run Core Security Model & Traceability Validation (100% coverage, 24 manifest files)
+python3 security/validator/validate_security_model.py
+
+# 2. Run Validator Negative Meta-Test Suite (12 synthetic mutation attacks rejected)
+python3 security/validator/validate_security_model.py --meta-tests
+
+# 3. Run Security Foundation & Cryptographic Unit Tests (22 tests passing)
+python3 -m unittest tests/security/test_foundation_suite.py \
+                    tests/security/test_validator_meta.py \
+                    tests/security/test_key_provider.py
+```
+
+### 3. Local Development Setup
 ```bash
 # Clone the repository
-git clone https://github.com/jivi001/ARKA
+git clone https://github.com/jivi001/ARKA.git
 cd ARKA
 
-# Install dependencies in virtual environment
-uv sync
+# Create and activate Python virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install --upgrade pip
+pip install -e ".[dev]"
 
 # Configure environment variables
 cp .env.example .env
 ```
 
-### 3. Start Supporting Infrastructure
-```bash
-# Start PostgreSQL and Redis via Docker
-docker compose -f docker/docker-compose.yml up -d postgres redis
-
-# Run database migrations
-uv run alembic upgrade head
-```
-
-### 4. Launch Services
-```bash
-# Start the API server locally
-uv run uvicorn arka.app.api:app --reload --port 8000
-
-# Or start the entire platform in Docker
-docker compose -f docker/docker-compose.yml up -d
-```
-
 ---
 
-## CLI Reference
+## Repository Structure
 
-The ARKA CLI (`arka`) provides full operational control over the platform:
-
-```bash
-# Check platform health and database connectivity
-uv run arka health
-
-# Manage LLM Providers
-uv run arka llm providers
-uv run arka llm config
-uv run arka llm test --prompt "Ping test"
-
-# Run Autonomous Reconnaissance
-uv run arka recon run <engagement_id>
-
-# Manage Engagements
-uv run arka engagement create "Q3 Penetration Test" --objective "Assess perimeter and web assets"
-uv run arka engagement start <engagement_id>
-uv run arka engagement status <engagement_id>
-uv run arka engagement pause <engagement_id>
-uv run arka engagement stop <engagement_id>
-
-# View Tasks & Audit Logs
-uv run arka tasks <engagement_id>
-uv run arka audit <engagement_id>
+```text
+ARKA/
+├── .github/
+│   ├── CODEOWNERS                  # Strict human ownership for security paths
+│   └── workflows/
+│       └── security-foundation.yml  # 6 blocking CI supply chain and security gates
+├── arka/
+│   ├── core/
+│   │   └── crypto/                 # KeyProvider ABC & DevelopmentKeyProvider
+│   ├── app/                        # FastAPI application, CLI, and API routes
+│   └── orchestration/              # Multi-agent coordination logic
+├── frontend/                       # Next.js 16 / React 19 Operator Console
+├── security/                       # Authoritative Security Foundation (P0)
+│   ├── baseline.manifest           # Cryptographic baseline manifest
+│   ├── threat-model/               # Assets, actors, boundaries, surfaces, threats
+│   ├── controls/                   # 38 security controls
+│   ├── acceptance/                 # 36 blocking gates & phase status registry
+│   ├── traceability/               # 100% bidirectional traceability matrix
+│   ├── keys/                       # 6-domain key policy & Rust trait specification
+│   ├── tests/                      # 43 security test contracts
+│   └── validator/                  # Security model validator & meta-test engine
+├── tests/
+│   └── security/                   # Foundation test suite, meta-tests, crypto tests
+└── docs/
+    └── security/
+        ├── P0_SECURITY_FOUNDATION_REPORT.md  # Comprehensive Phase 0 report
+        ├── BRANCH_PROTECTION.md              # Branch protection specification
+        └── SUPPLY_CHAIN_POLICY.md            # Supply chain security policy
 ```
 
 ---
 
-## REST API Overview
+## Authoritative Documentation
 
-Interactive Swagger documentation is available at `http://localhost:8000/docs`.
-
-Key endpoint groups:
-- `GET /health`: Health and connectivity status.
-- `POST /engagements`: Create an assessment with scope boundaries.
-- `POST /engagements/{id}/start`: Launch orchestrator execution.
-- `GET /approvals`: List pending human-in-the-loop authorization gates.
-- `POST /approvals/{id}/decide`: Submit approval decision (`GRANTED` / `REJECTED`).
-- `GET /engagements/{id}/audit`: Retrieve immutable audit events.
-
----
-
-## Testing & Verification Baseline
-
-Every commit is verified against rigorous automated quality gates:
-
-```bash
-# Run complete test suite (137 tests passing)
-uv run pytest
-
-# Run tests with coverage report (78% codebase line coverage)
-uv run pytest --cov=arka --cov-report=term-missing
-
-# Linting and formatting checks (Ruff)
-uv run ruff check .
-uv run ruff format --check .
-
-# Static type checking (Mypy)
-uv run mypy
-```
-
----
-
-## Documentation System
-
-Complete, version-controlled documentation is maintained in the [`docs/`](docs/) directory:
-
-- [Documentation Index](docs/README.md)
-- [Architecture Overview](docs/architecture/overview.md)
-- [System Architecture](docs/architecture/system-architecture.md)
-- [Trust Boundaries & Authorization Model](docs/architecture/trust-boundaries.md)
-- [Security Model](docs/security/security-model.md)
-- [Scope Enforcement (ScopeGuard)](docs/security/scope-enforcement.md)
-- [Persistent Approval System](docs/security/approval-system.md)
-- [LLM Gateway & Routing](docs/llm/gateway.md)
-- [Testing Strategy](docs/testing/strategy.md)
-- [Phase 1 Verification Report](docs/phases/phase-1.md)
-- [Phase 1 Hardening Log](docs/phases/phase-1-hardening.md)
-- [Phase 2 Execution & Reconnaissance Plan](docs/phases/phase-2.md)
-- [Architecture Decision Records (ADRs)](docs/decisions/)
+- 📄 [Phase 0 Security Foundation Report](docs/security/P0_SECURITY_FOUNDATION_REPORT.md)
+- 📄 [Technical Requirements Document (TRD v2.1)](ARKA_TRD_v2.1.md)
+- 📄 [Product Requirements Document (PRD)](PRD(1).md)
+- 📄 [Branch Protection & Governance](docs/security/BRANCH_PROTECTION.md)
+- 📄 [Supply Chain Security Policy](docs/security/SUPPLY_CHAIN_POLICY.md)
+- 📄 [Architecture Decision Records (ADRs)](docs/decisions/)
