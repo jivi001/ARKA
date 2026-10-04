@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Key Management Policy Schema",
+  "type": "object",
+  "required": ["version", "policy_name", "key_domains", "audit_anchoring", "development_provider_rules"],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "policy_name": {
+      "type": "string"
+    },
+    "key_domains": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "domain_id",
+          "name",
+          "purpose",
+          "algorithm",
+          "storage_location",
+          "access_authority",
+          "generation",
+          "rotation_policy",
+          "compromise_response",
+          "destruction"
+        ],
+        "properties": {
+          "domain_id": {
+            "type": "string",
+            "enum": [
+              "ROOT-ANCHOR",
+              "TOKEN-SIGNING",
+              "AUDIT-SIGNING",
+              "CREDENTIAL-KEK",
+              "MISSION-DATA-ENCRYPTION",
+              "WORKER-IDENTITY"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "algorithm": {
+            "type": "string"
+          },
+          "storage_location": {
+            "type": "string"
+          },
+          "access_authority": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "string"
+          },
+          "rotation_policy": {
+            "type": "string"
+          },
+          "compromise_response": {
+            "type": "string"
+          },
+          "destruction": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 6
+    },
+    "audit_anchoring": {
+      "type": "object",
+      "required": ["pipeline", "hash_chain_algorithm", "external_anchor"],
+      "properties": {
+        "pipeline": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 6
+        },
+        "hash_chain_algorithm": {
+          "type": "string"
+        },
+        "external_anchor": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "development_provider_rules": {
+      "type": "object",
+      "required": ["allowed_environments", "prohibited_destinations", "production_readiness"],
+      "properties": {
+        "allowed_environments": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "prohibited_destinations": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "production_readiness": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

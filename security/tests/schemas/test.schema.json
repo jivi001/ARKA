@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Security Test Registry Schema",
+  "type": "object",
+  "required": ["tests"],
+  "properties": {
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "threats",
+          "controls",
+          "owner",
+          "phase",
+          "status",
+          "expected_property",
+          "test_path"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^TEST-[A-Z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 5
+          },
+          "threats": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^THREAT-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^CTRL-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 2
+          },
+          "phase": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "status": {
+            "type": "string",
+            "pattern": "^(IMPLEMENTED_PASSING|PENDING\\(phase=[0-9]+\\)|FAILING|BLOCKED\\(.+\\))$"
+          },
+          "expected_property": {
+            "type": "string",
+            "minLength": 10
+          },
+          "test_path": {
+            "type": ["string", "null"]
+          },
+          "ci_evidence": {
+            "type": ["object", "null"],
+            "properties": {
+              "ci_run_id": {"type": "string"},
+              "commit_sha": {"type": "string"},
+              "job_id": {"type": "string"},
+              "test_result_artifact": {"type": "string"},
+              "artifact_hash": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

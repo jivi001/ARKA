@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Security Control Schema",
+  "type": "object",
+  "required": ["controls"],
+  "properties": {
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "threats",
+          "components",
+          "phase",
+          "security_property",
+          "enforcement_layer",
+          "test_ids",
+          "gate_ids",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^CTRL-[A-Z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 5
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10
+          },
+          "threats": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^THREAT-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^COMP-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "phase": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "security_property": {
+            "type": "string",
+            "minLength": 5
+          },
+          "enforcement_layer": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "test_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^TEST-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "gate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^GATE-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "status": {
+            "type": "string",
+            "pattern": "^(IMPLEMENTED_PASSING|PENDING\\(phase=[0-9]+\\)|FAILING|BLOCKED\\(.+\\))$"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,33 @@
+# ARKA Repository Code Ownership & Security Governance
+# Security Invariant: Hard human ownership for security-critical paths (INV-001, INV-010)
+# Automated systems and agents have ZERO authority to approve security baseline modifications.
+
+# Default platform owner
+* @jivi001
+
+# Security Model, Invariants, Threat Model, and Schemas
+/security/ @jivi001
+/security/threat-model/ @jivi001
+/security/controls/ @jivi001
+/security/acceptance/ @jivi001
+/security/traceability/ @jivi001
+/security/keys/ @jivi001
+/security/tests/ @jivi001
+/security/baseline.manifest @jivi001
+
+# Authoritative Security Validator and Meta-Testing
+/security/validator/ @jivi001
+/tests/security/ @jivi001
+
+# Cryptographic Core Architecture
+/arka/core/crypto/ @jivi001
+
+# CI/CD Workflows, Supply Chain Gates, and GitHub Actions
+/.github/ @jivi001
+/.github/workflows/ @jivi001
+/.github/CODEOWNERS @jivi001
+
+# Formal Architecture and Acceptance Documents
+/PRD(1).md @jivi001
+/ARKA_TRD_v2.1.md @jivi001
+/mvp security acceptance gates.md @jivi001

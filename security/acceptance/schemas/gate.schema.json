@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Acceptance Gate Schema",
+  "type": "object",
+  "required": ["gates"],
+  "properties": {
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "phase",
+          "threats",
+          "controls",
+          "tests",
+          "condition",
+          "expected_result",
+          "blocking",
+          "evidence_required"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^GATE-[A-Z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 5
+          },
+          "phase": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "threats": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^THREAT-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^CTRL-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^TEST-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "condition": {
+            "type": "object",
+            "minProperties": 1
+          },
+          "expected_result": {
+            "type": "string",
+            "enum": ["DENY", "ALLOW", "PASS", "FAIL_CLOSED"]
+          },
+          "blocking": {
+            "type": "boolean"
+          },
+          "evidence_required": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
