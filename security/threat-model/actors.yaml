@@ -1,0 +1,129 @@
+actors:
+  - id: "ACTOR-OPERATOR"
+    name: "Authorized Human Security Operator"
+    type: "HUMAN_OPERATOR"
+    trust_zone: "T0"
+    capabilities:
+      - "Create missions and define initial target scope"
+      - "Review and approve high-risk action proposals"
+      - "Trigger emergency stop"
+      - "View findings and export assessment reports"
+    motivations: "Conduct authorized offensive security assessments within defined engagement scope."
+
+  - id: "ACTOR-REVIEWER"
+    name: "Independent Security Reviewer"
+    type: "HUMAN_REVIEWER"
+    trust_zone: "T0"
+    capabilities:
+      - "Review high-risk action proposals for dual-approval workflows"
+      - "Audit historical execution logs and evidence provenance"
+    motivations: "Ensure compliance, safety invariants, and scope adherence."
+
+  - id: "ACTOR-ADMIN"
+    name: "System Infrastructure Administrator"
+    type: "HUMAN_ADMIN"
+    trust_zone: "T0"
+    capabilities:
+      - "Configure worker infrastructure and OS sandbox profiles"
+      - "Manage baseline policies and cryptographic trust anchors"
+    motivations: "Maintain system security, reliability, and container/worker integrity."
+
+  - id: "ACTOR-KERNEL"
+    name: "Rust Security Kernel"
+    type: "SYSTEM_KERNEL"
+    trust_zone: "T2"
+    capabilities:
+      - "Deterministic policy evaluation"
+      - "Capability issuance and verification"
+      - "Scope enforcement"
+      - "Cryptographic audit ledger maintenance"
+      - "Credential custody"
+    motivations: "Enforce zero-bypass deterministic security invariants and fail-closed state transitions."
+
+  - id: "ACTOR-BROKER"
+    name: "Execution Broker & Worker Daemon"
+    type: "SYSTEM_BROKER"
+    trust_zone: "T4"
+    capabilities:
+      - "Verify execution grants and parameter hashes"
+      - "Instantiate ephemeral rootless sandboxes"
+      - "Inject transient credentials"
+      - "Capture raw evidence streams"
+    motivations: "Safely execute authorized capabilities inside isolated environments."
+
+  - id: "ACTOR-PYTHON-AGENT"
+    name: "Python Intelligence Plane Agent"
+    type: "SYSTEM_INTELLIGENCE"
+    trust_zone: "T3"
+    capabilities:
+      - "Analyze evidence and query Knowledge Graph"
+      - "Formulate hypotheses and action proposals"
+      - "Communicate via structured A2A JSON messages"
+    motivations: "Reason over assessment findings and propose next testing steps without direct execution authority."
+
+  - id: "ACTOR-SANDBOX-WORKER"
+    name: "Sandboxed Tool Process"
+    type: "SANDBOXED_WORKER"
+    trust_zone: "T5"
+    capabilities:
+      - "Execute allowlisted security tool binaries (nmap, curl, etc.)"
+      - "Transmit network packets strictly to pinned target IP"
+    motivations: "Perform tool-specific network and discovery operations under strict containment."
+
+  - id: "ACTOR-TARGET-ADVERSARY"
+    name: "Hostile Target System & Network Adversary"
+    type: "MALICIOUS_EXTERNAL_TARGET"
+    trust_zone: "T6"
+    capabilities:
+      - "Return malicious HTTP responses and exploit payloads"
+      - "Manipulate DNS responses (rebinding attacks)"
+      - "Attempt indirect prompt injection against AI reasoning"
+      - "Exploit tool parser vulnerabilities"
+    motivations: "Compromise assessment tools, evade detection, pivot to internal networks, or hijack agent behavior."
+
+  - id: "ACTOR-MALICIOUS-INSIDER"
+    name: "Rogue or Compromised Operator"
+    type: "MALICIOUS_INSIDER"
+    trust_zone: "T0"
+    capabilities:
+      - "Submit out-of-scope targets or approve unverified actions"
+      - "Attempt to bypass audit logging or emergency stop"
+    motivations: "Unauthorized lateral movement, unauthorized target scanning, or evidence tampering."
+
+  - id: "ACTOR-ROGUE-AGENT"
+    name: "Compromised or Prompt-Injected Agent"
+    type: "COMPROMISED_AGENT"
+    trust_zone: "T3"
+    capabilities:
+      - "Generate deceptive action proposals"
+      - "Attempt unauthorized tool invocation or parameter mutation"
+      - "Attempt lateral A2A message forgery or capability escalation"
+    motivations: "Execute arbitrary commands, bypass deterministic gates, or exfiltrate sensitive data."
+
+  - id: "ACTOR-LLM-PROVIDER"
+    name: "External or Local LLM Provider"
+    type: "EXTERNAL_LLM_PROVIDER"
+    trust_zone: "T8"
+    capabilities:
+      - "Process prompt contexts and return completions"
+      - "Potential logging, retention, or third-party compromise"
+    motivations: "Provide inference, but may represent data exposure or untrusted output risks."
+
+  - id: "ACTOR-SUPPLY-CHAIN"
+    name: "Supply Chain & Dependency Adversary"
+    type: "SUPPLY_CHAIN_ATTACKER"
+    trust_zone: "T7"
+    capabilities:
+      - "Publish poisoned crates, Python packages, or container base images"
+      - "Inject backdoors into build dependencies"
+    motivations: "Compromise ARKA build environment or runtime binaries."
+
+  - id: "ACTOR-CI-ATTACKER"
+    name: "CI/CD Environment Adversary"
+    type: "CI_ENVIRONMENT_ATTACKER"
+    trust_zone: "CI"
+    capabilities:
+      - "Submit malicious pull requests from forks"
+      - "Attempt secret exfiltration via unpinned actions or pull_request_target"
+      - "Attempt to weaken security gates or fake test results"
+    motivations: "Bypass blocking security gates, compromise release artifacts, or steal deployment keys."

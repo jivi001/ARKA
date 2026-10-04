@@ -1,0 +1,986 @@
+threats:
+  - id: "THREAT-MALICIOUS-TARGET-CONTENT"
+    title: "Malicious Target Content Injection"
+    description: "Hostile target returns crafted HTML, HTTP headers, DNS records, or service banners containing exploit strings or deceptive data intended to mislead agent analysis."
+    stride:
+      - "Tampering"
+      - "Information Disclosure"
+    owasp_llm:
+      - "LLM01:2025-Prompt Injection"
+      - "LLM05:2025-Improper Output Handling"
+    owasp_agentic:
+      - "ASI01:2026-Agent Goal Hijack"
+      - "ASI06:2026-Memory and Context Poisoning"
+    mitre_atlas:
+      - "AML.T0051-Prompt Injection: Indirect"
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1566-Phishing"
+      - "T1565.001-Stored Data Manipulation"
+    affected_assets:
+      - "ASSET-EVIDENCE-STORE"
+      - "ASSET-KNOWLEDGE-GRAPH"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+    trust_boundary: "TB-T6-T2"
+    attack_surface: "SURF-EVIDENCE-PARSER"
+    target_phase: 3
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-007"
+      - "INV-001"
+    status: "ACTIVE"
+
+  - id: "THREAT-PROMPT-INJECTION"
+    title: "Direct and Indirect Prompt Injection"
+    description: "Adversary injects adversarial natural language instructions into web targets, evidence, or inputs, attempting to override system instructions and force the agent to propose unauthorized actions."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM01:2025-Prompt Injection"
+    owasp_agentic:
+      - "ASI01:2026-Agent Goal Hijack"
+      - "ASI06:2026-Memory and Context Poisoning"
+    mitre_atlas:
+      - "AML.T0051-Prompt Injection: Direct & Indirect"
+      - "AML.T0054-LLM Jailbreak"
+    mitre_attack:
+      - "T1059-Command and Scripting Interpreter"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+      - "ASSET-MISSION-SCOPE"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+      - "ACTOR-MALICIOUS-INSIDER"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-KERNEL-INGESTION"
+    target_phase: 3
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-001"
+      - "INV-007"
+    status: "ACTIVE"
+
+  - id: "THREAT-TOOL-OUTPUT-POISONING"
+    title: "Tool Output Poisoning and Escape Sequence Injection"
+    description: "Target responses contain ANSI escape codes, terminal control characters, or embedded delimiter strings that confuse security tool wrappers and evidence chunkers."
+    stride:
+      - "Tampering"
+    owasp_llm:
+      - "LLM05:2025-Improper Output Handling"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+      - "ASI06:2026-Memory and Context Poisoning"
+    mitre_atlas:
+      - "AML.T0048-Insecure Output Handling"
+    mitre_attack:
+      - "T1565.001-Stored Data Manipulation"
+    affected_assets:
+      - "ASSET-EVIDENCE-STORE"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+      - "ACTOR-SANDBOX-WORKER"
+    trust_boundary: "TB-T4-T5"
+    attack_surface: "SURF-TOOL-WRAPPERS"
+    target_phase: 3
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-007"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-ROGUE-AGENT"
+    title: "Rogue Agent Uncontrolled Autonomous Loop"
+    description: "An agent whose reasoning loop becomes compromised or enters infinite hallucination, issuing high-frequency unauthorized proposals or attempting self-replication."
+    stride:
+      - "Elevation of Privilege"
+      - "Denial of Service"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+      - "LLM10:2025-Unbounded Consumption"
+    owasp_agentic:
+      - "ASI10:2026-Rogue Agents"
+      - "ASI08:2026-Cascading Failures"
+    mitre_atlas:
+      - "AML.T0042-Resource Hijacking"
+    mitre_attack:
+      - "T1499-Endpoint Denial of Service"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-KERNEL-INGESTION"
+    target_phase: 1
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-001"
+      - "INV-002"
+      - "INV-004"
+    status: "ACTIVE"
+
+  - id: "THREAT-FORGED-A2A-MESSAGE"
+    title: "Forged Agent-to-Agent Message Impersonation"
+    description: "A compromised agent manufactures false inter-agent messages claiming authorization, fake findings, or delegated tasks from another agent identity."
+    stride:
+      - "Spoofing"
+      - "Tampering"
+    owasp_llm:
+      - "LLM05:2025-Improper Output Handling"
+    owasp_agentic:
+      - "ASI07:2026-Insecure Inter-Agent Communication"
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1557-Adversary-in-the-Middle"
+    affected_assets:
+      - "ASSET-CAPABILITY-TOKENS"
+      - "ASSET-KNOWLEDGE-GRAPH"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-A2A-MESSAGING"
+    target_phase: 3
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-002"
+      - "INV-004"
+    status: "ACTIVE"
+
+  - id: "THREAT-TOKEN-THEFT"
+    title: "Capability Token Theft and Exfiltration"
+    description: "Capability or identity tokens are leaked into persistent logs, SQLite tables, or LLM prompt contexts, enabling token theft and unauthorized invocation."
+    stride:
+      - "Information Disclosure"
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM02:2025-Sensitive Information Disclosure"
+    owasp_agentic:
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0025-Exfiltration via ML Inference API"
+    mitre_attack:
+      - "T1552.004-Private Keys"
+      - "T1078-Valid Accounts"
+    affected_assets:
+      - "ASSET-CAPABILITY-TOKENS"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-LLM-PROVIDER"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-KERNEL-INGESTION"
+    target_phase: 1
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-011"
+      - "INV-001"
+    status: "ACTIVE"
+
+  - id: "THREAT-REPLAY"
+    title: "Action Proposal and Approval Replay Attack"
+    description: "An adversary or rogue agent resubmits a previously completed, denied, or expired ActionProposal to execute the action multiple times without re-authorization."
+    stride:
+      - "Repudiation"
+      - "Tampering"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1557-Adversary-in-the-Middle"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+      - "ASSET-APPROVAL-SEALS"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-MALICIOUS-INSIDER"
+    trust_boundary: "TB-T2-T4"
+    attack_surface: "SURF-BROKER-DISPATCH"
+    target_phase: 1
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-006"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-SCOPE-EXPANSION"
+    title: "Autonomous Scope Expansion and Pivoting"
+    description: "An agent dynamically treats discovered third-party IP addresses, subnets, or redirect targets as authorized targets without human scope amendment."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1548-Abuse Elevation Control Mechanism"
+    affected_assets:
+      - "ASSET-MISSION-SCOPE"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-OPERATOR"
+    trust_boundary: "TB-T2-T4"
+    attack_surface: "SURF-NETWORK-EGRESS"
+    target_phase: 1
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-003"
+      - "INV-004"
+    status: "ACTIVE"
+
+  - id: "THREAT-SSRF"
+    title: "Server-Side Request Forgery via Execution Worker"
+    description: "An agent or tool is manipulated into issuing HTTP requests against internal RFC1918 networks, loopback addresses, or sensitive host services."
+    stride:
+      - "Elevation of Privilege"
+      - "Information Disclosure"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1071-Application Layer Protocol"
+      - "T1090-Proxy"
+    affected_assets:
+      - "ASSET-MISSION-SCOPE"
+      - "ASSET-WORKER-ISOLATION"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T5-T6"
+    attack_surface: "SURF-NETWORK-EGRESS"
+    target_phase: 2
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-003"
+      - "INV-015"
+    status: "ACTIVE"
+
+  - id: "THREAT-DNS-REBINDING"
+    title: "DNS Rebinding Scope Evasion"
+    description: "An attacker-controlled authoritative DNS server returns an in-scope IP during authorization, but responds with an internal IP during connection time."
+    stride:
+      - "Spoofing"
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1557-Adversary-in-the-Middle"
+    affected_assets:
+      - "ASSET-MISSION-SCOPE"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+    trust_boundary: "TB-T5-T6"
+    attack_surface: "SURF-NETWORK-EGRESS"
+    target_phase: 2
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-003"
+      - "INV-015"
+    status: "ACTIVE"
+
+  - id: "THREAT-CREDENTIAL-THEFT"
+    title: "Credential Theft and Vault Extraction"
+    description: "Adversary extracts plaintext target authentication material from the Credential Vault or snoops temporary credentials injected into workers."
+    stride:
+      - "Information Disclosure"
+    owasp_llm:
+      - "LLM02:2025-Sensitive Information Disclosure"
+    owasp_agentic:
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0025-Exfiltration via ML Inference API"
+    mitre_attack:
+      - "T1552.001-Credentials in Files"
+      - "T1552.004-Credentials in Memory"
+    affected_assets:
+      - "ASSET-CREDENTIALS"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-SANDBOX-WORKER"
+      - "ACTOR-LLM-PROVIDER"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-BROKER-DISPATCH"
+    target_phase: 6
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-001"
+      - "INV-007"
+      - "INV-011"
+    status: "ACTIVE"
+
+  - id: "THREAT-SANDBOX-ESCAPE"
+    title: "Sandbox Container Escape to Host"
+    description: "A compromised tool process exploits a container runtime vulnerability, Linux kernel bug, or misconfigured mount to escape rootless isolation."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI05:2026-Unexpected Code Execution"
+    mitre_atlas:
+      - "AML.T0048-Insecure Output Handling"
+    mitre_attack:
+      - "T1611-Escape to Host"
+    affected_assets:
+      - "ASSET-WORKER-ISOLATION"
+      - "ASSET-KERNEL-STATE"
+    source_actors:
+      - "ACTOR-SANDBOX-WORKER"
+      - "ACTOR-TARGET-ADVERSARY"
+    trust_boundary: "TB-T4-T5"
+    attack_surface: "SURF-SANDBOX-CONTAINMENT"
+    target_phase: 2
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-002"
+      - "INV-008"
+    status: "ACTIVE"
+
+  - id: "THREAT-HOST-COMPROMISE"
+    title: "Host Operating System Compromise"
+    description: "Adversary gains root/admin control of the underlying host machine executing the ARKA security kernel or workers."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI05:2026-Unexpected Code Execution"
+    mitre_atlas:
+      - "AML.T0048-Insecure Output Handling"
+    mitre_attack:
+      - "T1068-Exploitation for Privilege Escalation"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+      - "ASSET-CREDENTIALS"
+      - "ASSET-AUDIT-LOG"
+    source_actors:
+      - "ACTOR-SANDBOX-WORKER"
+      - "ACTOR-SUPPLY-CHAIN"
+    trust_boundary: "TB-T4-T5"
+    attack_surface: "SURF-SANDBOX-CONTAINMENT"
+    target_phase: 2
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-008"
+      - "INV-009"
+    status: "ACTIVE"
+
+  - id: "THREAT-CROSS-MISSION-LEAKAGE"
+    title: "Cross-Mission Data and Credential Leakage"
+    description: "An agent or database query in Mission A accesses evidence, credentials, knowledge graphs, or worker outputs belonging to Mission B."
+    stride:
+      - "Information Disclosure"
+      - "Tampering"
+    owasp_llm:
+      - "LLM02:2025-Sensitive Information Disclosure"
+    owasp_agentic:
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0025-Exfiltration via ML Inference API"
+    mitre_attack:
+      - "T1078-Valid Accounts"
+    affected_assets:
+      - "ASSET-EVIDENCE-STORE"
+      - "ASSET-CREDENTIALS"
+      - "ASSET-KNOWLEDGE-GRAPH"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-MALICIOUS-INSIDER"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-PRESENTATION-API"
+    target_phase: 1
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-012"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-AUDIT-TAMPERING"
+    title: "Audit Ledger Tampering and Event Rewriting"
+    description: "An attacker or rogue process modifies, deletes, or truncates the audit log to erase evidence of unauthorized actions or policy violations."
+    stride:
+      - "Repudiation"
+      - "Tampering"
+    owasp_llm:
+      - "LLM05:2025-Improper Output Handling"
+    owasp_agentic:
+      - "ASI09:2026-Human-Agent Trust Exploitation"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1565.001-Stored Data Manipulation"
+      - "T1562.001-Disable or Modify Tools"
+    affected_assets:
+      - "ASSET-AUDIT-LOG"
+    source_actors:
+      - "ACTOR-MALICIOUS-INSIDER"
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-SANDBOX-WORKER"
+    trust_boundary: "TB-T1-T2"
+    attack_surface: "SURF-PRESENTATION-API"
+    target_phase: 1
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-013"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-EVIDENCE-TAMPERING"
+    title: "Evidence Artifact Tampering and Provenance Spoofing"
+    description: "Post-creation modification of scan outputs, PCAP files, or HTTP transcripts to forge false findings or conceal security vulnerabilities."
+    stride:
+      - "Tampering"
+      - "Repudiation"
+    owasp_llm:
+      - "LLM04:2025-Data and Model Poisoning"
+    owasp_agentic:
+      - "ASI06:2026-Memory and Context Poisoning"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1565.001-Stored Data Manipulation"
+    affected_assets:
+      - "ASSET-EVIDENCE-STORE"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-SANDBOX-WORKER"
+    trust_boundary: "TB-T6-T2"
+    attack_surface: "SURF-EVIDENCE-PARSER"
+    target_phase: 1
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-007"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-RESOURCE-EXHAUSTION"
+    title: "Resource Exhaustion and DoS via Tool/LLM Overload"
+    description: "Recursive proposal loops, excessive tool concurrency, or runaway LLM queries exhaust CPU, memory, network bandwidth, or spend budgets."
+    stride:
+      - "Denial of Service"
+    owasp_llm:
+      - "LLM10:2025-Unbounded Consumption"
+    owasp_agentic:
+      - "ASI08:2026-Cascading Failures"
+    mitre_atlas:
+      - "AML.T0042-Resource Hijacking"
+    mitre_attack:
+      - "T1499-Endpoint Denial of Service"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-TARGET-ADVERSARY"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-KERNEL-INGESTION"
+    target_phase: 1
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-LLM-PROVIDER-EXPOSURE"
+    title: "Sensitive Mission Data Exposure to LLM Providers"
+    description: "Transmission of unredacted passwords, internal network topologies, client source code, or private keys to external third-party LLM APIs."
+    stride:
+      - "Information Disclosure"
+    owasp_llm:
+      - "LLM02:2025-Sensitive Information Disclosure"
+    owasp_agentic:
+      - "ASI04:2026-Agentic Supply Chain Vulnerabilities"
+    mitre_atlas:
+      - "AML.T0025-Exfiltration via ML Inference API"
+    mitre_attack:
+      - "T1020-Automated Exfiltration"
+    affected_assets:
+      - "ASSET-CREDENTIALS"
+      - "ASSET-EVIDENCE-STORE"
+    source_actors:
+      - "ACTOR-LLM-PROVIDER"
+    trust_boundary: "TB-T3-T8"
+    attack_surface: "SURF-LLM-GATEWAY"
+    target_phase: 3
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-001"
+      - "INV-011"
+    status: "ACTIVE"
+
+  - id: "THREAT-DEPENDENCY-COMPROMISE"
+    title: "Upstream Software Dependency Compromise"
+    description: "Compromised third-party Rust crate, Python wheel, or container base image injects malicious backdoors into ARKA runtime binaries."
+    stride:
+      - "Tampering"
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM03:2025-Supply Chain"
+    owasp_agentic:
+      - "ASI04:2026-Agentic Supply Chain Vulnerabilities"
+    mitre_atlas:
+      - "AML.T0040-ML Supply Chain Compromise"
+    mitre_attack:
+      - "T1195.001-Compromise Software Dependencies"
+      - "T1195.002-Compromise Software Supply Chain"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+      - "ASSET-CI-PIPELINE"
+    source_actors:
+      - "ACTOR-SUPPLY-CHAIN"
+    trust_boundary: "TB-CI-T2"
+    attack_surface: "SURF-CI-PIPELINE"
+    target_phase: 0
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-OPERATOR-MISUSE"
+    title: "Operator Misconfiguration and Accidental Misuse"
+    description: "Operator mistakenly defines overly broad CIDR scopes (e.g. 0.0.0.0/0), blindly approves unverified action hashes, or misconfigures mode."
+    stride:
+      - "Elevation of Privilege"
+      - "Repudiation"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI09:2026-Human-Agent Trust Exploitation"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1078-Valid Accounts"
+    affected_assets:
+      - "ASSET-MISSION-SCOPE"
+      - "ASSET-APPROVAL-SEALS"
+    source_actors:
+      - "ACTOR-OPERATOR"
+    trust_boundary: "TB-T0-T1"
+    attack_surface: "SURF-PRESENTATION-API"
+    target_phase: 1
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-005"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-TOCTOU-PARAMETER-MUTATION"
+    title: "TOCTOU Action Parameter Mutation After Approval"
+    description: "Action parameters are modified between the moment human approval is granted and the moment the Execution Broker dispatches the tool task."
+    stride:
+      - "Tampering"
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1548-Abuse Elevation Control Mechanism"
+    affected_assets:
+      - "ASSET-APPROVAL-SEALS"
+      - "ASSET-KERNEL-STATE"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-OPERATOR"
+    trust_boundary: "TB-T2-T4"
+    attack_surface: "SURF-BROKER-DISPATCH"
+    target_phase: 1
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-005"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-EMERGENCY-STOP-BYPASS"
+    title: "Emergency Stop Bypass or Incomplete Worker Termination"
+    description: "Operator activates Emergency Stop, but asynchronous message delays or hung processes allow active worker sandboxes to continue executing."
+    stride:
+      - "Elevation of Privilege"
+      - "Denial of Service"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI10:2026-Rogue Agents"
+      - "ASI08:2026-Cascading Failures"
+    mitre_atlas:
+      - "AML.T0042-Resource Hijacking"
+    mitre_attack:
+      - "T1562.001-Disable or Modify Tools"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+      - "ASSET-WORKER-ISOLATION"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-SANDBOX-WORKER"
+    trust_boundary: "TB-T2-T4"
+    attack_surface: "SURF-BROKER-DISPATCH"
+    target_phase: 1
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-EVIDENCE-PARSER-COMPROMISE"
+    title: "Evidence Parser Vulnerability and Remote Code Execution"
+    description: "Target returns malformed XML, PCAP, or JSON that triggers a memory corruption bug, XXE, or ReDoS in an evidence parser running in kernel context."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM05:2025-Improper Output Handling"
+    owasp_agentic:
+      - "ASI05:2026-Unexpected Code Execution"
+    mitre_atlas:
+      - "AML.T0048-Insecure Output Handling"
+    mitre_attack:
+      - "T1190-Exploit Public-Facing Application"
+      - "T1203-Exploitation for Client Execution"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+      - "ASSET-EVIDENCE-STORE"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+    trust_boundary: "TB-T6-T2"
+    attack_surface: "SURF-EVIDENCE-PARSER"
+    target_phase: 3
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-007"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-GRAPHIFY-POISONING"
+    title: "Knowledge Graph Relationship and Finding Poisoning"
+    description: "Ingestion of fabricated target relationships (e.g. false subdomains or bogus tech stacks) corrupts the persistent knowledge graph and misleads agents."
+    stride:
+      - "Tampering"
+    owasp_llm:
+      - "LLM04:2025-Data and Model Poisoning"
+    owasp_agentic:
+      - "ASI06:2026-Memory and Context Poisoning"
+    mitre_atlas:
+      - "AML.T0047-Data Poisoning"
+    mitre_attack:
+      - "T1565.001-Stored Data Manipulation"
+    affected_assets:
+      - "ASSET-KNOWLEDGE-GRAPH"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-A2A-MESSAGING"
+    target_phase: 3
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-007"
+      - "INV-003"
+    status: "ACTIVE"
+
+  - id: "THREAT-LLM-EGRESS-DATA-LEAKAGE"
+    title: "Prompt Exfiltration via Outbound LLM API Channel"
+    description: "Prompt injection or rogue agent formats confidential target data and credentials into outward-bound LLM prompts to an attacker-controlled endpoint."
+    stride:
+      - "Information Disclosure"
+    owasp_llm:
+      - "LLM02:2025-Sensitive Information Disclosure"
+    owasp_agentic:
+      - "ASI04:2026-Agentic Supply Chain Vulnerabilities"
+    mitre_atlas:
+      - "AML.T0025-Exfiltration via ML Inference API"
+    mitre_attack:
+      - "T1048-Exfiltration Over Alternative Protocol"
+    affected_assets:
+      - "ASSET-CREDENTIALS"
+      - "ASSET-LLM-KEYS"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+      - "ACTOR-TARGET-ADVERSARY"
+    trust_boundary: "TB-T3-T8"
+    attack_surface: "SURF-LLM-GATEWAY"
+    target_phase: 3
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-001"
+      - "INV-011"
+    status: "ACTIVE"
+
+  - id: "THREAT-CI-GATE-MANIPULATION"
+    title: "CI Security Gate Weakening and Test Disabling"
+    description: "A pull request modifies CI workflow definitions, unit test assertions, or validator fixtures to artificially green-light failing security tests."
+    stride:
+      - "Tampering"
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM03:2025-Supply Chain"
+    owasp_agentic:
+      - "ASI04:2026-Agentic Supply Chain Vulnerabilities"
+    mitre_atlas:
+      - "AML.T0040-ML Supply Chain Compromise"
+    mitre_attack:
+      - "T1562.001-Disable or Modify Tools"
+      - "T1195-Supply Chain Compromise"
+    affected_assets:
+      - "ASSET-CI-PIPELINE"
+    source_actors:
+      - "ACTOR-CI-ATTACKER"
+    trust_boundary: "TB-CI-T2"
+    attack_surface: "SURF-CI-PIPELINE"
+    target_phase: 0
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-CI-SUPPLY-CHAIN-COMPROMISE"
+    title: "CI Environment Runner and Build Supply Chain Poisoning"
+    description: "Compromised third-party GitHub Action, unpinned build step, or poisoned runner image tampers with compiled release binaries or steals secrets."
+    stride:
+      - "Tampering"
+      - "Information Disclosure"
+    owasp_llm:
+      - "LLM03:2025-Supply Chain"
+    owasp_agentic:
+      - "ASI04:2026-Agentic Supply Chain Vulnerabilities"
+    mitre_atlas:
+      - "AML.T0040-ML Supply Chain Compromise"
+    mitre_attack:
+      - "T1195.002-Compromise Software Supply Chain"
+    affected_assets:
+      - "ASSET-CI-PIPELINE"
+    source_actors:
+      - "ACTOR-CI-ATTACKER"
+    trust_boundary: "TB-CI-T2"
+    attack_surface: "SURF-CI-PIPELINE"
+    target_phase: 0
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-METADATA-ENDPOINT-ACCESS"
+    title: "Cloud Metadata Endpoint SSRF Extraction"
+    description: "Sandboxed tool or HTTP request attempts to reach cloud instance metadata addresses (169.254.169.254) to steal cloud host IAM credentials."
+    stride:
+      - "Elevation of Privilege"
+      - "Information Disclosure"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1552-Unsecured Credentials"
+      - "T1071-Application Layer Protocol"
+    affected_assets:
+      - "ASSET-MISSION-SCOPE"
+      - "ASSET-WORKER-ISOLATION"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T5-T6"
+    attack_surface: "SURF-NETWORK-EGRESS"
+    target_phase: 2
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-003"
+      - "INV-015"
+    status: "ACTIVE"
+
+  - id: "THREAT-IPV6-POLICY-BYPASS"
+    title: "IPv6 Dual-Stack Destination Scope Bypass"
+    description: "Target domain resolves to IPv4 and IPv6; scope validation permits IPv4, but the tool connects via unvalidated or link-local IPv6."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1562.001-Disable or Modify Tools"
+    affected_assets:
+      - "ASSET-MISSION-SCOPE"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T5-T6"
+    attack_surface: "SURF-NETWORK-EGRESS"
+    target_phase: 2
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-003"
+      - "INV-015"
+    status: "ACTIVE"
+
+  - id: "THREAT-REDIRECT-VALIDATION-BYPASS"
+    title: "HTTP Redirect Validation Scope Evasion"
+    description: "Authorized target returns an HTTP 301/302 redirect pointing to an out-of-scope host, RFC1918 address, or metadata service that the client follows blindly."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI02:2026-Tool Misuse and Exploitation"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1071.001-Web Protocols"
+    affected_assets:
+      - "ASSET-MISSION-SCOPE"
+    source_actors:
+      - "ACTOR-TARGET-ADVERSARY"
+    trust_boundary: "TB-T5-T6"
+    attack_surface: "SURF-NETWORK-EGRESS"
+    target_phase: 2
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-003"
+      - "INV-015"
+    status: "ACTIVE"
+
+  - id: "THREAT-BROWSER-EXECUTION-BYPASS"
+    title: "Direct Browser Automation Broker Bypass"
+    description: "Python intelligence plane directly executes Playwright or Chromium processes against targets without passing through the Rust Execution Broker."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI05:2026-Unexpected Code Execution"
+    mitre_atlas:
+      - "AML.T0048-Insecure Output Handling"
+    mitre_attack:
+      - "T1059-Command and Scripting Interpreter"
+    affected_assets:
+      - "ASSET-WORKER-ISOLATION"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-KERNEL-INGESTION"
+    target_phase: 2
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-002"
+      - "INV-008"
+      - "INV-009"
+    status: "ACTIVE"
+
+  - id: "THREAT-CAPABILITY-FORGERY"
+    title: "Capability Forgery and Self-Granted Privileges"
+    description: "An agent alters its own capability set, mints a forged capability token, or requests capabilities absent from its parent task."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0043-Craft Adversarial Data"
+    mitre_attack:
+      - "T1548-Abuse Elevation Control Mechanism"
+    affected_assets:
+      - "ASSET-CAPABILITY-TOKENS"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-KERNEL-INGESTION"
+    target_phase: 1
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-001"
+      - "INV-004"
+      - "INV-016"
+    status: "ACTIVE"
+
+  - id: "THREAT-SANDBOX-CLEANUP-FAILURE"
+    title: "Sandbox Cleanup Failure and Residual Credentials"
+    description: "Failure to terminate child processes or scrub temporary injected credentials after worker completion, timeout, or crash."
+    stride:
+      - "Information Disclosure"
+    owasp_llm:
+      - "LLM02:2025-Sensitive Information Disclosure"
+    owasp_agentic:
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0025-Exfiltration via ML Inference API"
+    mitre_attack:
+      - "T1552-Unsecured Credentials"
+    affected_assets:
+      - "ASSET-CREDENTIALS"
+      - "ASSET-WORKER-ISOLATION"
+    source_actors:
+      - "ACTOR-SANDBOX-WORKER"
+    trust_boundary: "TB-T4-T5"
+    attack_surface: "SURF-SANDBOX-CONTAINMENT"
+    target_phase: 2
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-011"
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-BUDGET-OVERRUN"
+    title: "Silent Resource Budget Overrun"
+    description: "Mission or agent silently exceeds CPU, memory, storage, or LLM financial budgets without triggering fail-closed enforcement."
+    stride:
+      - "Denial of Service"
+    owasp_llm:
+      - "LLM10:2025-Unbounded Consumption"
+    owasp_agentic:
+      - "ASI08:2026-Cascading Failures"
+    mitre_atlas:
+      - "AML.T0042-Resource Hijacking"
+    mitre_attack:
+      - "T1499-Endpoint Denial of Service"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+    source_actors:
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T2-T3"
+    attack_surface: "SURF-KERNEL-INGESTION"
+    target_phase: 1
+    severity: "HIGH"
+    invariants_threatened:
+      - "INV-010"
+    status: "ACTIVE"
+
+  - id: "THREAT-FAIL-CLOSED-VIOLATION"
+    title: "Fail-Open Execution on Security Control Failure"
+    description: "A panic, unhandled error, or timeout in policy evaluation, credential brokering, or network resolution results in permissive execution."
+    stride:
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM06:2025-Excessive Agency"
+    owasp_agentic:
+      - "ASI08:2026-Cascading Failures"
+    mitre_atlas:
+      - "AML.T0048-Insecure Output Handling"
+    mitre_attack:
+      - "T1562.001-Disable or Modify Tools"
+    affected_assets:
+      - "ASSET-KERNEL-STATE"
+    source_actors:
+      - "ACTOR-KERNEL"
+    trust_boundary: "TB-T1-T2"
+    attack_surface: "SURF-KERNEL-INGESTION"
+    target_phase: 1
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-010"
+    status: "ACTIVE"

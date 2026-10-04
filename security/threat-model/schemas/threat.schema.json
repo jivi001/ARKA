@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Threat Schema",
+  "type": "object",
+  "required": ["threats"],
+  "properties": {
+    "threats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "stride",
+          "owasp_llm",
+          "owasp_agentic",
+          "mitre_atlas",
+          "mitre_attack",
+          "affected_assets",
+          "source_actors",
+          "trust_boundary",
+          "attack_surface",
+          "target_phase",
+          "severity",
+          "invariants_threatened",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^THREAT-[A-Z0-9-]+$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5
+          },
+          "description": {
+            "type": "string",
+            "minLength": 15
+          },
+          "stride": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "Spoofing",
+                "Tampering",
+                "Repudiation",
+                "Information Disclosure",
+                "Denial of Service",
+                "Elevation of Privilege"
+              ]
+            },
+            "minItems": 1
+          },
+          "owasp_llm": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "owasp_agentic": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mitre_atlas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mitre_attack": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "affected_assets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^ASSET-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "source_actors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^ACTOR-[A-Z0-9-]+$"
+            },
+            "minItems": 1
+          },
+          "trust_boundary": {
+            "type": "string",
+            "pattern": "^TB-[A-Z0-9-]+$"
+          },
+          "attack_surface": {
+            "type": "string",
+            "pattern": "^SURF-[A-Z0-9-]+$"
+          },
+          "target_phase": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+          },
+          "invariants_threatened": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^INV-[0-9]{3}$"
+            },
+            "minItems": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "IDENTIFIED"]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

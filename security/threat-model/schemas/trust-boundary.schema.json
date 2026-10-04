@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Trust Boundary Schema",
+  "type": "object",
+  "required": ["trust_boundaries"],
+  "properties": {
+    "trust_boundaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "from_zone",
+          "to_zone",
+          "description",
+          "crossing_mechanism",
+          "default_posture",
+          "threat_considerations"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^TB-[A-Z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3
+          },
+          "from_zone": {
+            "type": "string"
+          },
+          "to_zone": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10
+          },
+          "crossing_mechanism": {
+            "type": "string",
+            "minLength": 5
+          },
+          "default_posture": {
+            "type": "string",
+            "enum": [
+              "DENY",
+              "FAIL_CLOSED",
+              "AUTHENTICATED_AND_AUTHORIZED",
+              "STRICT_UNIDIRECTIONAL_ISOLATION",
+              "VALIDATED_UNTRUSTED_INGESTION",
+              "MINIMAL_POLICY_CONTROLLED_EGRESS"
+            ]
+          },
+          "threat_considerations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

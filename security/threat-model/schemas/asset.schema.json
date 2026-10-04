@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Asset Schema",
+  "type": "object",
+  "required": ["assets"],
+  "properties": {
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "sensitivity",
+          "trust_zone",
+          "owner_component",
+          "integrity_requirements",
+          "confidentiality_requirements"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ASSET-[A-Z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+          },
+          "trust_zone": {
+            "type": "string",
+            "enum": ["T0", "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"]
+          },
+          "owner_component": {
+            "type": "string",
+            "pattern": "^COMP-[A-Z0-9-]+$"
+          },
+          "integrity_requirements": {
+            "type": "string",
+            "minLength": 5
+          },
+          "confidentiality_requirements": {
+            "type": "string",
+            "minLength": 5
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

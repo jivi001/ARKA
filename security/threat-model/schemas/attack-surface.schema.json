@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARKA Attack Surface Schema",
+  "type": "object",
+  "required": ["attack_surfaces"],
+  "properties": {
+    "attack_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "trust_boundary",
+          "protocol",
+          "target_component",
+          "exposure",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^SURF-[A-Z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3
+          },
+          "trust_boundary": {
+            "type": "string",
+            "pattern": "^TB-[A-Z0-9-]+$"
+          },
+          "protocol": {
+            "type": "string",
+            "minLength": 2
+          },
+          "target_component": {
+            "type": "string",
+            "pattern": "^COMP-[A-Z0-9-]+$"
+          },
+          "exposure": {
+            "type": "string",
+            "enum": [
+              "EXTERNAL_NETWORK",
+              "INTERNAL_CROSS_PLANE",
+              "SANDBOX_INTERNAL",
+              "CI_PIPELINE",
+              "STORAGE_LAYER"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

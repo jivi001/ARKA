@@ -1,0 +1,15 @@
+# ARKA P0 Canonical Security Baseline Manifest
+# Generated for Checkpoint P0A Validation
+# Cryptographic root of trust for security policy, schemas, and validator integrity
+
+2eee64035130c7a12f70e81399cf3557701af4a20f1ea12a61a21284db8f1c9c  threat-model/actors.yaml
+337916691646fad50523426e9b72ea7ecbd4baa57c72f7a34608fd32c93d7ebc  threat-model/assets.yaml
+d29a31a22a0fc840dcb0b39021f3ca0245ae81bb8fee252c96667b21a6c19001  threat-model/attack-surfaces.yaml
+265a96de0b01fe03c4fb2e31e7edd8638030a196fcb3a9021e1e243fd768225f  threat-model/schemas/actor.schema.json
+15165a046a3562ec5817cdf4324c7dbde75bc120402e2522cc092d4ee3de63c6  threat-model/schemas/asset.schema.json
+c2d6c2401883aa68f1e1464f56a3eb8f7c570421f7efb35b2c3cdbc9e2f96562  threat-model/schemas/attack-surface.schema.json
+248727c333a291050db07437c0b9816cae7816f9a1985d961610d5e570c58cb7  threat-model/schemas/threat.schema.json
+96286b2c9fc09cc67696dc43b52bae8b712c51c9e1d17866eb0ad8ea326106a1  threat-model/schemas/trust-boundary.schema.json
+2b495fef2b7d26069244f4556a51aacec6a19d98a0e79fd3416cd02f2c8b3ceb  threat-model/threats.yaml
+b7d450188dace21f3b68183df649601dec56ef1d4ac62aa9b1ff30cb2ae75719  threat-model/trust-boundaries.yaml
+a6e38cb00a1d1abcb613dc918ed0c6251d1b2820a9c7c10b4b6be3454c63f229  validator/validate_security_model.py
