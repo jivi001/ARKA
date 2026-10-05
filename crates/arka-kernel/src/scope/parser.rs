@@ -61,6 +61,29 @@ impl TargetParser {
             return Self::parse_ip_or_socket(trimmed);
         }
 
+        // Mixed-radix or dotted hexadecimal IP detection (e.g. 127.0.0.0x1, 169.254.169.0xfe, 0x7f.0.0.1, 10.0x0a.0.1)
+        // If all dotted segments are numeric or hex literals, and at least one segment uses hex notation,
+        // it is an ambiguous hexadecimal IPv4 address representation and must be rejected.
+        let dotted_parts: Vec<&str> = host_part.split('.').collect();
+        if dotted_parts.len() <= 4
+            && dotted_parts
+                .iter()
+                .any(|p| p.starts_with("0x") || p.starts_with("0X"))
+        {
+            let all_numeric_or_hex = dotted_parts.iter().all(|p| {
+                if p.starts_with("0x") || p.starts_with("0X") {
+                    p.len() > 2 && p[2..].chars().all(|c| c.is_ascii_hexdigit())
+                } else {
+                    !p.is_empty() && p.chars().all(|c| c.is_ascii_digit())
+                }
+            });
+            if all_numeric_or_hex {
+                return Err(KernelSecurityError::ScopeDenied(
+                    "Ambiguous hexadecimal IP representation rejected".to_string(),
+                ));
+            }
+        }
+
         // If the last label is all digits (e.g. 127.0.0.1 or 0177.0.0.1 or 1.2.3),
         // it cannot be a valid domain name (ICANN/RFC forbids all-numeric TLDs).
         // It is an IPv4 attempt and must strictly adhere to IPv4 canonical format.
@@ -126,9 +149,14 @@ impl TargetParser {
         let path_prefix = if path_and_query.is_empty() || path_and_query == "/" {
             None
         } else {
-            // Path normalization
+            // Path normalization with percent-decoding
             let path_part = path_and_query.split(['?', '#']).next().unwrap_or("/");
-            Some(Self::normalize_path(path_part))
+            let normalized = Self::normalize_path(path_part)?;
+            if normalized == "/" {
+                None
+            } else {
+                Some(normalized)
+            }
         };
 
         Ok(CanonicalTarget::UrlOrigin {
@@ -359,9 +387,87 @@ impl TargetParser {
         Ok(lower)
     }
 
-    fn normalize_path(path: &str) -> String {
+    fn percent_decode_path(raw: &str) -> Result<String, KernelSecurityError> {
+        // Detect and reject double encoding evasion attempts
+        // e.g. %252e (%25 -> %, 2e -> . => %2e) or %252f (%25 -> %, 2f -> / => %2f)
+        let raw_lower = raw.to_ascii_lowercase();
+        if raw_lower.contains("%252e") || raw_lower.contains("%252f") || raw_lower.contains("%255c")
+        {
+            return Err(KernelSecurityError::ScopeDenied(
+                "Double-encoded path traversal sequence detected".to_string(),
+            ));
+        }
+
+        let bytes = raw.as_bytes();
+        let mut decoded = Vec::with_capacity(bytes.len());
+        let mut i = 0;
+
+        while i < bytes.len() {
+            if bytes[i] == b'%' {
+                if i + 2 >= bytes.len() {
+                    return Err(KernelSecurityError::ScopeDenied(
+                        "Truncated percent-encoded sequence in URL path".to_string(),
+                    ));
+                }
+                let h1 = bytes[i + 1] as char;
+                let h2 = bytes[i + 2] as char;
+                let hex_val = match (h1.to_digit(16), h2.to_digit(16)) {
+                    (Some(d1), Some(d2)) => ((d1 << 4) | d2) as u8,
+                    _ => {
+                        return Err(KernelSecurityError::ScopeDenied(
+                            "Invalid percent-encoded hex sequence in URL path".to_string(),
+                        ));
+                    }
+                };
+
+                // Reject null byte injection in URL path
+                if hex_val == 0 {
+                    return Err(KernelSecurityError::ScopeDenied(
+                        "Null byte in URL path is forbidden".to_string(),
+                    ));
+                }
+
+                // Decode backslash %5c/%5C to / to prevent backslash-based traversal/confusion
+                if hex_val == b'\\' {
+                    decoded.push(b'/');
+                } else {
+                    decoded.push(hex_val);
+                }
+                i += 3;
+            } else if bytes[i] == b'\\' {
+                // Also normalize literal backslash in path to /
+                decoded.push(b'/');
+                i += 1;
+            } else {
+                decoded.push(bytes[i]);
+                i += 1;
+            }
+        }
+
+        let decoded_str = String::from_utf8(decoded).map_err(|_| {
+            KernelSecurityError::ScopeDenied(
+                "Percent-encoded URL path contains invalid UTF-8 bytes".to_string(),
+            )
+        })?;
+
+        // After decoding, ensure no secondary traversal attempts remain hidden
+        let decoded_lower = decoded_str.to_ascii_lowercase();
+        if decoded_lower.contains("%2e")
+            || decoded_lower.contains("%2f")
+            || decoded_lower.contains("%5c")
+        {
+            return Err(KernelSecurityError::ScopeDenied(
+                "Multi-encoded path traversal sequence detected".to_string(),
+            ));
+        }
+
+        Ok(decoded_str)
+    }
+
+    fn normalize_path(path: &str) -> Result<String, KernelSecurityError> {
+        let decoded = Self::percent_decode_path(path)?;
         let mut segments = Vec::new();
-        for seg in path.split('/') {
+        for seg in decoded.split('/') {
             match seg {
                 "" | "." => {}
                 ".." => {
@@ -371,9 +477,9 @@ impl TargetParser {
             }
         }
         if segments.is_empty() {
-            "/".to_string()
+            Ok("/".to_string())
         } else {
-            format!("/{}", segments.join("/"))
+            Ok(format!("/{}", segments.join("/")))
         }
     }
 }
@@ -442,5 +548,34 @@ mod tests {
                 path_prefix: Some("/a/c".to_string()),
             }
         );
+    }
+
+    #[test]
+    fn test_trailing_hex_ip_rejected() {
+        let res1 = TargetParser::parse("169.254.169.0xfe");
+        assert!(matches!(res1, Err(KernelSecurityError::ScopeDenied(_))));
+
+        let res2 = TargetParser::parse("127.0.0.0x1");
+        assert!(matches!(res2, Err(KernelSecurityError::ScopeDenied(_))));
+    }
+
+    #[test]
+    fn test_percent_encoded_path_traversal_normalized() {
+        let t = TargetParser::parse("http://example.com/api/%2e%2e/admin").unwrap();
+        assert_eq!(
+            t,
+            CanonicalTarget::UrlOrigin {
+                scheme: "http".to_string(),
+                host: "example.com".to_string(),
+                port: 80,
+                path_prefix: Some("/admin".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn test_double_encoded_path_traversal_rejected() {
+        let res = TargetParser::parse("http://example.com/api/%252e%252e/admin");
+        assert!(matches!(res, Err(KernelSecurityError::ScopeDenied(_))));
     }
 }

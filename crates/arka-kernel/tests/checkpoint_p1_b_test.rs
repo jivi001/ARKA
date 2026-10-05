@@ -49,13 +49,33 @@ fn test_scope_ip_002_ambiguous_ip_representations_rejected() {
         Err(KernelSecurityError::ScopeDenied(_))
     ));
 
-    // Hex representations
+    // Hex representations & Trailing-octet hex IP bypass tests (P1-FIX-01 / ARKA-ADV-015)
     assert!(matches!(
         TargetParser::parse("0x7f.0.0.1"),
         Err(KernelSecurityError::ScopeDenied(_))
     ));
     assert!(matches!(
         TargetParser::parse("0x7f000001"),
+        Err(KernelSecurityError::ScopeDenied(_))
+    ));
+    assert!(matches!(
+        TargetParser::parse("169.254.169.0xfe"),
+        Err(KernelSecurityError::ScopeDenied(_))
+    ));
+    assert!(matches!(
+        TargetParser::parse("127.0.0.0x1"),
+        Err(KernelSecurityError::ScopeDenied(_))
+    ));
+    assert!(matches!(
+        TargetParser::parse("10.0.0.0x0a"),
+        Err(KernelSecurityError::ScopeDenied(_))
+    ));
+    assert!(matches!(
+        TargetParser::parse("192.168.0x1.1"),
+        Err(KernelSecurityError::ScopeDenied(_))
+    ));
+    assert!(matches!(
+        TargetParser::parse("0x7f.0x0.0x0.0x1"),
         Err(KernelSecurityError::ScopeDenied(_))
     ));
 
@@ -230,6 +250,63 @@ fn test_scope_url_003_port_and_path_normalization() {
     } else {
         panic!("Expected UrlOrigin");
     }
+
+    // Percent-encoded path traversal normalization (P1-FIX-03 / ARKA-ADV-021)
+    let t_pct = TargetParser::parse("https://api.example.com/api/%2e%2e/admin").unwrap();
+    if let CanonicalTarget::UrlOrigin { path_prefix, .. } = t_pct {
+        assert_eq!(path_prefix, Some("/admin".to_string()));
+    } else {
+        panic!("Expected UrlOrigin");
+    }
+
+    let t_pct_upper = TargetParser::parse("https://api.example.com/api/%2E%2E/admin").unwrap();
+    if let CanonicalTarget::UrlOrigin { path_prefix, .. } = t_pct_upper {
+        assert_eq!(path_prefix, Some("/admin".to_string()));
+    } else {
+        panic!("Expected UrlOrigin");
+    }
+
+    let t_pct_slash = TargetParser::parse("https://api.example.com/api/%2e%2e%2fadmin").unwrap();
+    if let CanonicalTarget::UrlOrigin { path_prefix, .. } = t_pct_slash {
+        assert_eq!(path_prefix, Some("/admin".to_string()));
+    } else {
+        panic!("Expected UrlOrigin");
+    }
+
+    // Double-encoding evasion attempts must be rejected
+    assert!(matches!(
+        TargetParser::parse("https://api.example.com/api/%252e%252e/admin"),
+        Err(KernelSecurityError::ScopeDenied(_))
+    ));
+    assert!(matches!(
+        TargetParser::parse("https://api.example.com/api/%252f../admin"),
+        Err(KernelSecurityError::ScopeDenied(_))
+    ));
+
+    // Null byte injection in path must be rejected
+    assert!(matches!(
+        TargetParser::parse("https://api.example.com/api/%00/admin"),
+        Err(KernelSecurityError::ScopeDenied(_))
+    ));
+
+    // Security evaluation: Scope restricted to /api prefix MUST block /api/%2e%2e/admin
+    let scope = ScopeDefinition {
+        inclusions: vec![ScopeRule::UrlPrefix {
+            scheme: "https".to_string(),
+            host: "api.example.com".to_string(),
+            port: 443,
+            path_prefix: "/api".to_string(),
+        }],
+        exclusions: vec![],
+        allow_private_ranges: false,
+    };
+
+    let target_traversal = TargetParser::parse("https://api.example.com/api/%2e%2e/admin").unwrap();
+    let eval_res = ScopeEngine::evaluate(&scope, &target_traversal);
+    assert!(
+        matches!(eval_res, Err(KernelSecurityError::ScopeDenied(_))),
+        "Normalized path /admin must not match authorized /api prefix"
+    );
 }
 
 // ---------------------------------------------------------------------------

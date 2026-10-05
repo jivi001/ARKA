@@ -148,6 +148,166 @@ async fn test_authz_002_require_approval_for_high_risk_action() {
     }
 }
 
+#[tokio::test]
+async fn test_authz_003_two_step_approval_lifecycle_no_deadlock() {
+    let (storage, _clock, normalizer, engine) = setup_environment(1000).await;
+    create_active_mission(&storage, "mis-twostep-01", 1000).await;
+
+    let ctx = create_auth_context("mis-twostep-01", vec!["CONTROLLED_EXPLOITATION"]);
+    let scope = ScopeDefinition {
+        inclusions: vec![ScopeRule::IpExact("192.168.1.50".parse().unwrap())],
+        exclusions: vec![],
+        allow_private_ranges: true,
+    };
+
+    let proposal_json = json!({
+        "proposal_id": "prp-twostep-01",
+        "mission_id": "mis-twostep-01",
+        "capability_id": "CONTROLLED_EXPLOITATION",
+        "target": "192.168.1.50",
+        "parameters": { "cve": "CVE-2024-5555" },
+        "nonce": "nonce-twostep-001"
+    })
+    .to_string();
+
+    let action = normalizer
+        .normalize_from_json(&proposal_json, &ctx)
+        .unwrap();
+
+    // Step 1: Initial submission without approval -> returns RequireApproval
+    let dec1 = engine
+        .authorize(action.clone(), &scope, &ctx, None)
+        .await
+        .unwrap();
+    assert!(
+        dec1.is_require_approval(),
+        "Expected RequireApproval on initial submission"
+    );
+
+    // Step 1b: Second query without approval (e.g. status polling / idempotency)
+    // Must NOT be blocked by replay protection (Fix for P1-FIX-02 / ARKA-AUTHZ-001)
+    let dec1b = engine
+        .authorize(action.clone(), &scope, &ctx, None)
+        .await
+        .unwrap();
+    assert!(
+        dec1b.is_require_approval(),
+        "Expected RequireApproval again without deadlock"
+    );
+
+    // Step 2: Human operator issues approval bound to action_hash
+    let approval = Approval::new(
+        ApprovalId::new("apr-twostep-01").unwrap(),
+        action.mission_id.clone(),
+        action.action_hash.clone(),
+        OperatorId::new("opr-lead").unwrap(),
+        1000,
+        1500,
+    );
+
+    let mut tx = storage.begin_transaction().await.unwrap();
+    tx.save_approval(&approval).await.unwrap();
+    tx.commit().await.unwrap();
+
+    // Step 3: Resubmission with valid human approval -> returns Allow (execution authorized)
+    let dec2 = engine
+        .authorize(action.clone(), &scope, &ctx, Some(approval.clone()))
+        .await
+        .unwrap();
+    assert!(
+        dec2.is_allow(),
+        "Expected Allow when valid approval is supplied"
+    );
+
+    // Step 4: Re-execution attempt with same approval is rejected (approval already consumed)
+    let dec3 = engine
+        .authorize(action.clone(), &scope, &ctx, Some(approval.clone()))
+        .await
+        .unwrap();
+    assert!(
+        matches!(
+            dec3,
+            arka_kernel::policy::AuthorizationDecision::Deny {
+                error: KernelSecurityError::ApprovalInvalid(_)
+            }
+        ),
+        "Expected ApprovalInvalid on duplicate execution attempt with consumed approval"
+    );
+
+    // Step 5: Re-execution attempt even with a NEW fresh approval is rejected by Replay Protection (INV-008)
+    let approval2 = Approval::new(
+        ApprovalId::new("apr-twostep-02").unwrap(),
+        action.mission_id.clone(),
+        action.action_hash.clone(),
+        OperatorId::new("opr-lead").unwrap(),
+        1000,
+        1500,
+    );
+    let mut tx = storage.begin_transaction().await.unwrap();
+    tx.save_approval(&approval2).await.unwrap();
+    tx.commit().await.unwrap();
+
+    let dec4 = engine
+        .authorize(action.clone(), &scope, &ctx, Some(approval2))
+        .await
+        .unwrap();
+    assert!(
+        matches!(
+            dec4,
+            arka_kernel::policy::AuthorizationDecision::Deny {
+                error: KernelSecurityError::ReplayDetected(_)
+            }
+        ),
+        "Expected ReplayDetected on duplicate execution attempt with fresh approval"
+    );
+}
+
+#[tokio::test]
+async fn test_authz_004_cross_mission_proposal_injection_denied() {
+    let (storage, _clock, normalizer, engine) = setup_environment(1000).await;
+    create_active_mission(&storage, "mis-origin-01", 1000).await;
+    create_active_mission(&storage, "mis-target-02", 1000).await;
+
+    // Caller authenticated in context of mis-origin-01
+    let ctx_origin = create_auth_context("mis-origin-01", vec!["PORT_SCAN"]);
+    let scope = ScopeDefinition {
+        inclusions: vec![ScopeRule::IpExact("192.168.1.10".parse().unwrap())],
+        exclusions: vec![],
+        allow_private_ranges: true,
+    };
+
+    let proposal_json = json!({
+        "proposal_id": "prp-cross-01",
+        "mission_id": "mis-origin-01",
+        "capability_id": "PORT_SCAN",
+        "target": "192.168.1.10",
+        "parameters": { "ports": [80] },
+        "nonce": "nonce-cross-001"
+    })
+    .to_string();
+
+    let mut action = normalizer
+        .normalize_from_json(&proposal_json, &ctx_origin)
+        .unwrap();
+
+    // Adversary tampers with action.mission_id to point to target mission mis-target-02 (ARKA-ADV-009)
+    action.mission_id = MissionId::new("mis-target-02").unwrap();
+
+    let decision = engine
+        .authorize(action, &scope, &ctx_origin, None)
+        .await
+        .unwrap();
+    assert!(
+        matches!(
+            decision,
+            arka_kernel::policy::AuthorizationDecision::Deny {
+                error: KernelSecurityError::CrossMissionAccessDenied { .. }
+            }
+        ),
+        "Expected CrossMissionAccessDenied when action.mission_id != context.mission_id"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // TEST-DELEGATION-* : Authority Delegation & Invariant INV-003
 // ---------------------------------------------------------------------------

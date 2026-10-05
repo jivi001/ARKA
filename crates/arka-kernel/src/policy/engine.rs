@@ -86,6 +86,17 @@ impl AuthorizationEngine {
         let mut tx = self.storage.begin_transaction().await?;
         let now = self.clock.now_unix();
 
+        // 0. Defense-in-depth: Mission Context Check (ARKA-ADV-009)
+        if action.mission_id != context.mission_id {
+            let _ = tx.rollback().await;
+            return Ok(AuthorizationDecision::Deny {
+                error: KernelSecurityError::CrossMissionAccessDenied {
+                    requester_mission: context.mission_id.clone(),
+                    target_mission: action.mission_id.clone(),
+                },
+            });
+        }
+
         // 1. Invariant INV-010: Emergency Stop Gate
         if tx.is_emergency_stop_active().await? {
             let _ = tx.rollback().await;
@@ -125,36 +136,12 @@ impl AuthorizationEngine {
             return Ok(AuthorizationDecision::Deny { error: e });
         }
 
-        // 4. Replay Protection: Atomic Check-and-Consume (INV-008)
-        let replay_key = sha256_hex(
-            DOMAIN_REPLAY,
-            format!(
-                "{}:{}:{}:{}",
-                action.mission_id, action.proposal_id, action.action_id, action.nonce
-            )
-            .as_bytes(),
-        );
-
-        if let Err(e) = tx
-            .try_consume_replay(
-                &replay_key,
-                &action.mission_id,
-                &action.proposal_id,
-                &action.action_id,
-                now,
-            )
-            .await
-        {
-            let _ = tx.rollback().await;
-            return Ok(AuthorizationDecision::Deny { error: e });
-        }
-
-        // 5. Approval Check
+        // 4. Approval Check
         let needs_approval = action.requires_approval || action.risk_class >= RiskClass::High;
         if needs_approval {
             match approval {
                 None => {
-                    // Record action status as APPROVAL_REQUIRED and commit replay consumption
+                    // Record action status as APPROVAL_REQUIRED and commit (without consuming replay key)
                     tx.save_action_record(&action, "APPROVAL_REQUIRED", now)
                         .await?;
 
@@ -219,6 +206,31 @@ impl AuthorizationEngine {
                     }
                 }
             }
+        }
+
+        // 5. Replay Protection: Atomic Check-and-Consume (INV-008)
+        // Consumed upon execution authorization, preventing replay of authorized actions
+        let replay_key = sha256_hex(
+            DOMAIN_REPLAY,
+            format!(
+                "{}:{}:{}:{}",
+                action.mission_id, action.proposal_id, action.action_id, action.nonce
+            )
+            .as_bytes(),
+        );
+
+        if let Err(e) = tx
+            .try_consume_replay(
+                &replay_key,
+                &action.mission_id,
+                &action.proposal_id,
+                &action.action_id,
+                now,
+            )
+            .await
+        {
+            let _ = tx.rollback().await;
+            return Ok(AuthorizationDecision::Deny { error: e });
         }
 
         // 6. Record action as AUTHORIZED and commit transaction atomically (INV-011)
