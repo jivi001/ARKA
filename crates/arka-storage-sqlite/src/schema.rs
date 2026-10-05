@@ -53,4 +53,31 @@ CREATE TABLE IF NOT EXISTS actions (
     created_at_unix INTEGER NOT NULL,
     updated_at_unix INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS system_audit_log (
+    event_id TEXT PRIMARY KEY,
+    sequence_number INTEGER NOT NULL UNIQUE,
+    timestamp_unix INTEGER NOT NULL,
+    mission_id TEXT,
+    event_type TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    details_json TEXT NOT NULL,
+    previous_hash TEXT NOT NULL,
+    current_hash TEXT NOT NULL,
+    signature TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mission_audit_log (
+    event_id TEXT PRIMARY KEY,
+    mission_id TEXT NOT NULL,
+    sequence_number INTEGER NOT NULL,
+    timestamp_unix INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    details_json TEXT NOT NULL,
+    previous_hash TEXT NOT NULL,
+    current_hash TEXT NOT NULL,
+    signature TEXT NOT NULL,
+    UNIQUE(mission_id, sequence_number)
+);
 "#;

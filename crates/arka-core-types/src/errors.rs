@@ -67,6 +67,12 @@ pub enum KernelSecurityError {
     #[error("Self-approval forbidden: requester and approver cannot be the same identity")]
     SelfApprovalForbidden,
 
+    #[error("Audit chain integrity violation: {0}")]
+    AuditChainTampered(String),
+
+    #[error("Audit append failure: {0}")]
+    AuditAppendFailed(String),
+
     #[error("Storage failure during security transaction: {0}")]
     StorageFailure(String),
 
@@ -146,14 +152,15 @@ impl From<KernelSecurityError> for ExternalSecurityError {
                 request_id: None,
                 retryable: false,
             },
-            KernelSecurityError::StorageFailure(_) | KernelSecurityError::InternalFailure(_) => {
-                Self {
-                    code: "INTERNAL_SECURITY_ERROR".to_string(),
-                    message: "Kernel failed closed due to an internal execution error.".to_string(),
-                    request_id: None,
-                    retryable: false,
-                }
-            }
+            KernelSecurityError::StorageFailure(_)
+            | KernelSecurityError::InternalFailure(_)
+            | KernelSecurityError::AuditChainTampered(_)
+            | KernelSecurityError::AuditAppendFailed(_) => Self {
+                code: "INTERNAL_SECURITY_ERROR".to_string(),
+                message: "Kernel failed closed due to an internal execution error.".to_string(),
+                request_id: None,
+                retryable: false,
+            },
         }
     }
 }

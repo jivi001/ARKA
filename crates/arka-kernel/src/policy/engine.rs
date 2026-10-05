@@ -6,6 +6,7 @@
 //! - Section 20 & 43: TOCTOU cryptographic parameter hash binding to approvals.
 //! - Emergency Stop barrier.
 
+use crate::audit::AuditChainEngine;
 use crate::scope::ScopeEngine;
 use crate::storage::Storage;
 use arka_core_types::actions::CanonicalAction;
@@ -50,11 +51,28 @@ impl AuthorizationDecision {
 pub struct AuthorizationEngine {
     storage: Arc<dyn Storage>,
     clock: Arc<dyn Clock>,
+    audit_engine: Option<Arc<AuditChainEngine>>,
 }
 
 impl AuthorizationEngine {
     pub fn new(storage: Arc<dyn Storage>, clock: Arc<dyn Clock>) -> Self {
-        Self { storage, clock }
+        Self {
+            storage,
+            clock,
+            audit_engine: None,
+        }
+    }
+
+    pub fn with_audit(
+        storage: Arc<dyn Storage>,
+        clock: Arc<dyn Clock>,
+        audit_engine: Arc<AuditChainEngine>,
+    ) -> Self {
+        Self {
+            storage,
+            clock,
+            audit_engine: Some(audit_engine),
+        }
     }
 
     /// Authorizes an action proposal atomically within a storage transaction boundary.
@@ -139,6 +157,43 @@ impl AuthorizationEngine {
                     // Record action status as APPROVAL_REQUIRED and commit replay consumption
                     tx.save_action_record(&action, "APPROVAL_REQUIRED", now)
                         .await?;
+
+                    if let Some(ref audit) = self.audit_engine {
+                        let latest_sys = tx.get_latest_system_audit().await?;
+                        let latest_mis = tx.get_latest_mission_audit(&action.mission_id).await?;
+
+                        let sys_rec = audit.create_record(
+                            &format!("evt-sys-req-{}", action.action_id),
+                            latest_sys.as_ref(),
+                            None,
+                            "APPROVAL_REQUIRED",
+                            context.subject.identifier(),
+                            serde_json::json!({
+                                "mission_id": action.mission_id.as_str(),
+                                "action_id": action.action_id.as_str(),
+                                "action_hash": action.action_hash,
+                                "risk_class": action.risk_class.to_string(),
+                            }),
+                            now,
+                        )?;
+
+                        let mis_rec = audit.create_record(
+                            &format!("evt-mis-req-{}", action.action_id),
+                            latest_mis.as_ref(),
+                            Some(&action.mission_id),
+                            "APPROVAL_REQUIRED",
+                            context.subject.identifier(),
+                            serde_json::json!({
+                                "action_id": action.action_id.as_str(),
+                                "action_hash": action.action_hash,
+                                "risk_class": action.risk_class.to_string(),
+                            }),
+                            now,
+                        )?;
+
+                        tx.append_audit_records(&sys_rec, Some(&mis_rec)).await?;
+                    }
+
                     tx.commit().await?;
 
                     return Ok(AuthorizationDecision::RequireApproval {
@@ -166,8 +221,45 @@ impl AuthorizationEngine {
             }
         }
 
-        // 6. Record action as AUTHORIZED and commit transaction atomically
+        // 6. Record action as AUTHORIZED and commit transaction atomically (INV-011)
         tx.save_action_record(&action, "AUTHORIZED", now).await?;
+
+        if let Some(ref audit) = self.audit_engine {
+            let latest_sys = tx.get_latest_system_audit().await?;
+            let latest_mis = tx.get_latest_mission_audit(&action.mission_id).await?;
+
+            let sys_rec = audit.create_record(
+                &format!("evt-sys-auth-{}", action.action_id),
+                latest_sys.as_ref(),
+                None,
+                "ACTION_AUTHORIZED",
+                context.subject.identifier(),
+                serde_json::json!({
+                    "mission_id": action.mission_id.as_str(),
+                    "action_id": action.action_id.as_str(),
+                    "action_hash": action.action_hash,
+                    "capability_id": action.capability_id.as_str(),
+                }),
+                now,
+            )?;
+
+            let mis_rec = audit.create_record(
+                &format!("evt-mis-auth-{}", action.action_id),
+                latest_mis.as_ref(),
+                Some(&action.mission_id),
+                "ACTION_AUTHORIZED",
+                context.subject.identifier(),
+                serde_json::json!({
+                    "action_id": action.action_id.as_str(),
+                    "action_hash": action.action_hash,
+                    "capability_id": action.capability_id.as_str(),
+                }),
+                now,
+            )?;
+
+            tx.append_audit_records(&sys_rec, Some(&mis_rec)).await?;
+        }
+
         tx.commit().await?;
 
         Ok(AuthorizationDecision::Allow { action })

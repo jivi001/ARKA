@@ -54,6 +54,7 @@ dependencies = [
  "arka-crypto",
  "arka-storage-sqlite",
  "async-trait",
+ "hex",
  "serde",
  "serde_json",
  "thiserror",

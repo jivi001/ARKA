@@ -1,5 +1,7 @@
 use arka_core_types::actions::CanonicalAction;
 use arka_core_types::approval::Approval;
+use arka_core_types::audit::AuditRecord;
+use arka_core_types::emergency_stop::EmergencyStopStatus;
 use arka_core_types::errors::KernelSecurityError;
 use arka_core_types::id::{ActionId, ApprovalId, MissionId, OperatorId, ProposalId};
 use arka_core_types::mission::{Mission, MissionState};
@@ -22,6 +24,43 @@ impl SqliteTransaction {
             KernelSecurityError::StorageFailure("Transaction already finalized".to_string())
         })
     }
+}
+
+fn row_to_audit_record(row: &sqlx::sqlite::SqliteRow) -> Result<AuditRecord, KernelSecurityError> {
+    let event_id: String = row.get(0);
+    let sequence_number: i64 = row.get(1);
+    let timestamp_unix: i64 = row.get(2);
+    let mission_id_opt: Option<String> = row.get(3);
+    let event_type: String = row.get(4);
+    let actor_id: String = row.get(5);
+    let details_json: String = row.get(6);
+    let previous_hash: String = row.get(7);
+    let current_hash: String = row.get(8);
+    let signature: String = row.get(9);
+
+    let details: serde_json::Value = serde_json::from_str(&details_json).map_err(|e| {
+        KernelSecurityError::StorageFailure(format!("Corrupt audit details JSON: {}", e))
+    })?;
+
+    let mission_id = match mission_id_opt {
+        Some(m) if !m.is_empty() => Some(
+            MissionId::new(m).map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?,
+        ),
+        _ => None,
+    };
+
+    Ok(AuditRecord {
+        event_id,
+        sequence_number: sequence_number as u64,
+        timestamp_unix: timestamp_unix as u64,
+        mission_id,
+        event_type,
+        actor_id,
+        details,
+        previous_hash,
+        current_hash,
+        signature,
+    })
 }
 
 #[async_trait]
@@ -297,6 +336,223 @@ impl StorageTransaction for SqliteTransaction {
             .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
 
         Ok(())
+    }
+
+    async fn get_latest_system_audit(
+        &mut self,
+    ) -> Result<Option<AuditRecord>, KernelSecurityError> {
+        let tx = self.tx_mut()?;
+        let query = "SELECT event_id, sequence_number, timestamp_unix, mission_id, event_type, actor_id, details_json, previous_hash, current_hash, signature FROM system_audit_log ORDER BY sequence_number DESC LIMIT 1";
+        let row = sqlx::query(query)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+
+        match row {
+            Some(r) => Ok(Some(row_to_audit_record(&r)?)),
+            None => Ok(None),
+        }
+    }
+
+    async fn get_latest_mission_audit(
+        &mut self,
+        mission_id: &MissionId,
+    ) -> Result<Option<AuditRecord>, KernelSecurityError> {
+        let tx = self.tx_mut()?;
+        let query = "SELECT event_id, sequence_number, timestamp_unix, mission_id, event_type, actor_id, details_json, previous_hash, current_hash, signature FROM mission_audit_log WHERE mission_id = ? ORDER BY sequence_number DESC LIMIT 1";
+        let row = sqlx::query(query)
+            .bind(mission_id.as_str())
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+
+        match row {
+            Some(r) => Ok(Some(row_to_audit_record(&r)?)),
+            None => Ok(None),
+        }
+    }
+
+    async fn append_audit_records(
+        &mut self,
+        system_record: &AuditRecord,
+        mission_record: Option<&AuditRecord>,
+    ) -> Result<(), KernelSecurityError> {
+        let tx = self.tx_mut()?;
+        let sys_query = r#"
+            INSERT INTO system_audit_log (event_id, sequence_number, timestamp_unix, mission_id, event_type, actor_id, details_json, previous_hash, current_hash, signature)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "#;
+        let sys_mid = system_record.mission_id.as_ref().map(|m| m.as_str());
+        let sys_details = serde_json::to_string(&system_record.details)
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+
+        sqlx::query(sys_query)
+            .bind(&system_record.event_id)
+            .bind(system_record.sequence_number as i64)
+            .bind(system_record.timestamp_unix as i64)
+            .bind(sys_mid)
+            .bind(&system_record.event_type)
+            .bind(&system_record.actor_id)
+            .bind(sys_details)
+            .bind(&system_record.previous_hash)
+            .bind(&system_record.current_hash)
+            .bind(&system_record.signature)
+            .execute(&mut **tx)
+            .await
+            .map_err(|e| KernelSecurityError::AuditAppendFailed(e.to_string()))?;
+
+        if let Some(m_rec) = mission_record {
+            let m_query = r#"
+                INSERT INTO mission_audit_log (event_id, mission_id, sequence_number, timestamp_unix, event_type, actor_id, details_json, previous_hash, current_hash, signature)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#;
+            let m_mid = m_rec.mission_id.as_ref().map(|m| m.as_str()).unwrap_or("");
+            let m_details = serde_json::to_string(&m_rec.details)
+                .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+
+            sqlx::query(m_query)
+                .bind(&m_rec.event_id)
+                .bind(m_mid)
+                .bind(m_rec.sequence_number as i64)
+                .bind(m_rec.timestamp_unix as i64)
+                .bind(&m_rec.event_type)
+                .bind(&m_rec.actor_id)
+                .bind(m_details)
+                .bind(&m_rec.previous_hash)
+                .bind(&m_rec.current_hash)
+                .bind(&m_rec.signature)
+                .execute(&mut **tx)
+                .await
+                .map_err(|e| KernelSecurityError::AuditAppendFailed(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    async fn get_all_system_audit(&mut self) -> Result<Vec<AuditRecord>, KernelSecurityError> {
+        let tx = self.tx_mut()?;
+        let query = "SELECT event_id, sequence_number, timestamp_unix, mission_id, event_type, actor_id, details_json, previous_hash, current_hash, signature FROM system_audit_log ORDER BY sequence_number ASC";
+        let rows = sqlx::query(query)
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+
+        let mut records = Vec::with_capacity(rows.len());
+        for row in rows {
+            records.push(row_to_audit_record(&row)?);
+        }
+        Ok(records)
+    }
+
+    async fn get_all_mission_audit(
+        &mut self,
+        mission_id: &MissionId,
+    ) -> Result<Vec<AuditRecord>, KernelSecurityError> {
+        let tx = self.tx_mut()?;
+        let query = "SELECT event_id, sequence_number, timestamp_unix, mission_id, event_type, actor_id, details_json, previous_hash, current_hash, signature FROM mission_audit_log WHERE mission_id = ? ORDER BY sequence_number ASC";
+        let rows = sqlx::query(query)
+            .bind(mission_id.as_str())
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+
+        let mut records = Vec::with_capacity(rows.len());
+        for row in rows {
+            records.push(row_to_audit_record(&row)?);
+        }
+        Ok(records)
+    }
+
+    async fn trigger_emergency_stop(
+        &mut self,
+        operator_id: &OperatorId,
+        reason: &str,
+        now_unix: u64,
+    ) -> Result<(), KernelSecurityError> {
+        let tx = self.tx_mut()?;
+        let query = r#"
+            INSERT INTO emergency_stop (id, active, triggered_at_unix, triggered_by, reason, cleared_at_unix, cleared_by, clear_reason)
+            VALUES (1, 1, ?, ?, ?, NULL, NULL, NULL)
+            ON CONFLICT(id) DO UPDATE SET
+                active = 1,
+                triggered_at_unix = excluded.triggered_at_unix,
+                triggered_by = excluded.triggered_by,
+                reason = excluded.reason,
+                cleared_at_unix = NULL,
+                cleared_by = NULL,
+                clear_reason = NULL
+        "#;
+        sqlx::query(query)
+            .bind(now_unix as i64)
+            .bind(operator_id.as_str())
+            .bind(reason)
+            .execute(&mut **tx)
+            .await
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn clear_emergency_stop(
+        &mut self,
+        operator_id: &OperatorId,
+        reason: &str,
+        now_unix: u64,
+    ) -> Result<(), KernelSecurityError> {
+        let tx = self.tx_mut()?;
+        let query = r#"
+            INSERT INTO emergency_stop (id, active, triggered_at_unix, triggered_by, reason, cleared_at_unix, cleared_by, clear_reason)
+            VALUES (1, 0, 0, 'none', 'initial', ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                active = 0,
+                cleared_at_unix = excluded.cleared_at_unix,
+                cleared_by = excluded.cleared_by,
+                clear_reason = excluded.clear_reason
+        "#;
+        sqlx::query(query)
+            .bind(now_unix as i64)
+            .bind(operator_id.as_str())
+            .bind(reason)
+            .execute(&mut **tx)
+            .await
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn get_emergency_stop_status(
+        &mut self,
+    ) -> Result<EmergencyStopStatus, KernelSecurityError> {
+        let tx = self.tx_mut()?;
+        let query = "SELECT active, triggered_at_unix, triggered_by, reason, cleared_at_unix, cleared_by, clear_reason FROM emergency_stop WHERE id = 1";
+        let row = sqlx::query(query)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+
+        match row {
+            Some(r) => {
+                let active_i64: i64 = r.get(0);
+                let trig_at: Option<i64> = r.get(1);
+                let trig_by_str: Option<String> = r.get(2);
+                let reason: Option<String> = r.get(3);
+                let clr_at: Option<i64> = r.get(4);
+                let clr_by_str: Option<String> = r.get(5);
+                let clr_reason: Option<String> = r.get(6);
+
+                let triggered_by = trig_by_str.and_then(|s| OperatorId::new(s).ok());
+                let cleared_by = clr_by_str.and_then(|s| OperatorId::new(s).ok());
+
+                Ok(EmergencyStopStatus {
+                    active: active_i64 == 1,
+                    triggered_at_unix: trig_at.map(|t| t as u64),
+                    triggered_by,
+                    reason,
+                    cleared_at_unix: clr_at.map(|t| t as u64),
+                    cleared_by,
+                    clear_reason: clr_reason,
+                })
+            }
+            None => Ok(EmergencyStopStatus::inactive()),
+        }
     }
 
     async fn commit(mut self: Box<Self>) -> Result<(), KernelSecurityError> {
