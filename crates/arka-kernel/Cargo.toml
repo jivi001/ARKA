@@ -18,3 +18,4 @@ tracing = { workspace = true }
 [dev-dependencies]
 arka-storage-sqlite = { path = "../arka-storage-sqlite" }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+uuid = { workspace = true }

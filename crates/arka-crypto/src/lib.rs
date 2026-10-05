@@ -7,6 +7,7 @@
 
 pub mod canonical;
 pub mod hashing;
+pub mod json_strict;
 pub mod provider;
 pub mod token;
 
@@ -15,6 +16,7 @@ pub use hashing::{
     sha256_digest, sha256_hex, DOMAIN_ACTION, DOMAIN_APPROVAL, DOMAIN_AUDIT, DOMAIN_PARAM,
     DOMAIN_REPLAY, DOMAIN_TOKEN,
 };
+pub use json_strict::{StrictJsonParser, MAX_NESTING_DEPTH, MAX_PAYLOAD_SIZE};
 pub use provider::{
     CryptoError, DevKeyProvider, KeyDomain, KeyMetadata, KeyProvider, SignatureResult,
 };

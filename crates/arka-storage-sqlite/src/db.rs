@@ -19,7 +19,8 @@ impl SqliteStorage {
     pub async fn new_in_memory() -> Result<Self, KernelSecurityError> {
         // Shared in-memory database requires max_connections = 1 or URI mode
         let opts = SqliteConnectOptions::from_str("sqlite::memory:")
-            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?
+            .busy_timeout(std::time::Duration::from_secs(10));
 
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
@@ -38,6 +39,8 @@ impl SqliteStorage {
             .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?
             .create_if_missing(true)
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+            .busy_timeout(std::time::Duration::from_secs(15))
             .foreign_keys(true);
 
         let pool = SqlitePoolOptions::new()
@@ -63,11 +66,17 @@ impl SqliteStorage {
 #[async_trait]
 impl Storage for SqliteStorage {
     async fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction>, KernelSecurityError> {
-        let tx = self
+        let mut conn = self
             .pool
-            .begin()
+            .acquire()
             .await
             .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
-        Ok(Box::new(SqliteTransaction::new(tx)))
+
+        sqlx::query("BEGIN IMMEDIATE")
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| KernelSecurityError::StorageFailure(e.to_string()))?;
+
+        Ok(Box::new(SqliteTransaction::new(conn)))
     }
 }

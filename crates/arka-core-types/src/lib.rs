@@ -5,6 +5,10 @@
 
 #![forbid(unsafe_code)]
 
+pub mod actions;
+pub mod approval;
+pub mod authority;
+pub mod capabilities;
 pub mod clock;
 pub mod errors;
 pub mod id;
@@ -12,6 +16,10 @@ pub mod mission;
 pub mod scope;
 pub mod subject;
 
+pub use actions::{CanonicalAction, RawActionProposal};
+pub use approval::Approval;
+pub use authority::Authority;
+pub use capabilities::{CapabilityMetadata, RiskClass, TargetClass};
 pub use clock::{Clock, MockClock, SystemClock};
 pub use errors::{ExternalSecurityError, KernelSecurityError};
 pub use id::{
