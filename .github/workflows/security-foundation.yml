@@ -130,9 +130,14 @@ jobs:
           corepack prepare pnpm@12.4.2 --activate
 
       - name: Run pnpm audit on Frontend dependencies
+        if: ${{ hashFiles('frontend/package.json') != '' }}
         working-directory: ./frontend
         run: |
           pnpm audit --prod --audit-level=high
+
+      - name: Skip pnpm audit when frontend is absent
+        if: ${{ hashFiles('frontend/package.json') == '' }}
+        run: echo "No frontend/package.json found; skipping pnpm audit."
 
   ci-sec-sbom:
     name: CI-SEC-SBOM (CycloneDX SBOM Generation)
