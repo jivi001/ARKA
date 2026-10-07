@@ -2,7 +2,7 @@
 
 [![Rust 1.80+](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org/)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
-[![Security Kernel: Phase 1](https://img.shields.io/badge/security%20kernel-Phase%201%20Audited-brightgreen.svg)](docs/security/PHASE_1_VERIFICATION_AUDIT_REPORT.md)
+[![Security Kernel: Phase 1](https://img.shields.io/badge/security%20kernel-Phase%201%20Audited%20(PASS)-brightgreen.svg)](docs/security/PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md)
 [![Security Foundation: Phase 0](https://img.shields.io/badge/security%20foundation-P0%20established-brightgreen.svg)](docs/security/P0_SECURITY_FOUNDATION_REPORT.md)
 [![Traceability: 100%](https://img.shields.io/badge/traceability-100%25%20(35%2F35%20threats)-brightgreen.svg)](security/traceability/security-traceability.yaml)
 [![Unsafe Code: Forbidden](https://img.shields.io/badge/unsafe%20code-forbidden%20(%23!%5Bforbid(unsafe_code)%5D)-blue.svg)](crates/)
@@ -60,6 +60,7 @@ $$\mathbf{DISCOVERED \neq AUTHORIZED}$$
 - **Fail-Closed Default (INV-010)**: Any error, unhandled exception, timeout, or ambiguity in policy evaluation immediately defaults to unconditional `DENY`.
 - **Zero Raw LLM Secret Exposure (INV-013)**: Credentials and cryptographic signing keys are never exposed in prompt contexts, logs, or persistent databases.
 - **Synchronous Emergency Stop (INV-010)**: Triggering emergency stop immediately blocks authorization across active missions and persists across storage/engine restarts.
+- **Autonomous Multi-Agent Model**: All agents and LLM reasoning pipelines are governed by [`AGENTS.md`](AGENTS.md) / [`agent.md`](agent.md) defining strict role taxonomy, non-executable boundaries, and mandatory Two-Person Integrity human approval gates.
 
 ---
 
@@ -70,7 +71,7 @@ In strict accordance with the ARKA Security Baseline, phase statuses are governe
 | Phase | Milestone | Status | Core Architecture & Deliverables |
 |:---:|---|:---:|---|
 | **Phase 0** | **P0 Security Foundation** | **`COMPLETE`** | 35 canonical threats, 38 controls, 36 blocking gates, 100% bidirectional traceability, 6-domain key policy, hardened CI supply chain, 43 test contracts, and validator meta-testing. |
-| **Phase 1** | **Deterministic Security Kernel** | **`VERIFIED (PASS W/ WARNINGS)`** | Deterministic Rust Security Kernel (`arka-core-types`, `arka-crypto`, `arka-kernel`, `arka-storage-sqlite`). `#![forbid(unsafe_code)]`, RFC 8785 JCS canonicalization, single-use replay protection with SQLite WAL `BEGIN IMMEDIATE`, dual signed audit hash chains (`AUDIT-SIGNING`), and persistent Emergency Stop. 87/87 tests passing. |
+| **Phase 1** | **Deterministic Security Kernel** | **`COMPLETE (PASS)`** | Deterministic Rust Security Kernel (`arka-core-types`, `arka-crypto`, `arka-kernel`, `arka-storage-sqlite`). `#![forbid(unsafe_code)]`, RFC 8785 JCS canonicalization, single-use replay protection with SQLite WAL `BEGIN IMMEDIATE`, dual signed audit hash chains (`AUDIT-SIGNING`), and persistent Emergency Stop. Remediation verified; 92/92 Rust tests passing. Re-audit PASS ([`PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md`](docs/security/PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md)). |
 | **Phase 2** | **Execution Broker & Sandboxing** | `NEXT` | Pre-connect SSRF guard (`CTRL-SSRF-001`), DNS pinning (`CTRL-DNS-PINNING-001`), HTTP redirect interception (`CTRL-REDIRECT-FILTER-001`), rootless Linux container isolation (`CTRL-SANDBOX-CONTAINMENT-001`). |
 | **Phase 3** | **Intelligence & Multi-Agent Plane** | `PLANNED` | Inter-agent message signing (`CTRL-A2A-AUTH-001`), dual-boundary prompt framing (`CTRL-PROMPT-GUARD-001`), ANSI terminal stripping, quarantined evidence parsing (`CTRL-PARSER-SANDBOX-001`). |
 | **Phase 6** | **Credential Vault & Session Broker** | `PLANNED` | Hardware/KMS Key Encryption Key (KEK) wrapping (`CTRL-CRED-ISOLATION-001`), ephemeral in-memory POSIX secret injection, zero plain-text storage. |

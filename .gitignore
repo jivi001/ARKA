@@ -87,6 +87,8 @@ coverage.xml
 .copilot/
 .amazonq/
 graphify-out/
+graphify/
+.graphify*
 
 # ------------------------------------------------------------------------------
 # 8. Verification, Scratch & Local Audit Artifacts
