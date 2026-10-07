@@ -1,5 +1,5 @@
 # ARKA — Technical Requirements Document (TRD)
-## Revised Security-Hardened Engineering Baseline v2.1
+## Revised Security-Hardened Engineering Baseline v2.2
 **Architecture:** Rust Security Kernel + Python Intelligence Plane + Sandboxed Execution Plane  
 **Target OS:** Debian/Ubuntu Linux; Windows workers  
 **Status:** Engineering baseline  
@@ -202,6 +202,14 @@ No component outside the Execution Broker may possess an execution capability ca
 ## INV-010 — Fail Closed
 
 Security-control failure MUST result in denial, not fallback execution.
+
+## INV-011 — Provider Credential Isolation
+
+LLM provider credentials MUST be resolved only by the LLM Gateway and MUST NOT enter agent context, evidence, audit, memory, ActionProposal objects, or logs.
+
+## INV-012 — Provider Credential Has No ARKA Authority
+
+An LLM provider credential MUST grant inference access only and MUST NOT grant ARKA execution, scope, approval, policy, capability, or credential-broker authority.
 
 ---
 
@@ -830,6 +838,95 @@ Gateway responsibilities:
 LLM provider output MUST be treated as untrusted input.
 
 ---
+
+
+### 28.1 Provider Credential Boundary
+
+LLM provider credentials are distinct from target credentials managed by the Credential Broker. Provider credentials authenticate ARKA to an external LLM provider; they MUST NOT be treated as ARKA capability tokens or execution authority.
+
+The LLM Gateway MUST be the sole component that resolves and presents provider credentials to provider adapters. Agents, the Rust authorization engine, evidence parsers, and ordinary mission components MUST NOT receive raw provider credentials.
+
+### 28.2 Credential Sources
+
+The gateway MUST support an abstract credential-source interface. At minimum, the architecture MUST permit:
+
+- environment variables for local development, CI, and controlled container deployments;
+- OS-backed credential/keyring storage for local installations;
+- external secret-manager references for production deployments.
+
+Provider configuration such as provider name, endpoint, model identifier, timeout, and policy MAY reside in ordinary configuration. Raw secrets MUST NOT.
+
+### 28.3 Secret Storage Rules
+
+Provider credentials MUST NOT be:
+
+- hardcoded in Rust or Python source;
+- committed to Git;
+- embedded in container images;
+- stored in ordinary configuration files;
+- stored as plaintext in the application database;
+- written to logs, traces, crash reports, or telemetry;
+- placed in prompts, agent memory, evidence, knowledge-graph content, audit payloads, or ActionProposal objects.
+
+Local `.env` files MAY be used only as a developer convenience and MUST be excluded from version control. Production deployments MUST use an approved secret-management mechanism rather than relying on committed or image-baked `.env` files.
+
+### 28.4 Provider Adapter Boundary
+
+Provider integrations MUST use adapters behind the LLM Gateway. Agent implementations MUST depend on an ARKA provider-agnostic interface rather than directly importing provider SDKs.
+
+The architecture SHOULD support OpenAI-compatible APIs, Anthropic-compatible APIs, local models, and future providers without changing agent authorization semantics.
+
+Conceptual flow:
+
+```text
+Agent
+  |
+  | LLM request
+  v
+LLM Gateway
+  |
+  +--> policy / classification / redaction
+  |
+  +--> credential resolver
+  |
+  v
+Provider Adapter
+  |
+  v
+External LLM Provider
+```
+
+### 28.5 Credential Redaction
+
+Secret redaction MUST occur before logging, telemetry, evidence persistence, or diagnostic emission. The redaction layer SHOULD recognize provider API-key formats, Authorization headers, bearer tokens, and configured secret values.
+
+A provider failure MUST NOT cause the gateway to expose credential material in an error message.
+
+### 28.6 Provider Trust and Authority
+
+T8 LLM Provider remains an external trust boundary. Provider output MUST be treated as untrusted input. A provider credential grants only inference access to that provider. It MUST NOT confer: execution authority, scope modification, approval authority, policy modification, capability issuance, or credential-broker authority.
+
+The resulting security boundary is:
+
+```text
+LLM provider
+     |
+     | untrusted model output
+     v
+LLM Gateway
+     |
+     v
+Action Normalization
+     |
+     v
+Rust Authorization Kernel
+```
+
+### 28.7 Credential Ownership Model
+
+Provider credentials SHOULD be owned at installation/operator scope. Missions SHOULD reference an authorized credential identity or provider configuration rather than storing raw provider credentials. Mission-scoped access MUST be represented through authorization metadata and policy, not by copying the secret into mission records.
+
+Credential lifecycle MUST support rotation, revocation, provider disablement, and fail-closed behavior when the configured credential source is unavailable.
 
 # 29. LLM Data Policy
 
