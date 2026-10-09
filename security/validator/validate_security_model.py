@@ -671,11 +671,11 @@ def test_mutation_case(case_id):
     elif case_id == "premature_phase_exit":
         phase_data = load_yaml(os.path.join(ACCEPTANCE_DIR, "phase-status.yaml"))
         bad_phase = copy.deepcopy(phase_data)
-        bad_phase["phases"][1]["status"] = "COMPLETE"  # Phase 1 marked COMPLETE prematurely
+        bad_phase["phases"][2]["status"] = "COMPLETE"  # Phase 2 marked COMPLETE prematurely
         controls_data = load_yaml(os.path.join(CONTROLS_DIR, "controls.yaml"))
-        # Check if Phase 1 has pending controls
-        pending_p1 = [c["id"] for c in controls_data["controls"] if c.get("phase") == 1 and "PENDING" in c.get("status", "")]
-        return len(pending_p1) > 0
+        # Check if Phase 2 has pending controls
+        pending_p2 = [c["id"] for c in controls_data["controls"] if c.get("phase") == 2 and "PENDING" in c.get("status", "")]
+        return len(pending_p2) > 0
 
     return False
 

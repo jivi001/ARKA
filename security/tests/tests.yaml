@@ -1,537 +1,542 @@
 tests:
-  # Phase 1 Test Contracts (Deterministic Security Kernel)
-  - id: "TEST-REPLAY-001"
-    name: "Completed and Expired Action Replay Denial Contract"
-    threats:
-      - "THREAT-REPLAY"
-    controls:
-      - "CTRL-REPLAY-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Submitting a completed or expired ActionProposal ID returns deterministic DENY."
-    test_path: null
-
-  - id: "TEST-PARAM-MUTATION-001"
-    name: "Canonical Hash Parameter Mutation Rejection Contract"
-    threats:
-      - "THREAT-TOCTOU-PARAMETER-MUTATION"
-    controls:
-      - "CTRL-TOCTOU-BINDING-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Any mutation in action payload relative to RFC 8785 approved hash triggers execution abort."
-    test_path: null
-
-  - id: "TEST-TOCTOU-001"
-    name: "Concurrent Action Parameter Mutation Defense Contract"
-    threats:
-      - "THREAT-TOCTOU-PARAMETER-MUTATION"
-    controls:
-      - "CTRL-TOCTOU-BINDING-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Parallel worker mutations between approval and dispatch are caught by hash mismatch."
-    test_path: null
-
-  - id: "TEST-APPROVAL-EXPIRY-001"
-    name: "Operator Approval Lifetime Expiration Contract"
-    threats:
-      - "THREAT-OPERATOR-MISUSE"
-    controls:
-      - "CTRL-DUAL-AUTHORIZATION-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Approvals older than configured TTL (default 15m) cannot authorize execution."
-    test_path: null
-
-  - id: "TEST-APPROVAL-REVOCATION-001"
-    name: "Active Operator Approval Revocation Contract"
-    threats:
-      - "THREAT-OPERATOR-MISUSE"
-    controls:
-      - "CTRL-DUAL-AUTHORIZATION-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Revoked approval seals transition active execution state to TERMINATED immediately."
-    test_path: null
-
-  - id: "TEST-CAPABILITY-FORGERY-001"
-    name: "Forged Capability Signature Rejection Contract"
-    threats:
-      - "THREAT-CAPABILITY-FORGERY"
-    controls:
-      - "CTRL-CAPABILITY-SIGNING-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Capability tokens with invalid Ed25519 signatures or forged issuers are denied."
-    test_path: null
-
-  - id: "TEST-CAPABILITY-SCOPE-001"
-    name: "Capability Scope Boundary Enforcement Contract"
-    threats:
-      - "THREAT-SCOPE-EXPANSION"
-      - "THREAT-TOKEN-THEFT"
-    controls:
-      - "CTRL-SCOPE-ENFORCEMENT-001"
-      - "CTRL-TOKEN-PROTECTION-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Actions targeting assets outside the capability scope CIDRs/domains are rejected."
-    test_path: null
-
-  - id: "TEST-FAIL-CLOSED-001"
-    name: "Kernel Panic and Exception Fail-Closed Contract"
-    threats:
-      - "THREAT-FAIL-CLOSED-VIOLATION"
-    controls:
-      - "CTRL-FAIL-CLOSED-DEFAULT-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Internal kernel errors, database lock timeouts, or panics resolve to DENY."
-    test_path: null
-
-  - id: "TEST-ESTOP-001"
-    name: "Emergency Stop Immediate Execution Abort Contract"
-    threats:
-      - "THREAT-EMERGENCY-STOP-BYPASS"
-    controls:
-      - "CTRL-EMERGENCY-STOP-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Triggering emergency stop terminates all active worker processes within 500ms."
-    test_path: null
-
-  - id: "TEST-RESOURCE-001"
-    name: "Autonomous Loop and Budget Limit Contract"
-    threats:
-      - "THREAT-ROGUE-AGENT"
-      - "THREAT-RESOURCE-EXHAUSTION"
-      - "THREAT-BUDGET-OVERRUN"
-    controls:
-      - "CTRL-AGENT-SUPERVISION-001"
-      - "CTRL-RESOURCE-LIMIT-001"
-      - "CTRL-BUDGET-ENFORCEMENT-001"
-    owner: "Security Kernel Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Tasks exceeding proposal rates, recursion depths, or token budgets enter BLOCKED state."
-    test_path: null
-
-  # Phase 2 Test Contracts (Execution Broker & Sandbox)
-  - id: "TEST-SSRF-001"
-    name: "Server-Side Request Forgery Private Address Blocking Contract"
-    threats:
-      - "THREAT-SSRF"
-    controls:
-      - "CTRL-SSRF-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "Broker rejects outbound connections to 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16."
-    test_path: null
-
-  - id: "TEST-DNS-REBIND-001"
-    name: "DNS Rebinding TOCTOU Prevention Contract"
-    threats:
-      - "THREAT-DNS-REBINDING"
-    controls:
-      - "CTRL-DNS-PINNING-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "Socket connection connects to the exact IP resolved during initial policy authorization."
-    test_path: null
-
-  - id: "TEST-REDIRECT-001"
-    name: "HTTP Redirect Destination Scope Re-Verification Contract"
-    threats:
-      - "THREAT-REDIRECT-VALIDATION-BYPASS"
-    controls:
-      - "CTRL-REDIRECT-FILTER-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "3xx redirects to private or out-of-scope targets are intercepted and blocked."
-    test_path: null
-
-  - id: "TEST-METADATA-001"
-    name: "Cloud Instance Metadata Access Denial Contract"
-    threats:
-      - "THREAT-METADATA-ENDPOINT-ACCESS"
-    controls:
-      - "CTRL-METADATA-BLOCK-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "Requests to 169.254.169.254, fd00::/8, and metadata domains are hard-blocked."
-    test_path: null
-
-  - id: "TEST-IP-BYPASS-001"
-    name: "IP Encoding and Obfuscation Bypass Denial Contract"
-    threats:
-      - "THREAT-SSRF"
-    controls:
-      - "CTRL-SSRF-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "Dotted-decimal, octal, hex, dword, and IPv4-mapped IPv6 obfuscations normalize to canonical IP."
-    test_path: null
-
-  - id: "TEST-PROXY-BYPASS-001"
-    name: "Execution Broker Outbound Proxy Enforcement Contract"
-    threats:
-      - "THREAT-BROWSER-EXECUTION-BYPASS"
-    controls:
-      - "CTRL-BROWSER-SANDBOX-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "All tool and browser egress traffic flows through the broker proxy with zero direct access."
-    test_path: null
-
-  - id: "TEST-IPV6-BYPASS-001"
-    name: "IPv6 Unscoped Interface Access Rejection Contract"
-    threats:
-      - "THREAT-IPV6-POLICY-BYPASS"
-    controls:
-      - "CTRL-IPV6-POLICY-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "IPv6 loopback (::1) and link-local (fe80::/10) destinations are rejected."
-    test_path: null
-
-  - id: "TEST-SANDBOX-FS-001"
-    name: "Sandbox Filesystem Isolation and Read-Only Root Contract"
-    threats:
-      - "THREAT-SANDBOX-ESCAPE"
-    controls:
-      - "CTRL-SANDBOX-CONTAINMENT-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "Worker container filesystem is read-only; attempts to write outside /tmp fail with EROFS."
-    test_path: null
-
-  - id: "TEST-SANDBOX-NET-001"
-    name: "Sandbox Network Namespace Isolation Contract"
-    threats:
-      - "THREAT-BROWSER-EXECUTION-BYPASS"
-    controls:
-      - "CTRL-BROWSER-SANDBOX-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "Sandboxed processes cannot access host loopback interfaces or host network namespace."
-    test_path: null
-
-  - id: "TEST-SANDBOX-PRIV-001"
-    name: "Sandbox Privilege Escalation and Rootless Enclosure Contract"
-    threats:
-      - "THREAT-SANDBOX-ESCAPE"
-      - "THREAT-HOST-COMPROMISE"
-    controls:
-      - "CTRL-SANDBOX-CONTAINMENT-001"
-      - "CTRL-HOST-PROTECTION-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "Container processes run as unprivileged UID; cap_setuid, cap_sys_admin are dropped."
-    test_path: null
-
-  - id: "TEST-SANDBOX-CLEANUP-001"
-    name: "Worker Container and Ephemeral Asset Cleanup Contract"
-    threats:
-      - "THREAT-SANDBOX-CLEANUP-FAILURE"
-    controls:
-      - "CTRL-SANDBOX-CLEANUP-001"
-    owner: "Execution Engine Lead"
-    phase: 2
-    status: "PENDING(phase=2)"
-    expected_property: "Containers, volumes, and temporary credentials are purged immediately on task termination."
-    test_path: null
-
-  # Phase 3 Test Contracts (Intelligence & Multi-Agent Plane)
-  - id: "TEST-A2A-FORGERY-001"
-    name: "Inter-Agent Identity Forgery and Impersonation Rejection Contract"
-    threats:
-      - "THREAT-FORGED-A2A-MESSAGE"
-    controls:
-      - "CTRL-A2A-AUTH-001"
-    owner: "Intelligence Plane Lead"
-    phase: 3
-    status: "PENDING(phase=3)"
-    expected_property: "Inter-agent messages without verifiable sender signatures are discarded."
-    test_path: null
-
-  - id: "TEST-PROMPT-INJECTION-001"
-    name: "Target-Sourced Prompt Injection Neutralization Contract"
-    threats:
-      - "THREAT-PROMPT-INJECTION"
-    controls:
-      - "CTRL-PROMPT-GUARD-001"
-    owner: "Intelligence Plane Lead"
-    phase: 3
-    status: "PENDING(phase=3)"
-    expected_property: "Target text containing system command overrides cannot escape data boundary."
-    test_path: null
-
-  - id: "TEST-TOOL-POISONING-001"
-    name: "Tool Output ANSI and Escape Code Sanitization Contract"
-    threats:
-      - "THREAT-TOOL-OUTPUT-POISONING"
-    controls:
-      - "CTRL-TOOL-OUTPUT-SANITIZATION-001"
-    owner: "Intelligence Plane Lead"
-    phase: 3
-    status: "PENDING(phase=3)"
-    expected_property: "ANSI terminal controls and delimiter strings are scrubbed before storage."
-    test_path: null
-
-  - id: "TEST-RAG-POISONING-001"
-    name: "Retrieval Context Poisoning Defense Contract"
-    threats:
-      - "THREAT-MALICIOUS-TARGET-CONTENT"
-    controls:
-      - "CTRL-CONTENT-ISOLATION-001"
-    owner: "Intelligence Plane Lead"
-    phase: 3
-    status: "PENDING(phase=3)"
-    expected_property: "Retrieved untrusted context chunks carry explicit provenance and cannot grant authority."
-    test_path: null
-
-  - id: "TEST-GRAPHIFY-POISONING-001"
-    name: "Knowledge Graph Provenance Verification Contract"
-    threats:
-      - "THREAT-GRAPHIFY-POISONING"
-    controls:
-      - "CTRL-GRAPH-INTEGRITY-001"
-    owner: "Intelligence Plane Lead"
-    phase: 3
-    status: "PENDING(phase=3)"
-    expected_property: "Graph edges cannot be formed without valid cryptographic evidence references."
-    test_path: null
-
-  - id: "TEST-EVIDENCE-PARSER-001"
-    name: "Evidence Parser Sandbox Containment Contract"
-    threats:
-      - "THREAT-EVIDENCE-PARSER-COMPROMISE"
-      - "THREAT-MALICIOUS-TARGET-CONTENT"
-    controls:
-      - "CTRL-PARSER-SANDBOX-001"
-      - "CTRL-CONTENT-ISOLATION-001"
-    owner: "Intelligence Plane Lead"
-    phase: 3
-    status: "PENDING(phase=3)"
-    expected_property: "Malformed or recursive XML/HTML parser bombs fail safely without crashing host."
-    test_path: null
-
-  - id: "TEST-LLM-EGRESS-001"
-    name: "Outbound Prompt Secret and Token DLP Contract"
-    threats:
-      - "THREAT-LLM-PROVIDER-EXPOSURE"
-      - "THREAT-LLM-EGRESS-DATA-LEAKAGE"
-    controls:
-      - "CTRL-EGRESS-FILTER-001"
-      - "CTRL-LLM-EGRESS-DLP-001"
-    owner: "Intelligence Plane Lead"
-    phase: 3
-    status: "PENDING(phase=3)"
-    expected_property: "Outbound LLM payloads containing internal API keys, private keys, or tokens are aborted."
-    test_path: null
-
-  # Phase 6 Test Contracts (Credentials)
-  - id: "TEST-CREDENTIAL-ISOLATION-001"
-    name: "Target Credential Vault Isolation Contract"
-    threats:
-      - "THREAT-CREDENTIAL-THEFT"
-    controls:
-      - "CTRL-CRED-ISOLATION-001"
-    owner: "Credential Vault Lead"
-    phase: 6
-    status: "PENDING(phase=6)"
-    expected_property: "Raw credentials cannot be queried by agent reasoning loops or ordinary SQL clients."
-    test_path: null
-
-  - id: "TEST-CREDENTIAL-REVOCATION-001"
-    name: "Dynamic Credential Session Revocation Contract"
-    threats:
-      - "THREAT-CREDENTIAL-THEFT"
-    controls:
-      - "CTRL-CRED-ISOLATION-001"
-    owner: "Credential Vault Lead"
-    phase: 6
-    status: "PENDING(phase=6)"
-    expected_property: "Revoking a credential session invalidates all active tokens and disconnects sessions."
-    test_path: null
-
-  - id: "TEST-CREDENTIAL-EXPIRY-001"
-    name: "Ephemeral Credential Lifetime Expiration Contract"
-    threats:
-      - "THREAT-CREDENTIAL-THEFT"
-    controls:
-      - "CTRL-CRED-ISOLATION-001"
-    owner: "Credential Vault Lead"
-    phase: 6
-    status: "PENDING(phase=6)"
-    expected_property: "Expired credential sessions fail immediately on dispatch."
-    test_path: null
-
-  - id: "TEST-CREDENTIAL-LOG-001"
-    name: "Credential Log Redaction and Scrubbing Contract"
-    threats:
-      - "THREAT-CREDENTIAL-THEFT"
-    controls:
-      - "CTRL-CRED-ISOLATION-001"
-    owner: "Credential Vault Lead"
-    phase: 6
-    status: "PENDING(phase=6)"
-    expected_property: "Recursive log sanitization replaces sensitive keys with [REDACTED]."
-    test_path: null
-
-  - id: "TEST-CREDENTIAL-CONTEXT-001"
-    name: "Credential Scope and Context Confinement Contract"
-    threats:
-      - "THREAT-CREDENTIAL-THEFT"
-    controls:
-      - "CTRL-CRED-ISOLATION-001"
-    owner: "Credential Vault Lead"
-    phase: 6
-    status: "PENDING(phase=6)"
-    expected_property: "Credentials granted for host A cannot be used to authenticate against host B."
-    test_path: null
-
-  # Cross-Cutting Test Contracts
-  - id: "TEST-MISSION-ISOLATION-001"
-    name: "Cross-Mission Resource and Artifact Isolation Contract"
-    threats:
-      - "THREAT-CROSS-MISSION-LEAKAGE"
-    controls:
-      - "CTRL-MISSION-ISOLATION-001"
-    owner: "Platform Architecture Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Queries or requests with mismatched mission IDs return HTTP 403 / SQL zero rows."
-    test_path: null
-
-  - id: "TEST-AUDIT-INTEGRITY-001"
-    name: "Append-Only Audit Hash-Chain Integrity Verification Contract"
-    threats:
-      - "THREAT-AUDIT-TAMPERING"
-    controls:
-      - "CTRL-AUDIT-INTEGRITY-001"
-    owner: "Audit Service Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Verification of audit log sequence computes valid SHA-256 chain and signature matches."
-    test_path: null
-
-  - id: "TEST-AUDIT-TAMPER-001"
-    name: "Audit Log Tamper and Deletion Detection Contract"
-    threats:
-      - "THREAT-AUDIT-TAMPERING"
-    controls:
-      - "CTRL-AUDIT-INTEGRITY-001"
-    owner: "Audit Service Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Mutating any byte of a past audit event causes hash chain verification to fail closed."
-    test_path: null
-
-  - id: "TEST-EVIDENCE-INTEGRITY-001"
-    name: "Content-Addressed Evidence Hash Verification Contract"
-    threats:
-      - "THREAT-EVIDENCE-TAMPERING"
-    controls:
-      - "CTRL-EVIDENCE-INTEGRITY-001"
-    owner: "Evidence Pipeline Lead"
-    phase: 1
-    status: "PENDING(phase=1)"
-    expected_property: "Modifying stored evidence artifact triggers cryptographic hash mismatch on retrieval."
-    test_path: null
-
-  - id: "TEST-SUPPLY-CHAIN-001"
-    name: "Automated Supply Chain and Dependency Scanning Check"
-    threats:
-      - "THREAT-DEPENDENCY-COMPROMISE"
-      - "THREAT-CI-SUPPLY-CHAIN-COMPROMISE"
-    controls:
-      - "CTRL-SUPPLY-CHAIN-AUDIT-001"
-      - "CTRL-CI-SUPPLY-CHAIN-001"
-    owner: "CI Security Lead"
-    phase: 0
-    status: "IMPLEMENTED_PASSING"
-    expected_property: "pip-audit, pnpm audit, and gitleaks scans pass with 0 vulnerabilities and 0 leaked secrets."
-    test_path: "tests/security/test_foundation_suite.py"
-
-  # Phase 0 Foundation Verification Tests (IMPLEMENTED_PASSING)
-  - id: "TEST-P0-MODEL-INTEGRITY-001"
-    name: "P0 Threat Model Schema and Referential Integrity Verification"
-    threats:
-      - "THREAT-CI-GATE-MANIPULATION"
-    controls:
-      - "CTRL-P0-MODEL-INTEGRITY-001"
-    owner: "Security Architecture Lead"
-    phase: 0
-    status: "IMPLEMENTED_PASSING"
-    expected_property: "All YAML models validate against Draft-07 JSON schemas and referential integrity passes with 0 errors."
-    test_path: "tests/security/test_foundation_suite.py"
-
-  - id: "TEST-P0-TRACEABILITY-001"
-    name: "P0 100% Threat-to-Gate Traceability Matrix Verification"
-    threats:
-      - "THREAT-CI-GATE-MANIPULATION"
-    controls:
-      - "CTRL-P0-TRACEABILITY-001"
-    owner: "Security Architecture Lead"
-    phase: 0
-    status: "IMPLEMENTED_PASSING"
-    expected_property: "Every registered threat has complete bidirectional mapping across controls, components, tests, and gates."
-    test_path: "tests/security/test_foundation_suite.py"
-
-  - id: "TEST-P0-VALIDATOR-META-001"
-    name: "Validator Meta-Test Suite and Known-Bad Negative Fixture Rejection"
-    threats:
-      - "THREAT-CI-GATE-MANIPULATION"
-    controls:
-      - "CTRL-P0-MODEL-INTEGRITY-001"
-    owner: "Security Architecture Lead"
-    phase: 0
-    status: "IMPLEMENTED_PASSING"
-    expected_property: "Validator correctly detects and rejects all 14 known-bad security model mutation fixtures."
-    test_path: "tests/security/test_validator_meta.py"
-
-  - id: "TEST-P0-CRYPTO-KEY-POLICY-001"
-    name: "Cryptographic Key Provider Domain Separation Unit Test Suite"
-    threats:
-      - "THREAT-TOKEN-THEFT"
-      - "THREAT-CREDENTIAL-THEFT"
-    controls:
-      - "CTRL-P0-KEY-POLICY-001"
-    owner: "Cryptography Architect"
-    phase: 0
-    status: "IMPLEMENTED_PASSING"
-    expected_property: "KeyProvider enforces domain separation, Ed25519 signing, AES-256-GCM encryption, and dev safeguards."
-    test_path: "tests/security/test_key_provider.py"
-
-  - id: "TEST-P0-CI-GATE-INTEGRITY-001"
-    name: "Cryptographic Baseline Manifest SHA-256 Integrity Verification"
-    threats:
-      - "THREAT-CI-GATE-MANIPULATION"
-    controls:
-      - "CTRL-CI-GATE-PROTECTION-001"
-    owner: "CI Security Lead"
-    phase: 0
-    status: "IMPLEMENTED_PASSING"
-    expected_property: "SHA-256 hash manifest verification confirms 100% untampered integrity of security baseline files."
-    test_path: "tests/security/test_foundation_suite.py"
+- id: TEST-REPLAY-001
+  name: Completed and Expired Action Replay Denial Contract
+  threats:
+  - THREAT-REPLAY
+  controls:
+  - CTRL-REPLAY-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Submitting a completed or expired ActionProposal ID returns deterministic
+    DENY.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_d_test.rs
+- id: TEST-PARAM-MUTATION-001
+  name: Canonical Hash Parameter Mutation Rejection Contract
+  threats:
+  - THREAT-TOCTOU-PARAMETER-MUTATION
+  controls:
+  - CTRL-TOCTOU-BINDING-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Any mutation in action payload relative to RFC 8785 approved
+    hash triggers execution abort.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_d_test.rs
+- id: TEST-TOCTOU-001
+  name: Concurrent Action Parameter Mutation Defense Contract
+  threats:
+  - THREAT-TOCTOU-PARAMETER-MUTATION
+  controls:
+  - CTRL-TOCTOU-BINDING-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Parallel worker mutations between approval and dispatch are caught
+    by hash mismatch.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_d_test.rs
+- id: TEST-APPROVAL-EXPIRY-001
+  name: Operator Approval Lifetime Expiration Contract
+  threats:
+  - THREAT-OPERATOR-MISUSE
+  controls:
+  - CTRL-DUAL-AUTHORIZATION-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Approvals older than configured TTL (default 15m) cannot authorize
+    execution.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_d_test.rs
+- id: TEST-APPROVAL-REVOCATION-001
+  name: Active Operator Approval Revocation Contract
+  threats:
+  - THREAT-OPERATOR-MISUSE
+  controls:
+  - CTRL-DUAL-AUTHORIZATION-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Revoked approval seals transition active execution state to TERMINATED
+    immediately.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_d_test.rs
+- id: TEST-CAPABILITY-FORGERY-001
+  name: Forged Capability Signature Rejection Contract
+  threats:
+  - THREAT-CAPABILITY-FORGERY
+  controls:
+  - CTRL-CAPABILITY-SIGNING-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Capability tokens with invalid Ed25519 signatures or forged issuers
+    are denied.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_c_test.rs
+- id: TEST-CAPABILITY-SCOPE-001
+  name: Capability Scope Boundary Enforcement Contract
+  threats:
+  - THREAT-SCOPE-EXPANSION
+  - THREAT-TOKEN-THEFT
+  controls:
+  - CTRL-SCOPE-ENFORCEMENT-001
+  - CTRL-TOKEN-PROTECTION-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Actions targeting assets outside the capability scope CIDRs/domains
+    are rejected.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_b_test.rs
+- id: TEST-FAIL-CLOSED-001
+  name: Kernel Panic and Exception Fail-Closed Contract
+  threats:
+  - THREAT-FAIL-CLOSED-VIOLATION
+  controls:
+  - CTRL-FAIL-CLOSED-DEFAULT-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Internal kernel errors, database lock timeouts, or panics resolve
+    to DENY.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_a_test.rs
+- id: TEST-ESTOP-001
+  name: Emergency Stop Immediate Execution Abort Contract
+  threats:
+  - THREAT-EMERGENCY-STOP-BYPASS
+  controls:
+  - CTRL-EMERGENCY-STOP-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Triggering emergency stop terminates all active worker processes
+    within 500ms.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_e_test.rs
+- id: TEST-RESOURCE-001
+  name: Autonomous Loop and Budget Limit Contract
+  threats:
+  - THREAT-ROGUE-AGENT
+  - THREAT-RESOURCE-EXHAUSTION
+  - THREAT-BUDGET-OVERRUN
+  controls:
+  - CTRL-AGENT-SUPERVISION-001
+  - CTRL-RESOURCE-LIMIT-001
+  - CTRL-BUDGET-ENFORCEMENT-001
+  owner: Security Kernel Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Tasks exceeding proposal rates, recursion depths, or token budgets
+    enter BLOCKED state.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_e_test.rs
+- id: TEST-SSRF-001
+  name: Server-Side Request Forgery Private Address Blocking Contract
+  threats:
+  - THREAT-SSRF
+  controls:
+  - CTRL-SSRF-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Broker rejects outbound connections to 127.0.0.0/8, 10.0.0.0/8,
+    172.16.0.0/12, 192.168.0.0/16.
+  test_path: null
+- id: TEST-DNS-REBIND-001
+  name: DNS Rebinding TOCTOU Prevention Contract
+  threats:
+  - THREAT-DNS-REBINDING
+  controls:
+  - CTRL-DNS-PINNING-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Socket connection connects to the exact IP resolved during initial
+    policy authorization.
+  test_path: null
+- id: TEST-REDIRECT-001
+  name: HTTP Redirect Destination Scope Re-Verification Contract
+  threats:
+  - THREAT-REDIRECT-VALIDATION-BYPASS
+  controls:
+  - CTRL-REDIRECT-FILTER-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: 3xx redirects to private or out-of-scope targets are intercepted
+    and blocked.
+  test_path: null
+- id: TEST-METADATA-001
+  name: Cloud Instance Metadata Access Denial Contract
+  threats:
+  - THREAT-METADATA-ENDPOINT-ACCESS
+  controls:
+  - CTRL-METADATA-BLOCK-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Requests to 169.254.169.254, fd00::/8, and metadata domains are
+    hard-blocked.
+  test_path: null
+- id: TEST-IP-BYPASS-001
+  name: IP Encoding and Obfuscation Bypass Denial Contract
+  threats:
+  - THREAT-SSRF
+  controls:
+  - CTRL-SSRF-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Dotted-decimal, octal, hex, dword, and IPv4-mapped IPv6 obfuscations
+    normalize to canonical IP.
+  test_path: null
+- id: TEST-PROXY-BYPASS-001
+  name: Execution Broker Outbound Proxy Enforcement Contract
+  threats:
+  - THREAT-BROWSER-EXECUTION-BYPASS
+  controls:
+  - CTRL-BROWSER-SANDBOX-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: All tool and browser egress traffic flows through the broker
+    proxy with zero direct access.
+  test_path: null
+- id: TEST-IPV6-BYPASS-001
+  name: IPv6 Unscoped Interface Access Rejection Contract
+  threats:
+  - THREAT-IPV6-POLICY-BYPASS
+  controls:
+  - CTRL-IPV6-POLICY-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: IPv6 loopback (::1) and link-local (fe80::/10) destinations are
+    rejected.
+  test_path: null
+- id: TEST-SANDBOX-FS-001
+  name: Sandbox Filesystem Isolation and Read-Only Root Contract
+  threats:
+  - THREAT-SANDBOX-ESCAPE
+  controls:
+  - CTRL-SANDBOX-CONTAINMENT-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Worker container filesystem is read-only; attempts to write outside
+    /tmp fail with EROFS.
+  test_path: null
+- id: TEST-SANDBOX-NET-001
+  name: Sandbox Network Namespace Isolation Contract
+  threats:
+  - THREAT-BROWSER-EXECUTION-BYPASS
+  controls:
+  - CTRL-BROWSER-SANDBOX-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Sandboxed processes cannot access host loopback interfaces or
+    host network namespace.
+  test_path: null
+- id: TEST-SANDBOX-PRIV-001
+  name: Sandbox Privilege Escalation and Rootless Enclosure Contract
+  threats:
+  - THREAT-SANDBOX-ESCAPE
+  - THREAT-HOST-COMPROMISE
+  controls:
+  - CTRL-SANDBOX-CONTAINMENT-001
+  - CTRL-HOST-PROTECTION-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Container processes run as unprivileged UID; cap_setuid, cap_sys_admin
+    are dropped.
+  test_path: null
+- id: TEST-SANDBOX-CLEANUP-001
+  name: Worker Container and Ephemeral Asset Cleanup Contract
+  threats:
+  - THREAT-SANDBOX-CLEANUP-FAILURE
+  controls:
+  - CTRL-SANDBOX-CLEANUP-001
+  owner: Execution Engine Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Containers, volumes, and temporary credentials are purged immediately
+    on task termination.
+  test_path: null
+- id: TEST-A2A-FORGERY-001
+  name: Inter-Agent Identity Forgery and Impersonation Rejection Contract
+  threats:
+  - THREAT-FORGED-A2A-MESSAGE
+  controls:
+  - CTRL-A2A-AUTH-001
+  owner: Intelligence Plane Lead
+  phase: 3
+  status: PENDING(phase=3)
+  expected_property: Inter-agent messages without verifiable sender signatures are
+    discarded.
+  test_path: null
+- id: TEST-PROMPT-INJECTION-001
+  name: Target-Sourced Prompt Injection Neutralization Contract
+  threats:
+  - THREAT-PROMPT-INJECTION
+  controls:
+  - CTRL-PROMPT-GUARD-001
+  owner: Intelligence Plane Lead
+  phase: 3
+  status: PENDING(phase=3)
+  expected_property: Target text containing system command overrides cannot escape
+    data boundary.
+  test_path: null
+- id: TEST-TOOL-POISONING-001
+  name: Tool Output ANSI and Escape Code Sanitization Contract
+  threats:
+  - THREAT-TOOL-OUTPUT-POISONING
+  controls:
+  - CTRL-TOOL-OUTPUT-SANITIZATION-001
+  owner: Intelligence Plane Lead
+  phase: 3
+  status: PENDING(phase=3)
+  expected_property: ANSI terminal controls and delimiter strings are scrubbed before
+    storage.
+  test_path: null
+- id: TEST-RAG-POISONING-001
+  name: Retrieval Context Poisoning Defense Contract
+  threats:
+  - THREAT-MALICIOUS-TARGET-CONTENT
+  controls:
+  - CTRL-CONTENT-ISOLATION-001
+  owner: Intelligence Plane Lead
+  phase: 3
+  status: PENDING(phase=3)
+  expected_property: Retrieved untrusted context chunks carry explicit provenance
+    and cannot grant authority.
+  test_path: null
+- id: TEST-GRAPHIFY-POISONING-001
+  name: Knowledge Graph Provenance Verification Contract
+  threats:
+  - THREAT-GRAPHIFY-POISONING
+  controls:
+  - CTRL-GRAPH-INTEGRITY-001
+  owner: Intelligence Plane Lead
+  phase: 3
+  status: PENDING(phase=3)
+  expected_property: Graph edges cannot be formed without valid cryptographic evidence
+    references.
+  test_path: null
+- id: TEST-EVIDENCE-PARSER-001
+  name: Evidence Parser Sandbox Containment Contract
+  threats:
+  - THREAT-EVIDENCE-PARSER-COMPROMISE
+  - THREAT-MALICIOUS-TARGET-CONTENT
+  controls:
+  - CTRL-PARSER-SANDBOX-001
+  - CTRL-CONTENT-ISOLATION-001
+  owner: Intelligence Plane Lead
+  phase: 3
+  status: PENDING(phase=3)
+  expected_property: Malformed or recursive XML/HTML parser bombs fail safely without
+    crashing host.
+  test_path: null
+- id: TEST-LLM-EGRESS-001
+  name: Outbound Prompt Secret and Token DLP Contract
+  threats:
+  - THREAT-LLM-PROVIDER-EXPOSURE
+  - THREAT-LLM-EGRESS-DATA-LEAKAGE
+  controls:
+  - CTRL-EGRESS-FILTER-001
+  - CTRL-LLM-EGRESS-DLP-001
+  owner: Intelligence Plane Lead
+  phase: 3
+  status: PENDING(phase=3)
+  expected_property: Outbound LLM payloads containing internal API keys, private keys,
+    or tokens are aborted.
+  test_path: null
+- id: TEST-CREDENTIAL-ISOLATION-001
+  name: Target Credential Vault Isolation Contract
+  threats:
+  - THREAT-CREDENTIAL-THEFT
+  controls:
+  - CTRL-CRED-ISOLATION-001
+  owner: Credential Vault Lead
+  phase: 6
+  status: PENDING(phase=6)
+  expected_property: Raw credentials cannot be queried by agent reasoning loops or
+    ordinary SQL clients.
+  test_path: null
+- id: TEST-CREDENTIAL-REVOCATION-001
+  name: Dynamic Credential Session Revocation Contract
+  threats:
+  - THREAT-CREDENTIAL-THEFT
+  controls:
+  - CTRL-CRED-ISOLATION-001
+  owner: Credential Vault Lead
+  phase: 6
+  status: PENDING(phase=6)
+  expected_property: Revoking a credential session invalidates all active tokens and
+    disconnects sessions.
+  test_path: null
+- id: TEST-CREDENTIAL-EXPIRY-001
+  name: Ephemeral Credential Lifetime Expiration Contract
+  threats:
+  - THREAT-CREDENTIAL-THEFT
+  controls:
+  - CTRL-CRED-ISOLATION-001
+  owner: Credential Vault Lead
+  phase: 6
+  status: PENDING(phase=6)
+  expected_property: Expired credential sessions fail immediately on dispatch.
+  test_path: null
+- id: TEST-CREDENTIAL-LOG-001
+  name: Credential Log Redaction and Scrubbing Contract
+  threats:
+  - THREAT-CREDENTIAL-THEFT
+  controls:
+  - CTRL-CRED-ISOLATION-001
+  owner: Credential Vault Lead
+  phase: 6
+  status: PENDING(phase=6)
+  expected_property: Recursive log sanitization replaces sensitive keys with [REDACTED].
+  test_path: null
+- id: TEST-CREDENTIAL-CONTEXT-001
+  name: Credential Scope and Context Confinement Contract
+  threats:
+  - THREAT-CREDENTIAL-THEFT
+  controls:
+  - CTRL-CRED-ISOLATION-001
+  owner: Credential Vault Lead
+  phase: 6
+  status: PENDING(phase=6)
+  expected_property: Credentials granted for host A cannot be used to authenticate
+    against host B.
+  test_path: null
+- id: TEST-MISSION-ISOLATION-001
+  name: Cross-Mission Resource and Artifact Isolation Contract
+  threats:
+  - THREAT-CROSS-MISSION-LEAKAGE
+  controls:
+  - CTRL-MISSION-ISOLATION-001
+  owner: Platform Architecture Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Queries or requests with mismatched mission IDs return HTTP 403
+    / SQL zero rows.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_a_test.rs
+- id: TEST-AUDIT-INTEGRITY-001
+  name: Append-Only Audit Hash-Chain Integrity Verification Contract
+  threats:
+  - THREAT-AUDIT-TAMPERING
+  controls:
+  - CTRL-AUDIT-INTEGRITY-001
+  owner: Audit Service Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Verification of audit log sequence computes valid SHA-256 chain
+    and signature matches.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_e_test.rs
+- id: TEST-AUDIT-TAMPER-001
+  name: Audit Log Tamper and Deletion Detection Contract
+  threats:
+  - THREAT-AUDIT-TAMPERING
+  controls:
+  - CTRL-AUDIT-INTEGRITY-001
+  owner: Audit Service Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Mutating any byte of a past audit event causes hash chain verification
+    to fail closed.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_e_test.rs
+- id: TEST-EVIDENCE-INTEGRITY-001
+  name: Content-Addressed Evidence Hash Verification Contract
+  threats:
+  - THREAT-EVIDENCE-TAMPERING
+  controls:
+  - CTRL-EVIDENCE-INTEGRITY-001
+  owner: Evidence Pipeline Lead
+  phase: 1
+  status: IMPLEMENTED_PASSING
+  expected_property: Modifying stored evidence artifact triggers cryptographic hash
+    mismatch on retrieval.
+  test_path: crates/arka-kernel/tests/checkpoint_p1_e_test.rs
+- id: TEST-SUPPLY-CHAIN-001
+  name: Automated Supply Chain and Dependency Scanning Check
+  threats:
+  - THREAT-DEPENDENCY-COMPROMISE
+  - THREAT-CI-SUPPLY-CHAIN-COMPROMISE
+  controls:
+  - CTRL-SUPPLY-CHAIN-AUDIT-001
+  - CTRL-CI-SUPPLY-CHAIN-001
+  owner: CI Security Lead
+  phase: 0
+  status: IMPLEMENTED_PASSING
+  expected_property: pip-audit, pnpm audit, and gitleaks scans pass with 0 vulnerabilities
+    and 0 leaked secrets.
+  test_path: tests/security/test_foundation_suite.py
+- id: TEST-P0-MODEL-INTEGRITY-001
+  name: P0 Threat Model Schema and Referential Integrity Verification
+  threats:
+  - THREAT-CI-GATE-MANIPULATION
+  controls:
+  - CTRL-P0-MODEL-INTEGRITY-001
+  owner: Security Architecture Lead
+  phase: 0
+  status: IMPLEMENTED_PASSING
+  expected_property: All YAML models validate against Draft-07 JSON schemas and referential
+    integrity passes with 0 errors.
+  test_path: tests/security/test_foundation_suite.py
+- id: TEST-P0-TRACEABILITY-001
+  name: P0 100% Threat-to-Gate Traceability Matrix Verification
+  threats:
+  - THREAT-CI-GATE-MANIPULATION
+  controls:
+  - CTRL-P0-TRACEABILITY-001
+  owner: Security Architecture Lead
+  phase: 0
+  status: IMPLEMENTED_PASSING
+  expected_property: Every registered threat has complete bidirectional mapping across
+    controls, components, tests, and gates.
+  test_path: tests/security/test_foundation_suite.py
+- id: TEST-P0-VALIDATOR-META-001
+  name: Validator Meta-Test Suite and Known-Bad Negative Fixture Rejection
+  threats:
+  - THREAT-CI-GATE-MANIPULATION
+  controls:
+  - CTRL-P0-MODEL-INTEGRITY-001
+  owner: Security Architecture Lead
+  phase: 0
+  status: IMPLEMENTED_PASSING
+  expected_property: Validator correctly detects and rejects all 14 known-bad security
+    model mutation fixtures.
+  test_path: tests/security/test_validator_meta.py
+- id: TEST-P0-CRYPTO-KEY-POLICY-001
+  name: Cryptographic Key Provider Domain Separation Unit Test Suite
+  threats:
+  - THREAT-TOKEN-THEFT
+  - THREAT-CREDENTIAL-THEFT
+  controls:
+  - CTRL-P0-KEY-POLICY-001
+  owner: Cryptography Architect
+  phase: 0
+  status: IMPLEMENTED_PASSING
+  expected_property: KeyProvider enforces domain separation, Ed25519 signing, AES-256-GCM
+    encryption, and dev safeguards.
+  test_path: tests/security/test_key_provider.py
+- id: TEST-P0-CI-GATE-INTEGRITY-001
+  name: Cryptographic Baseline Manifest SHA-256 Integrity Verification
+  threats:
+  - THREAT-CI-GATE-MANIPULATION
+  controls:
+  - CTRL-CI-GATE-PROTECTION-001
+  owner: CI Security Lead
+  phase: 0
+  status: IMPLEMENTED_PASSING
+  expected_property: SHA-256 hash manifest verification confirms 100% untampered integrity
+    of security baseline files.
+  test_path: tests/security/test_foundation_suite.py
+- id: TEST-WORKER-RESOURCE-001
+  name: OS Worker Cgroup Resource Exhaustion and Kill Test
+  threats:
+  - THREAT-RESOURCE-EXHAUSTION
+  controls:
+  - CTRL-WORKER-RESOURCE-001
+  owner: Sandbox Security Lead
+  phase: 2
+  status: PENDING(phase=2)
+  expected_property: Worker attempting to allocate memory or CPU beyond cgroup quota
+    is terminated by OS with SIGKILL within 500ms.
+  test_path: null
