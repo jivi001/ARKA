@@ -9,6 +9,7 @@ pub mod broker;
 pub mod dispatcher;
 pub mod errors;
 pub mod record;
+pub mod sandbox;
 pub mod state;
 pub mod storage;
 
@@ -16,6 +17,9 @@ pub use broker::{BrokerConfig, ExecutionBroker};
 pub use dispatcher::{NoOpWorker, WorkerDispatcher};
 pub use errors::BrokerError;
 pub use record::{ExecutionRecord, ExecutionResultEnvelope};
+pub use sandbox::{
+    SandboxConfig, SandboxSupervisor, SandboxWorkerDispatcher, SandboxedExecutionResult,
+};
 pub use state::ExecutionState;
 pub use storage::{BrokerStorage, InMemoryBrokerStorage, SqliteBrokerStorage};
 

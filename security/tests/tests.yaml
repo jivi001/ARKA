@@ -243,10 +243,10 @@ tests:
   - CTRL-HOST-PROTECTION-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Container processes run as unprivileged UID; cap_setuid, cap_sys_admin
     are dropped.
-  test_path: null
+  test_path: crates/arka-execution-broker/tests/checkpoint_p2_c_sandbox_test.rs
 - id: TEST-SANDBOX-CLEANUP-001
   name: Worker Container and Ephemeral Asset Cleanup Contract
   threats:
@@ -255,10 +255,10 @@ tests:
   - CTRL-SANDBOX-CLEANUP-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Containers, volumes, and temporary credentials are purged immediately
     on task termination.
-  test_path: null
+  test_path: crates/arka-execution-broker/tests/checkpoint_p2_c_sandbox_test.rs
 - id: TEST-A2A-FORGERY-001
   name: Inter-Agent Identity Forgery and Impersonation Rejection Contract
   threats:
@@ -536,7 +536,7 @@ tests:
   - CTRL-WORKER-RESOURCE-001
   owner: Sandbox Security Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Worker attempting to allocate memory or CPU beyond cgroup quota
     is terminated by OS with SIGKILL within 500ms.
-  test_path: null
+  test_path: crates/arka-execution-broker/tests/checkpoint_p2_c_sandbox_test.rs

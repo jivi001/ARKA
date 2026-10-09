@@ -47,4 +47,10 @@ pub enum BrokerError {
 
     #[error("Worker protocol error: {0}")]
     ProtocolError(String),
+
+    #[error("Sandbox runtime initialization failed: {0}")]
+    SandboxInitializationFailure(String),
+
+    #[error("Sandbox execution failed or exited with error: {0}")]
+    SandboxExecutionError(String),
 }
