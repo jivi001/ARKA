@@ -118,7 +118,7 @@ Do not force OS-specific container orchestration, process supervision or firewal
 
 Use the current Rust workspace, Tokio async runtime, Serde with strict/versioned schemas, Axum only if a broker-facing API is required, existing crypto/hash abstractions, and existing SQLite/WAL transactional patterns where persistence is needed. Keep dependencies minimal and locked.
 
-For the Linux worker, choose one supported rootless runtime and document its exact security profile. Validate the actual runtime behavior on the target development OS and CI runner instead of assuming that “containerized” means contained. Apply OS-level network controls before starting a worker. Docker alone is not a sufficient boundary for high-risk exploitation; stronger isolation belongs to the later microVM/gVisor phase.
+For the Linux worker, choose one supported rootless runtime and document its exact security profile. Pin the runtime and helper binary versions (and image digests where applicable), record provenance/checksums, scan runtime and worker-image dependencies in CI, and block on known high/critical vulnerabilities under the security policy. Define an update/exception process so pinning does not become permanent vulnerability retention. Validate the actual runtime behavior on the target development OS and CI runner instead of assuming that “containerized” means contained. Apply OS-level network controls before starting a worker. Docker alone is not a sufficient boundary for high-risk exploitation; stronger isolation belongs to the later microVM/gVisor phase.
 
 Avoid adding Redis/NATS or a broad orchestration framework for the single-machine MVP. Add dependencies only with a threat-model entry, maintenance review, lockfile change, vulnerability/license checks and tests.
 
@@ -126,17 +126,18 @@ Avoid adding Redis/NATS or a broad orchestration framework for the single-machin
 
 ### P2-A — Architecture lock and governance prerequisites
 - Reconcile Phase 0/1 status registry with audit reports and actual merge/CI evidence.
-- Confirm GitHub branch protection/rulesets are active; record verification.
+- A human CODEOWNER (not the implementation agent) reviews Phase 1 audit artifacts and updates `phase-status.yaml` only after recording the exact audit report/commit SHA and CI run IDs reviewed. The reviewer's identity and rationale must be captured in the review/commit history; do not self-attest.
+- Confirm GitHub branch protection/rulesets are active. Attach a live `gh api repos/jivi001/ARKA/branches/main/protection` result (or equivalent API evidence) and CI evidence; the documentation checklist alone is insufficient.
 - Map each Phase 2 threat → control → implementation → test → acceptance gate.
-- Write broker API, worker protocol, state machine, error semantics and trust-boundary diagram.
-- Define which capability wrappers are allowed in Phase 2. Begin with one safe, low-risk, explicitly scoped capability; no generic shell.
+- Freeze the HTTP transport decision before P2-A closes. The current workspace `Cargo.toml` does not select `reqwest` or `hyper` as a direct workspace dependency, so the HTTP stack and pinned-dial mechanism remain undecided.
+- Define the first live capability as `TCP_CONNECT` to a controlled local test fixture only, and only after network-policy enforcement is active. Use a no-op worker before that. Keep `HTTP_REQUEST` disabled until P2-D and P2-E are complete. No generic shell.
 - Exit: approved design, stable contracts, traceability, CI plan and no unresolved ambiguity over who can cause side effects.
 
 ### P2-B — Broker contract and lifecycle
 - Define typed request/response models and versioning.
 - Define execution state machine, e.g. `AUTHORIZED → DISPATCHING → RUNNING → COMPLETED | FAILED | TIMED_OUT | CANCELLED`; reject invalid transitions.
 - Bind execution to mission ID, action ID, canonical action hash, capability, target, policy version, expiry and authorization record.
-- Recheck approval/expiry, emergency stop and budgets immediately before dispatch; consume dispatch idempotently so retries cannot run an action twice.
+- Recheck approval/expiry, emergency stop and budgets immediately before dispatch. Consume dispatch idempotently with a durable unique constraint on `(action_id, dispatch_attempt=1)` and the transition to `DISPATCHING` in the same database transaction. A retry must read and return the existing dispatch record, never insert a second dispatch. Define crash recovery for the commit-before-worker-start and worker-start-before-result windows; uncertain outcomes must not trigger automatic re-execution.
 - Implement bounded queue/concurrency and cancellation.
 - Exit: no dispatch without a valid authorized artifact; no replay; cancellation and crash recovery do not restore authority.
 
@@ -149,15 +150,16 @@ Avoid adding Redis/NATS or a broad orchestration framework for the single-machin
 
 ### P2-D — Connection-time network enforcement
 - Add a single destination-validation path used by every network-capable wrapper.
-- Resolve DNS once for an attempted connection, validate all resolved addresses against target scope and blocked ranges, and pin the connection to the approved address while preserving correct hostname/TLS semantics.
+- Resolve DNS once for each connection attempt, validate every returned address against mission scope and blocked ranges, and bind the actual socket dial to the validated address. The HTTP implementation MUST use either (a) a custom resolver/connector that returns only the validated pinned address, or (b) direct-IP dialing while independently preserving the original hostname for TLS SNI, certificate verification and HTTP `Host`/`:authority`. Passing the original hostname to a client that performs a fresh OS DNS lookup is prohibited. The selected client/connector behavior must be covered by an integration test proving the socket peer equals the validated IP.
+- Before P2-A closes, evaluate the chosen Rust HTTP stack's resolver/connector hooks against the pinned dependency version. The current workspace manifest does not choose `reqwest` or `hyper`; do not assume either is configured. If using reqwest, prove the exact version's custom resolver/connector behavior in a test; if that cannot enforce the peer-IP invariant, implement a custom connector or direct-IP dialer.
 - Defend against DNS rebinding and time-of-check/time-of-use gaps; avoid re-resolving an unchecked hostname after validation.
-- Independently handle IPv4, IPv6, IPv4-mapped IPv6, loopback, link-local, private ranges and metadata addresses.
+- Independently handle IPv4, IPv6, IPv4-mapped IPv6, loopback, link-local, private ranges and metadata addresses. Reject or explicitly canonicalize zone-ID/scoped IPv6 literals (for example `fe80::1%eth0`); cover NAT64-synthesized destinations and embedded IPv4 policy; reject ambiguous/non-canonical IPv4 forms including decimal integer, octal and hexadecimal forms (for example `2130706433`, `0177.0.0.1`, and `0x7f000001`) unless a single parser canonicalizes them to the same policy representation before authorization. The actual connected peer address remains the final enforcement point.
 - Ensure Python/agent processes have no route to target networks; enforce this at OS/network namespace/firewall level, not just in application code.
 - Exit: network-level tests prove disallowed packets are not emitted, including on errors and fallback paths.
 
 ### P2-E — HTTP redirects and browser boundary
 - Disable automatic redirect following in the HTTP adapter or install an interception layer that validates every hop before connecting.
-- Revalidate scheme, hostname, effective port, resolved IP, scope, exclusions and redirect count on each hop.
+- Every redirect hop MUST call the exact same single destination-validation function and pinned-dial path used for the initial request in P2-D. No lighter redirect-only hostname check or alternate network dial path is permitted. Each hop resets trust and revalidates scheme, hostname, effective port, resolved IP, scope, exclusions and redirect count; DNS pinning is repeated for the new destination before connecting.
 - Reject downgrade/unsupported schemes, ambiguous host forms, credentials in URL, excessive redirect chains, and out-of-policy downloads.
 - Browser automation is not permitted to create an alternate network path. If a browser is included now, force all requests through broker-controlled proxy/network policy; otherwise defer browser execution and keep its gate explicitly blocked.
 - Exit: redirect to loopback/private/metadata/out-of-scope destinations is denied before connection; browser cannot bypass mediation.
@@ -184,13 +186,13 @@ Avoid adding Redis/NATS or a broad orchestration framework for the single-machin
 |---|---|---|
 | Broker authority | Valid, current, authorized action dispatches once | Forged/expired token, altered action hash, missing approval, replay, wrong mission, stale policy, e-stop all deny with zero side effects |
 | Target scope | Explicitly authorized test endpoint reachable via broker | Out-of-scope host/port, exclusion, discovered-only asset, DNS alias outside scope denied |
-| SSRF / metadata | Allowed address and port only | Loopback, RFC1918, link-local, metadata IP, IPv4-mapped IPv6 and alternate IP notations denied unless explicit scope permits |
-| DNS pinning | Connection reaches exact validated address | Rebinding answer change; mixed safe/unsafe answer sets; re-resolution race; address differs from validated pin |
+| SSRF / metadata | Allowed address and port only | Loopback, RFC1918, link-local, metadata IP, IPv4-mapped IPv6, IPv6 zone IDs (`%interface`), NAT64-synthesized targets, decimal/octal/hex IPv4 forms and parser differential cases denied unless explicit scope permits |
+| DNS pinning | Captured socket peer equals the validated IP while TLS SNI/certificate verification use the intended hostname | Rebinding answer change; mixed safe/unsafe answer sets; client-side re-resolution; custom resolver/connector bypass; address differs from validated pin; e-stop between DNS validation and connection completion |
 | HTTP redirects | In-scope redirect accepted when policy allows | Redirect to different/out-of-scope host, private IP, metadata, IPv6 local address, scheme/port change or excessive chain denied before follow |
 | Sandbox | Worker can perform only its narrow capability | Root/privileged mode, host path, Docker socket, host network, other mission artifacts, capability escalation, mount/network namespace escape attempts denied |
 | Resources | Within-budget task completes | CPU/memory/process/disk/time/concurrency limits exceeded; cancellation race; no orphan process/container |
 | Evidence/result | Well-formed bounded result persisted with hash | Oversized output, malformed JSON, control/ANSI escapes, fabricated provenance, parser crash; broker survives and policy is unchanged |
-| Audit/e-stop | Complete lifecycle auditable | Audit store failure, worker crash, kernel unavailable, stop during dispatch/run; no unaudited success and no post-stop execution |
+| Audit/e-stop | Complete lifecycle auditable | Audit store failure, worker crash, kernel unavailable, stop during dispatch/run, and e-stop after DNS validation but before/during pinned connect; cancel connection and revoke egress; no unaudited success and no post-stop execution |
 | Build/supply chain | Reproducible locked build and security scans | Dependency vulnerability, unpinned workflow action, failed security test or missing gate artifact blocks merge/release |
 
 **Test design rule:** every denial test must assert absence of the external side effect, not only the returned error code.
@@ -209,7 +211,7 @@ Implement and attach evidence to the existing gates in `security/acceptance/gate
 - `GATE-SANDBOX-CLEANUP-001`: no lingering container or temporary material after task completion/failure.
 - Resource, fail-closed, replay, emergency-stop and audit gates remain blocking where applicable.
 
-Each gate must map to threat, control, test, and required evidence. Update traceability schemas and validators when adding controls; do not just append unchecked YAML. The gate registry currently labels resource-limit gate as Phase 1, so decide and document whether the Phase 2 implementation extends its existing contract or adds a Phase 2-specific worker resource gate rather than duplicating IDs.
+Each gate must map to threat, control, test, and required evidence. Update traceability schemas and validators when adding controls; do not just append unchecked YAML. Resolve the resource-gate split now: retain the existing Phase 1 resource/budget gate for kernel-side quota decisions and add a distinct blocking Phase 2 gate `GATE-WORKER-RESOURCE-001` for OS-enforced cgroup/process/memory/CPU/disk limits and kill-on-exhaustion. Give it a Phase 2 threat/control/test mapping and a unique ID; do not repurpose or duplicate `GATE-RESOURCE-LIMIT-001`.
 
 ## 9. API and integration contracts
 
@@ -225,9 +227,9 @@ Use a versioned typed protocol. Authenticate broker and worker identity. Bind me
 ### Failure semantics
 Any unavailable authorization service, stale/invalid approval, policy failure, unknown target, DNS uncertainty, unestablished sandbox policy, audit failure where required, resource governor failure or worker identity failure → **DENY / DO NOT DISPATCH**. Retry only safe intelligence/control operations; never blindly rerun a side-effecting execution.
 
-## 10. Frontend decision: build a thin operator console now
+## 10. Frontend decision: defer to Phase 2.5 by default
 
-**Recommendation: yes, start the frontend in Phase 2, but only as a thin read/control-plane client—not as the primary delivery.** The repository README describes an Apple-inspired operator console and mentions Next.js/React, Node.js 20+ and pnpm, but the inspected `main` tree does not currently contain `frontend/` or `frontend/package.json`. Create it in an isolated branch after the API contract is agreed; do not let UI work delay sandbox/network gates.
+**Recommendation: defer frontend implementation until the broker, sandbox and network-policy path has passed P2-G, unless a separate reviewer has explicit capacity.** A thin read-only mock can be designed in parallel, but do not split the security reviewer's attention across a second implementation surface during the highest-risk phase. If parallel work is staffed independently, the UI must remain a client only and must not delay P2-B through P2-G. The repository README describes an Apple-inspired operator console and mentions Next.js/React, Node.js 20+ and pnpm, but the inspected `main` tree does not currently contain `frontend/` or `frontend/package.json`. Create it in an isolated branch after the API contract is agreed; do not let UI work delay sandbox/network gates.
 
 ### Safe frontend scope
 1. Mission list/detail and explicit scope review.
@@ -257,8 +259,8 @@ Use Next.js/React only if the team is committed to a browser-based dashboard (as
 5. Implement network policy, destination validation and DNS pinning.
 6. Add redirect enforcement and browser mediation decision.
 7. Wire audit/e-stop/evidence/result handling.
-8. Integrate minimal frontend against read-only/status endpoints and safe proposal/approval APIs.
-9. Run adversarial tests, fuzzing, CI and independent security review.
+8. Run adversarial tests, fuzzing, CI and independent security review.
+9. Only after P2-G passes, start Phase 2.5 frontend work against the frozen API contracts (unless independently staffed and isolated).
 10. Update phase-status registry only after the acceptance artifacts exist; keep production execution disabled until a separate explicit release sign-off.
 
 ## 12. Definition of Done
@@ -269,12 +271,16 @@ Phase 2 is complete only when all conditions below are evidenced on the merged c
 - [ ] Every dispatch binds to a canonical, authorized action hash and current mission scope.
 - [ ] No direct target-network route exists from the Python intelligence plane.
 - [ ] Rootless sandbox profile is enforced by the OS/runtime and tested.
-- [ ] SSRF, metadata, DNS pinning/rebinding, redirect and IPv6 blocking tests pass at connection level.
+- [ ] SSRF, metadata, DNS pinning/rebinding, redirect and IPv6 blocking tests pass at connection level, including parser-differential corpus and packet-capture-backed absence-of-side-effect assertions.
+- [ ] Every HTTP redirect hop calls the identical P2-D destination-validation and pinned-dial path.
+- [ ] E-stop during the DNS-validation-to-connect window cancels the connection and prevents target traffic.
 - [ ] Browser path cannot bypass broker mediation or remains disabled.
 - [ ] CPU, memory, process, disk, wall-clock and concurrency limits stop work when exceeded.
 - [ ] Cancellation/emergency stop prevents new work and terminates active work.
 - [ ] Worker cleanup succeeds after success, failure, timeout and crash.
 - [ ] Evidence and audit records are provenance-bound and tampering is detectable.
+- [ ] `GATE-WORKER-RESOURCE-001` proves OS-level worker resource enforcement separately from Phase 1 kernel-side budget decisions.
+- [ ] Rootless runtime and worker image versions are pinned and included in vulnerability/supply-chain scanning.
 - [ ] All mandatory Phase 2 gates pass with CI run ID, commit SHA and artifact hashes.
 - [ ] Threat/control/test/gate traceability is valid.
 - [ ] Independent adversarial review has no unresolved critical/high blockers.
