@@ -130,6 +130,7 @@ Avoid adding Redis/NATS or a broad orchestration framework for the single-machin
 - Confirm GitHub branch protection/rulesets are active. Attach a live `gh api repos/jivi001/ARKA/branches/main/protection` result (or equivalent API evidence) and CI evidence; the documentation checklist alone is insufficient.
 - Map each Phase 2 threat → control → implementation → test → acceptance gate.
 - Freeze the HTTP transport decision before P2-A closes. The current workspace `Cargo.toml` does not select `reqwest` or `hyper` as a direct workspace dependency, so the HTTP stack and pinned-dial mechanism remain undecided.
+- Freeze worker↔broker authentication in the same checkpoint: use TLS 1.3 mutual TLS with an ephemeral per-execution worker identity under the existing `WORKER-IDENTITY` key domain and existing Ed25519-capable key-provider primitives. Do not reuse the `TOKEN-SIGNING` private key or introduce a parallel bearer-token scheme. Bind the authenticated peer to mission ID, execution ID, capability and a fresh request/nonce; reject wrong-mission, expired, revoked and replayed identities. Verify this decision against the selected Rust TLS/provider APIs before implementation.
 - Define the first live capability as `TCP_CONNECT` to a controlled local test fixture only, and only after network-policy enforcement is active. Use a no-op worker before that. Keep `HTTP_REQUEST` disabled until P2-D and P2-E are complete. No generic shell.
 - Exit: approved design, stable contracts, traceability, CI plan and no unresolved ambiguity over who can cause side effects.
 
@@ -144,6 +145,7 @@ Avoid adding Redis/NATS or a broad orchestration framework for the single-machin
 ### P2-C — Rootless sandbox and worker supervision
 - Implement minimal rootless worker startup, one allowlisted capability adapter, resource limits and explicit mounts.
 - Set non-root UID, read-only root filesystem, no privileged mode, dropped Linux capabilities, seccomp, PID/network namespaces, no host Docker socket, and no broad host mounts.
+- Required seccomp/AppArmor policy load or application failure MUST abort worker startup. No silent no-op, permissive fallback or “best effort” execution. Where AppArmor is genuinely unavailable on a declared platform, document the platform-specific decision and prove the alternative enforced boundary; never claim AppArmor is active when it is not.
 - Enforce bounded stdout/stderr and structured result size; protect the broker from hostile output.
 - Implement timeout, kill process tree/container, clean temporary workspace and ensure no worker or credential-like temporary material remains.
 - Exit: adversarial tests cannot access host filesystem/socket, host network, another mission workspace or another worker; cleanup works after success, failure, timeout and broker restart.
@@ -152,9 +154,11 @@ Avoid adding Redis/NATS or a broad orchestration framework for the single-machin
 - Add a single destination-validation path used by every network-capable wrapper.
 - Resolve DNS once for each connection attempt, validate every returned address against mission scope and blocked ranges, and bind the actual socket dial to the validated address. The HTTP implementation MUST use either (a) a custom resolver/connector that returns only the validated pinned address, or (b) direct-IP dialing while independently preserving the original hostname for TLS SNI, certificate verification and HTTP `Host`/`:authority`. Passing the original hostname to a client that performs a fresh OS DNS lookup is prohibited. The selected client/connector behavior must be covered by an integration test proving the socket peer equals the validated IP.
 - Before P2-A closes, evaluate the chosen Rust HTTP stack's resolver/connector hooks against the pinned dependency version. The current workspace manifest does not choose `reqwest` or `hyper`; do not assume either is configured. If using reqwest, prove the exact version's custom resolver/connector behavior in a test; if that cannot enforce the peer-IP invariant, implement a custom connector or direct-IP dialer.
+- Add a TLS assurance test proving pinned-IP dialing does not weaken TLS: certificate-chain validation stays enabled, the original canonical hostname is used for SNI and certificate hostname verification, and HTTP `Host`/`:authority` remains bound to that hostname. Trusted test certificates pass; untrusted, expired and wrong-host certificates fail closed. Assert both `socket_peer == validated_ip` and the expected TLS hostname identity. Never “solve” pinning by disabling certificate verification.
 - Defend against DNS rebinding and time-of-check/time-of-use gaps; avoid re-resolving an unchecked hostname after validation.
 - Independently handle IPv4, IPv6, IPv4-mapped IPv6, loopback, link-local, private ranges and metadata addresses. Reject or explicitly canonicalize zone-ID/scoped IPv6 literals (for example `fe80::1%eth0`); cover NAT64-synthesized destinations and embedded IPv4 policy; reject ambiguous/non-canonical IPv4 forms including decimal integer, octal and hexadecimal forms (for example `2130706433`, `0177.0.0.1`, and `0x7f000001`) unless a single parser canonicalizes them to the same policy representation before authorization. The actual connected peer address remains the final enforcement point.
 - Ensure Python/agent processes have no route to target networks; enforce this at OS/network namespace/firewall level, not just in application code.
+- Add a separate capability-parameter injection test class (not merely more SSRF cases): malformed/oversized hostnames, embedded NUL, CR/LF and other control characters, shell metacharacters, invalid ports and ambiguous encodings. Confirm the typed capability model rejects these before dispatch and never converts parameters into raw command strings. Include property/fuzz tests and assert invalid inputs cause no process or network side effect.
 - Exit: network-level tests prove disallowed packets are not emitted, including on errors and fallback paths.
 
 ### P2-E — HTTP redirects and browser boundary
@@ -187,10 +191,12 @@ Avoid adding Redis/NATS or a broad orchestration framework for the single-machin
 | Broker authority | Valid, current, authorized action dispatches once | Forged/expired token, altered action hash, missing approval, replay, wrong mission, stale policy, e-stop all deny with zero side effects |
 | Target scope | Explicitly authorized test endpoint reachable via broker | Out-of-scope host/port, exclusion, discovered-only asset, DNS alias outside scope denied |
 | SSRF / metadata | Allowed address and port only | Loopback, RFC1918, link-local, metadata IP, IPv4-mapped IPv6, IPv6 zone IDs (`%interface`), NAT64-synthesized targets, decimal/octal/hex IPv4 forms and parser differential cases denied unless explicit scope permits |
-| DNS pinning | Captured socket peer equals the validated IP while TLS SNI/certificate verification use the intended hostname | Rebinding answer change; mixed safe/unsafe answer sets; client-side re-resolution; custom resolver/connector bypass; address differs from validated pin; e-stop between DNS validation and connection completion |
+| DNS pinning and TLS | Captured socket peer equals the validated IP; TLS chain validation remains enabled and hostname verification uses the original hostname | Rebinding answer change; mixed safe/unsafe answer sets; client-side re-resolution; custom resolver/connector bypass; address differs from validated pin; expired/untrusted/wrong-host certificates; e-stop between DNS validation and connection completion |
 | HTTP redirects | In-scope redirect accepted when policy allows | Redirect to different/out-of-scope host, private IP, metadata, IPv6 local address, scheme/port change or excessive chain denied before follow |
-| Sandbox | Worker can perform only its narrow capability | Root/privileged mode, host path, Docker socket, host network, other mission artifacts, capability escalation, mount/network namespace escape attempts denied |
+| Sandbox | Worker can perform only its narrow capability | Root/privileged mode, host path, Docker socket, host network, other mission artifacts, capability escalation, mount/network namespace escape attempts denied; missing/invalid required seccomp or AppArmor profile causes worker startup refusal, never permissive fallback |
 | Resources | Within-budget task completes | CPU/memory/process/disk/time/concurrency limits exceeded; cancellation race; no orphan process/container |
+| Capability parameter parsing | Valid typed `TCP_CONNECT` parameters accepted | Malformed/oversized hostname, NUL, CR/LF/control characters, shell metacharacters, invalid port, ambiguous/non-canonical target encoding rejected before dispatch; assert no process/socket side effect |
+| Worker protocol integrity | Versioned bounded message accepted | Unknown fields, unsupported versions, oversized frame/field, excessive nesting/depth, malformed/trailing data and replay rejected before state change |
 | Evidence/result | Well-formed bounded result persisted with hash | Oversized output, malformed JSON, control/ANSI escapes, fabricated provenance, parser crash; broker survives and policy is unchanged |
 | Audit/e-stop | Complete lifecycle auditable | Audit store failure, worker crash, kernel unavailable, stop during dispatch/run, and e-stop after DNS validation but before/during pinned connect; cancel connection and revoke egress; no unaudited success and no post-stop execution |
 | Build/supply chain | Reproducible locked build and security scans | Dependency vulnerability, unpinned workflow action, failed security test or missing gate artifact blocks merge/release |
@@ -211,7 +217,7 @@ Implement and attach evidence to the existing gates in `security/acceptance/gate
 - `GATE-SANDBOX-CLEANUP-001`: no lingering container or temporary material after task completion/failure.
 - Resource, fail-closed, replay, emergency-stop and audit gates remain blocking where applicable.
 
-Each gate must map to threat, control, test, and required evidence. Update traceability schemas and validators when adding controls; do not just append unchecked YAML. Resolve the resource-gate split now: retain the existing Phase 1 resource/budget gate for kernel-side quota decisions and add a distinct blocking Phase 2 gate `GATE-WORKER-RESOURCE-001` for OS-enforced cgroup/process/memory/CPU/disk limits and kill-on-exhaustion. Give it a Phase 2 threat/control/test mapping and a unique ID; do not repurpose or duplicate `GATE-RESOURCE-LIMIT-001`.
+Each gate must map to threat, control, test, and required evidence. Update traceability schemas and validators when adding controls; do not just append unchecked YAML. Maintain the human-readable OWASP cross-reference in `docs/security/OWASP_TOP_10_PHASE_2_TRACEABILITY.md`; it is not a substitute for machine-readable registry entries. Add explicit A01 cross-reference coverage for the existing mission-isolation, scope-enforcement, dual-authorization, capability-signing and replay gates during the next reviewed registry/schema update. The OWASP table also defines required TLS-verification, injection, worker-authentication, strict-deserialization and fail-closed profile tests; keep them pending until registered and evidenced. Resolve the resource-gate split now: retain the existing Phase 1 resource/budget gate for kernel-side quota decisions and add a distinct blocking Phase 2 gate `GATE-WORKER-RESOURCE-001` for OS-enforced cgroup/process/memory/CPU/disk limits and kill-on-exhaustion. Give it a Phase 2 threat/control/test mapping and a unique ID; do not repurpose or duplicate `GATE-RESOURCE-LIMIT-001`.
 
 ## 9. API and integration contracts
 
@@ -222,7 +228,7 @@ Require a versioned schema containing request ID, mission ID, action ID, action 
 Return a deterministic state, execution ID, correlation/request ID, bounded error code, timestamps, and evidence references. Do not leak secrets, internal stack traces or sensitive network details. “Accepted” means queued, not executed successfully.
 
 ### Worker protocol
-Use a versioned typed protocol. Authenticate broker and worker identity. Bind messages to mission, execution, capability and nonce/request ID. Reject unknown security-critical fields. Worker output is never an authorization artifact.
+Use a versioned typed protocol. Authenticate broker and worker identity using the P2-A TLS 1.3 mTLS decision and ephemeral `WORKER-IDENTITY` credentials. Bind messages to mission, execution, capability and a fresh nonce/request ID. Reject unknown fields on security-critical protocol structs (for Serde, use `deny_unknown_fields` where applicable), unsupported versions, malformed/trailing data and duplicate/ambiguous fields. Enforce explicit maximum frame/message bytes, per-field lengths and bounded nesting/depth before any state transition. Worker output is never an authorization artifact.
 
 ### Failure semantics
 Any unavailable authorization service, stale/invalid approval, policy failure, unknown target, DNS uncertainty, unestablished sandbox policy, audit failure where required, resource governor failure or worker identity failure → **DENY / DO NOT DISPATCH**. Retry only safe intelligence/control operations; never blindly rerun a side-effecting execution.
@@ -270,8 +276,11 @@ Phase 2 is complete only when all conditions below are evidenced on the merged c
 - [ ] Broker is the only external side-effect dispatcher.
 - [ ] Every dispatch binds to a canonical, authorized action hash and current mission scope.
 - [ ] No direct target-network route exists from the Python intelligence plane.
-- [ ] Rootless sandbox profile is enforced by the OS/runtime and tested.
+- [ ] Rootless sandbox profile is enforced by the OS/runtime and tested; required seccomp/AppArmor profile load failure prevents worker startup.
 - [ ] SSRF, metadata, DNS pinning/rebinding, redirect and IPv6 blocking tests pass at connection level, including parser-differential corpus and packet-capture-backed absence-of-side-effect assertions.
+- [ ] Pinned-IP TLS tests prove certificate-chain and hostname verification remain enabled; invalid/expired/wrong-host certificates fail closed.
+- [ ] Capability parameter injection and strict worker-protocol parsing tests pass with explicit message/field/depth bounds.
+- [ ] Worker↔broker mTLS identity is mission/execution-bound, ephemeral, replay-resistant and separate from the token-signing key.
 - [ ] Every HTTP redirect hop calls the identical P2-D destination-validation and pinned-dial path.
 - [ ] E-stop during the DNS-validation-to-connect window cancels the connection and prevents target traffic.
 - [ ] Browser path cannot bypass broker mediation or remains disabled.
@@ -292,7 +301,7 @@ Phase 2 is complete only when all conditions below are evidenced on the merged c
 1. Reconcile `security/acceptance/phase-status.yaml` with the Phase 1 audit; verify actual GitHub branch protection, and record the remaining Phase 0 warning honestly.
 2. Add `docs/security/PHASE_2_ARCHITECTURE_PLAN.md` and use P2-A through P2-G as gated checkpoints with a stop-and-review point after each.
 3. Begin with **P2-B broker contract + fake worker**, not a real scanning tool. Prove authorization, replay, fail-closed and audit wiring before enabling any network-side behavior.
-4. Decide whether the first UI milestone is read-only status/mission/evidence browsing. Recommended answer: yes, in parallel on an isolated branch, while the broker/sandbox remains the critical path.
+4. Keep frontend implementation deferred to Phase 2.5 by default as stated in §10; revisit only if an independent reviewer has explicit capacity and UI work is isolated from the broker/sandbox critical path.
 
 ---
 **Authority rule:** If implementation convenience conflicts with a security invariant, the implementation must change. No execution is enabled solely because the UI, API or worker appears functional.
