@@ -1,0 +1,24 @@
+[package]
+name = "arka-execution-broker"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+arka-core-types = { path = "../arka-core-types" }
+arka-crypto = { path = "../arka-crypto" }
+arka-kernel = { path = "../arka-kernel" }
+arka-storage-sqlite = { path = "../arka-storage-sqlite" }
+arka-worker-protocol = { path = "../arka-worker-protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.8"

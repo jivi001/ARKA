@@ -5,6 +5,8 @@ members = [
     "crates/arka-crypto",
     "crates/arka-kernel",
     "crates/arka-storage-sqlite",
+    "crates/arka-worker-protocol",
+    "crates/arka-execution-broker",
 ]
 
 [workspace.package]
