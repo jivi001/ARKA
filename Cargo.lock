@@ -52,6 +52,7 @@ dependencies = [
  "arka-core-types",
  "arka-crypto",
  "arka-kernel",
+ "arka-network-policy",
  "arka-storage-sqlite",
  "arka-worker-protocol",
  "async-trait",
@@ -80,6 +81,19 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "arka-network-policy"
+version = "0.1.0"
+dependencies = [
+ "arka-core-types",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

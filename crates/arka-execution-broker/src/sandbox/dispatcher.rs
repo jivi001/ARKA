@@ -1,20 +1,37 @@
-//! Sandbox worker dispatcher binding ExecutionBroker to Bubblewrap sandbox.
-
 use crate::dispatcher::WorkerDispatcher;
 use crate::errors::BrokerError;
 use crate::record::{ExecutionRecord, ExecutionResultEnvelope};
 use crate::sandbox::supervisor::SandboxSupervisor;
 use crate::state::ExecutionState;
+use arka_network_policy::address::CanonicalIp;
+use arka_network_policy::blocked_ranges::BlockedRanges;
+use arka_network_policy::params::ParameterValidator;
 use async_trait::async_trait;
 use std::sync::Arc;
 
 pub struct SandboxWorkerDispatcher {
     supervisor: Arc<SandboxSupervisor>,
+    allow_private_ranges: bool,
+    allow_loopback: bool,
 }
 
 impl SandboxWorkerDispatcher {
     pub fn new(supervisor: Arc<SandboxSupervisor>) -> Self {
-        Self { supervisor }
+        Self {
+            supervisor,
+            allow_private_ranges: false,
+            allow_loopback: false,
+        }
+    }
+
+    pub fn with_allow_private(mut self, allow: bool) -> Self {
+        self.allow_private_ranges = allow;
+        self
+    }
+
+    pub fn with_allow_loopback(mut self, allow: bool) -> Self {
+        self.allow_loopback = allow;
+        self
     }
 }
 
@@ -37,12 +54,27 @@ impl WorkerDispatcher for SandboxWorkerDispatcher {
                     .and_then(|v| v.as_str())
                     .unwrap_or("127.0.0.1");
 
-                let port = record
+                let port_u16 = record
                     .target
                     .get("port")
                     .and_then(|v| v.as_u64())
-                    .unwrap_or(80)
-                    .to_string();
+                    .unwrap_or(80) as u16;
+
+                // Enforce connection-time validation
+                ParameterValidator::validate_host(host)
+                    .map_err(|e| BrokerError::WorkerExecutionFailure(e.to_string()))?;
+                ParameterValidator::validate_port(port_u16)
+                    .map_err(|e| BrokerError::WorkerExecutionFailure(e.to_string()))?;
+
+                // If host is an IP, check against blocked ranges
+                if let Ok(ip) = CanonicalIp::parse(host) {
+                    BlockedRanges::check_ip_with_options(
+                        &ip,
+                        self.allow_private_ranges,
+                        self.allow_loopback,
+                    )
+                    .map_err(|e| BrokerError::WorkerExecutionFailure(e.to_string()))?;
+                }
 
                 (
                     "/usr/bin/bash".to_string(),
@@ -50,7 +82,7 @@ impl WorkerDispatcher for SandboxWorkerDispatcher {
                         "-c".to_string(),
                         format!(
                             "echo '{{\"status\": \"PROBED\", \"host\": \"{}\", \"port\": {}}}'",
-                            host, port
+                            host, port_u16
                         ),
                     ],
                 )

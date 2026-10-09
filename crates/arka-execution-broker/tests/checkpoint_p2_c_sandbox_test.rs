@@ -295,7 +295,7 @@ async fn test_broker_sandbox_dispatcher_integration() {
 
     let config = get_test_sandbox_config();
     let supervisor = Arc::new(SandboxSupervisor::new(config));
-    let dispatcher = Arc::new(SandboxWorkerDispatcher::new(supervisor));
+    let dispatcher = Arc::new(SandboxWorkerDispatcher::new(supervisor).with_allow_loopback(true));
 
     let broker = ExecutionBroker::new(
         kernel_storage,

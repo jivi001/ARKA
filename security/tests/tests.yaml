@@ -133,10 +133,10 @@ tests:
   - CTRL-SSRF-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Broker rejects outbound connections to 127.0.0.0/8, 10.0.0.0/8,
     172.16.0.0/12, 192.168.0.0/16.
-  test_path: null
+  test_path: crates/arka-network-policy/tests/checkpoint_p2_d_network_test.rs
 - id: TEST-DNS-REBIND-001
   name: DNS Rebinding TOCTOU Prevention Contract
   threats:
@@ -145,10 +145,10 @@ tests:
   - CTRL-DNS-PINNING-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Socket connection connects to the exact IP resolved during initial
     policy authorization.
-  test_path: null
+  test_path: crates/arka-network-policy/tests/checkpoint_p2_d_network_test.rs
 - id: TEST-REDIRECT-001
   name: HTTP Redirect Destination Scope Re-Verification Contract
   threats:
@@ -169,10 +169,10 @@ tests:
   - CTRL-METADATA-BLOCK-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Requests to 169.254.169.254, fd00::/8, and metadata domains are
     hard-blocked.
-  test_path: null
+  test_path: crates/arka-network-policy/tests/checkpoint_p2_d_network_test.rs
 - id: TEST-IP-BYPASS-001
   name: IP Encoding and Obfuscation Bypass Denial Contract
   threats:
@@ -181,10 +181,10 @@ tests:
   - CTRL-SSRF-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Dotted-decimal, octal, hex, dword, and IPv4-mapped IPv6 obfuscations
     normalize to canonical IP.
-  test_path: null
+  test_path: crates/arka-network-policy/tests/checkpoint_p2_d_network_test.rs
 - id: TEST-PROXY-BYPASS-001
   name: Execution Broker Outbound Proxy Enforcement Contract
   threats:
@@ -205,10 +205,10 @@ tests:
   - CTRL-IPV6-POLICY-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: IPv6 loopback (::1) and link-local (fe80::/10) destinations are
     rejected.
-  test_path: null
+  test_path: crates/arka-network-policy/tests/checkpoint_p2_d_network_test.rs
 - id: TEST-SANDBOX-FS-001
   name: Sandbox Filesystem Isolation and Read-Only Root Contract
   threats:
