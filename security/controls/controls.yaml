@@ -179,7 +179,7 @@ controls:
   - TEST-SSRF-001
   gate_ids:
   - GATE-SSRF-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
 - id: CTRL-DNS-PINNING-001
   name: Synchronous DNS Resolution Pinning and Rebinding Prevention
   description: Broker resolves hostnames prior to validation and connects strictly
@@ -198,7 +198,7 @@ controls:
   - TEST-DNS-REBIND-001
   gate_ids:
   - GATE-DNS-REBIND-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
 - id: CTRL-CRED-ISOLATION-001
   name: Credential Vault Session Isolation and Dynamic Injection
   description: Credentials encrypted at rest under CREDENTIAL-KEK; injected into sandbox
@@ -238,7 +238,7 @@ controls:
   - TEST-SANDBOX-PRIV-001
   gate_ids:
   - GATE-SANDBOX-CONTAINMENT-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
 - id: CTRL-HOST-PROTECTION-001
   name: MicroVM Hardware Virtualization Isolation
   description: High-risk controlled exploitation executes within dedicated Firecracker
@@ -545,7 +545,7 @@ controls:
   - TEST-METADATA-001
   gate_ids:
   - GATE-METADATA-BLOCK-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
 - id: CTRL-IPV6-POLICY-001
   name: Dual-Stack IPv6 Scope and Policy Filtering
   description: Enforces identical scope validation and private address blocking for
@@ -565,7 +565,7 @@ controls:
   - TEST-IPV6-BYPASS-001
   gate_ids:
   - GATE-IPV6-POLICY-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
 - id: CTRL-REDIRECT-FILTER-001
   name: HTTP Redirect Destination Scope Re-Validation
   description: HTTP client intercepts all 3xx redirects and subjects the Location
@@ -585,7 +585,7 @@ controls:
   - TEST-REDIRECT-001
   gate_ids:
   - GATE-REDIRECT-FILTER-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
 - id: CTRL-BROWSER-SANDBOX-001
   name: Headless Browser Network and IPC Isolation
   description: Browser engines (Playwright/Chromium) run in dedicated sandbox network
@@ -606,7 +606,7 @@ controls:
   - TEST-SANDBOX-NET-001
   gate_ids:
   - GATE-BROWSER-SANDBOX-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
 - id: CTRL-CAPABILITY-SIGNING-001
   name: Cryptographic Capability Token Verification
   description: Execution broker verifies Ed25519 signature of capability token against
@@ -647,7 +647,7 @@ controls:
   - TEST-SANDBOX-CLEANUP-001
   gate_ids:
   - GATE-SANDBOX-CLEANUP-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
 - id: CTRL-BUDGET-ENFORCEMENT-001
   name: Hierarchical Task and Mission Budget Governance
   description: Enforces max action limits, wall-clock timeouts, and LLM token budgets;
@@ -761,4 +761,4 @@ controls:
   - TEST-WORKER-RESOURCE-001
   gate_ids:
   - GATE-WORKER-RESOURCE-001
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING

@@ -156,7 +156,17 @@ impl<R: DnsResolver> RedirectHandler<R> {
             )
         })?;
 
-        // 2. Enforce hop count ceiling
+        // 2. Reject control characters, CR, LF, or NUL in Location header (header injection defense)
+        if location
+            .chars()
+            .any(|c| c == '\r' || c == '\n' || c == '\0' || c.is_control())
+        {
+            return Err(NetworkPolicyError::InvalidRedirectUrl(
+                "Location header contains forbidden control characters or CRLF".to_string(),
+            ));
+        }
+
+        // 3. Enforce hop count ceiling
         if self.visited_urls.len() >= self.config.max_redirects {
             return Err(NetworkPolicyError::RedirectLimitExceeded(
                 self.config.max_redirects,
