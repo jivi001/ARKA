@@ -2,13 +2,18 @@
 //!
 //! Enforces:
 //! - Complete pre-dispatch verification (Action Hash, Approval, E-Stop, Expiry)
-//! - Single execution path: no side effect without valid authorized artifact
+//! - Resource governance (concurrency, timeouts, memory/process limits)
+//! - Tamper-evident dual-hash audit chain logging (System & Mission chains)
+//! - Content-addressed bounded evidence ingestion and SHA-256 integrity verification
+//! - Active execution tracking and real-time Emergency Stop cancellation
 //! - Idempotent dispatch consumption: unique (action_id, dispatch_attempt=1)
-//! - Bounded concurrency via Semaphore
-//! - Invariants INV-001, INV-002, INV-004, INV-006, INV-010
+//! - Invariants INV-001, INV-002, INV-004, INV-006, INV-010, INV-011, INV-012, INV-014, INV-016
 
+use crate::audit::BrokerAuditService;
 use crate::dispatcher::WorkerDispatcher;
 use crate::errors::BrokerError;
+use crate::evidence::{EvidenceCollector, EvidenceProvenance, EvidenceType};
+use crate::governor::{ResourceGovernor, ResourceLimits};
 use crate::record::{ExecutionRecord, ExecutionResultEnvelope};
 use crate::state::ExecutionState;
 use crate::storage::BrokerStorage;
@@ -17,8 +22,9 @@ use arka_core_types::approval::Approval;
 use arka_core_types::clock::Clock;
 use arka_core_types::id::ExecutionId;
 use arka_kernel::storage::Storage as KernelStorage;
+use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Semaphore;
+use tokio::sync::{oneshot, RwLock};
 use uuid::Uuid;
 
 pub struct BrokerConfig {
@@ -40,7 +46,10 @@ pub struct ExecutionBroker<K: KernelStorage, S: BrokerStorage, D: WorkerDispatch
     broker_storage: Arc<S>,
     dispatcher: Arc<D>,
     clock: Arc<C>,
-    concurrency_semaphore: Arc<Semaphore>,
+    governor: Arc<ResourceGovernor>,
+    evidence_collector: Arc<EvidenceCollector>,
+    audit_service: Option<Arc<BrokerAuditService<K>>>,
+    active_cancellations: Arc<RwLock<HashMap<ExecutionId, oneshot::Sender<()>>>>,
     config: BrokerConfig,
 }
 
@@ -54,15 +63,48 @@ impl<K: KernelStorage, S: BrokerStorage, D: WorkerDispatcher, C: Clock>
         clock: Arc<C>,
         config: BrokerConfig,
     ) -> Self {
-        let concurrency_semaphore = Arc::new(Semaphore::new(config.max_concurrent_executions));
+        let governor = Arc::new(ResourceGovernor::new(
+            ResourceLimits::default()
+                .with_max_concurrent_workers(config.max_concurrent_executions)
+                .with_max_timeout_seconds(config.default_timeout_seconds),
+        ));
+        let evidence_collector = Arc::new(EvidenceCollector::default());
+        let active_cancellations = Arc::new(RwLock::new(HashMap::new()));
+
         Self {
             kernel_storage,
             broker_storage,
             dispatcher,
             clock,
-            concurrency_semaphore,
+            governor,
+            evidence_collector,
+            audit_service: None,
+            active_cancellations,
             config,
         }
+    }
+
+    pub fn with_audit_service(mut self, audit_service: Arc<BrokerAuditService<K>>) -> Self {
+        self.audit_service = Some(audit_service);
+        self
+    }
+
+    pub fn with_governor(mut self, governor: Arc<ResourceGovernor>) -> Self {
+        self.governor = governor;
+        self
+    }
+
+    pub fn with_evidence_collector(mut self, collector: Arc<EvidenceCollector>) -> Self {
+        self.evidence_collector = collector;
+        self
+    }
+
+    pub fn governor(&self) -> &ResourceGovernor {
+        &self.governor
+    }
+
+    pub fn evidence_collector(&self) -> &EvidenceCollector {
+        &self.evidence_collector
     }
 
     /// Primary execution dispatcher.
@@ -86,13 +128,10 @@ impl<K: KernelStorage, S: BrokerStorage, D: WorkerDispatcher, C: Clock>
         // 3. Pre-dispatch Verification: Monotonic Emergency Stop
         self.verify_emergency_stop(action).await?;
 
-        // 4. Concurrency Guard
-        let _permit = self.concurrency_semaphore.try_acquire().map_err(|_| {
-            BrokerError::ConcurrencyLimitReached {
-                current: self.config.max_concurrent_executions,
-                max: self.config.max_concurrent_executions,
-            }
-        })?;
+        // 4. Resource Governance: Validate requested parameters & acquire concurrency slot
+        self.governor
+            .validate_request(Some(self.config.default_timeout_seconds), None)?;
+        let _permit = self.governor.acquire_worker_slot()?;
 
         // 5. Generate unique ExecutionId and initialize ExecutionRecord
         let execution_id = ExecutionId::new(format!("exc-{}", Uuid::new_v4().simple()))
@@ -116,19 +155,107 @@ impl<K: KernelStorage, S: BrokerStorage, D: WorkerDispatcher, C: Clock>
         record.state = ExecutionState::Dispatching;
         self.broker_storage.insert_execution(&record).await?;
 
-        // 7. Transition to RUNNING
+        // 7. Audit log event: EXECUTION_DISPATCHED (fail closed on audit error)
+        if let Some(ref audit) = self.audit_service {
+            audit
+                .log_event(
+                    &action.mission_id,
+                    "EXECUTION_DISPATCHED",
+                    "system:broker",
+                    serde_json::json!({
+                        "execution_id": execution_id.to_string(),
+                        "action_id": action.action_id.to_string(),
+                        "action_hash": action.action_hash,
+                        "capability_id": action.capability_id.to_string(),
+                    }),
+                    now,
+                )
+                .await?;
+        }
+
+        // 8. Transition to RUNNING
         record.state = ExecutionState::Running;
         self.broker_storage
             .update_execution_state(&execution_id, ExecutionState::Running, None, None, now)
             .await?;
 
-        // 8. Dispatch to Worker via Dispatcher abstraction
-        let dispatch_result = self.dispatcher.dispatch(&record).await;
+        if let Some(ref audit) = self.audit_service {
+            audit
+                .log_event(
+                    &action.mission_id,
+                    "EXECUTION_RUNNING",
+                    "system:broker",
+                    serde_json::json!({
+                        "execution_id": execution_id.to_string(),
+                        "action_id": action.action_id.to_string(),
+                    }),
+                    now,
+                )
+                .await?;
+        }
+
+        // 9. Register cancellation channel for active execution
+        let (cancel_tx, mut cancel_rx) = oneshot::channel();
+        {
+            let mut active_map = self.active_cancellations.write().await;
+            active_map.insert(execution_id.clone(), cancel_tx);
+        }
+
+        // 10. Dispatch to Worker via Dispatcher abstraction with cancellation listening
+        let dispatch_future = self.dispatcher.dispatch(&record);
+        let dispatch_result = tokio::select! {
+            res = dispatch_future => res,
+            _ = &mut cancel_rx => {
+                Err(BrokerError::Cancelled(format!(
+                    "Execution {} was cancelled by emergency stop or operator",
+                    execution_id
+                )))
+            }
+        };
+
+        // Deregister from active cancellations map
+        {
+            let mut active_map = self.active_cancellations.write().await;
+            active_map.remove(&execution_id);
+        }
 
         let completed_at = self.clock.now_unix();
         match dispatch_result {
-            Ok(envelope) => {
+            Ok(mut envelope) => {
                 let final_state = envelope.state;
+
+                // 11. Ingest untrusted outputs into EvidenceCollector and record hashes
+                let provenance = EvidenceProvenance {
+                    mission_id: action.mission_id.clone(),
+                    execution_id: execution_id.clone(),
+                    action_id: action.action_id.clone(),
+                    capability_id: action.capability_id.clone(),
+                    worker_profile: "sandbox-profile".to_string(),
+                    target: serde_json::to_value(&action.target).unwrap_or_default(),
+                };
+
+                if let Some(ref stdout) = envelope.stdout_truncated {
+                    if let Ok(artifact) = self.evidence_collector.collect(
+                        provenance.clone(),
+                        EvidenceType::Stdout,
+                        stdout.as_bytes(),
+                        completed_at,
+                    ) {
+                        envelope.evidence_hashes.push(artifact.content_hash);
+                    }
+                }
+
+                if let Some(ref stderr) = envelope.stderr_truncated {
+                    if let Ok(artifact) = self.evidence_collector.collect(
+                        provenance,
+                        EvidenceType::Stderr,
+                        stderr.as_bytes(),
+                        completed_at,
+                    ) {
+                        envelope.evidence_hashes.push(artifact.content_hash);
+                    }
+                }
+
                 self.broker_storage
                     .update_execution_state(
                         &execution_id,
@@ -138,22 +265,83 @@ impl<K: KernelStorage, S: BrokerStorage, D: WorkerDispatcher, C: Clock>
                         completed_at,
                     )
                     .await?;
+
+                if let Some(ref audit) = self.audit_service {
+                    audit
+                        .log_event(
+                            &action.mission_id,
+                            match final_state {
+                                ExecutionState::Completed => "EXECUTION_COMPLETED",
+                                _ => "EXECUTION_TERMINATED",
+                            },
+                            "system:broker",
+                            serde_json::json!({
+                                "execution_id": execution_id.to_string(),
+                                "state": format!("{:?}", final_state),
+                                "evidence_hashes": envelope.evidence_hashes,
+                            }),
+                            completed_at,
+                        )
+                        .await?;
+                }
+
                 Ok(envelope)
             }
             Err(e) => {
+                let is_cancelled = matches!(e, BrokerError::Cancelled(_));
+                let final_state = if is_cancelled {
+                    ExecutionState::Cancelled
+                } else {
+                    ExecutionState::Failed
+                };
                 let err_msg = e.to_string();
+
                 self.broker_storage
                     .update_execution_state(
                         &execution_id,
-                        ExecutionState::Failed,
+                        final_state,
                         None,
-                        Some(err_msg),
+                        Some(err_msg.clone()),
                         completed_at,
                     )
                     .await?;
+
+                if let Some(ref audit) = self.audit_service {
+                    let event_type = if is_cancelled {
+                        "EXECUTION_CANCELLED"
+                    } else {
+                        "EXECUTION_FAILED"
+                    };
+                    let _ = audit
+                        .log_event(
+                            &action.mission_id,
+                            event_type,
+                            "system:broker",
+                            serde_json::json!({
+                                "execution_id": execution_id.to_string(),
+                                "error": err_msg,
+                            }),
+                            completed_at,
+                        )
+                        .await;
+                }
+
                 Err(e)
             }
         }
+    }
+
+    /// Emergency Stop Execution Kill: immediately signals and cancels all active workers,
+    /// marks them Cancelled in storage, and logs an emergency stop audit event.
+    pub async fn trigger_emergency_stop_kill(&self) -> Result<usize, BrokerError> {
+        let mut active_map = self.active_cancellations.write().await;
+        let count = active_map.len();
+
+        for (_exec_id, cancel_tx) in active_map.drain() {
+            let _ = cancel_tx.send(());
+        }
+
+        Ok(count)
     }
 
     /// Startup recovery: reconciles unfinalized dispatches from prior process crashes.

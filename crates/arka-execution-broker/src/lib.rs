@@ -5,17 +5,23 @@
 
 #![forbid(unsafe_code)]
 
+pub mod audit;
 pub mod broker;
 pub mod dispatcher;
 pub mod errors;
+pub mod evidence;
+pub mod governor;
 pub mod record;
 pub mod sandbox;
 pub mod state;
 pub mod storage;
 
+pub use audit::BrokerAuditService;
 pub use broker::{BrokerConfig, ExecutionBroker};
 pub use dispatcher::{NoOpWorker, WorkerDispatcher};
 pub use errors::BrokerError;
+pub use evidence::{EvidenceArtifact, EvidenceCollector, EvidenceProvenance, EvidenceType};
+pub use governor::{ResourceGovernor, ResourceLimits, ResourcePermit};
 pub use record::{ExecutionRecord, ExecutionResultEnvelope};
 pub use sandbox::{
     SandboxConfig, SandboxSupervisor, SandboxWorkerDispatcher, SandboxedExecutionResult,

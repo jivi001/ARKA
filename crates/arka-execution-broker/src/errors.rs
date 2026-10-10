@@ -53,4 +53,16 @@ pub enum BrokerError {
 
     #[error("Sandbox execution failed or exited with error: {0}")]
     SandboxExecutionError(String),
+
+    #[error("Resource limit exceeded: {0}")]
+    ResourceLimitExceeded(String),
+
+    #[error("Evidence integrity verification failed: expected hash {expected}, computed {actual}")]
+    EvidenceTampered { expected: String, actual: String },
+
+    #[error("Evidence artifact size {size} exceeds maximum allowable size of {max} bytes")]
+    EvidenceSizeExceeded { size: usize, max: usize },
+
+    #[error("Audit log persistence failure: {0}")]
+    AuditPersistenceFailed(String),
 }

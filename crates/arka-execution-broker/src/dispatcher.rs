@@ -78,7 +78,7 @@ impl WorkerDispatcher for NoOpWorker {
                     "target": record.target,
                     "capability": record.capability_id.to_string(),
                 }),
-                evidence_hashes: vec!["sha256-noop-evidence-placeholder".to_string()],
+                evidence_hashes: vec![],
                 completed_at_unix: completed_at,
             }),
             ExecutionState::Failed => Ok(ExecutionResultEnvelope {
