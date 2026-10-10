@@ -86,9 +86,11 @@ coverage.xml
 .windsurf/
 .copilot/
 .amazonq/
+.factory/
 graphify-out/
 graphify/
 .graphify*
+[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 
 # ------------------------------------------------------------------------------
 # 8. Verification, Scratch & Local Audit Artifacts
@@ -101,6 +103,8 @@ logs/
 *.log.*
 sbom*.json
 pip-audit*.json
+arka-sandbox-scratch/
+arka-test-scratch*/
 
 # ------------------------------------------------------------------------------
 # 9. Frontend — Next.js / pnpm / Tailwind (Operator Console)
