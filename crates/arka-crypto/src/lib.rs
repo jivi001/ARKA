@@ -13,8 +13,8 @@ pub mod token;
 
 pub use canonical::{canonicalize_json, canonicalize_json_bytes};
 pub use hashing::{
-    sha256_digest, sha256_hex, DOMAIN_ACTION, DOMAIN_APPROVAL, DOMAIN_AUDIT, DOMAIN_PARAM,
-    DOMAIN_REPLAY, DOMAIN_TOKEN,
+    sha256_digest, sha256_hex, DOMAIN_ACTION, DOMAIN_APPROVAL, DOMAIN_AUDIT, DOMAIN_EVIDENCE,
+    DOMAIN_PARAM, DOMAIN_REPLAY, DOMAIN_TOKEN,
 };
 pub use json_strict::{StrictJsonParser, MAX_NESTING_DEPTH, MAX_PAYLOAD_SIZE};
 pub use provider::{

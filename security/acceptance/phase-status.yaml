@@ -1,53 +1,88 @@
 phases:
-  - phase: 0
-    name: "Security Foundation"
-    status: "COMPLETE_WITH_WARNINGS"
-    target_milestone: "P0 Security Model, Controls, Traceability, Key Architecture, Supply Chain, and CI Gates"
-    description: "Establishes machine-verifiable threat model, 100% bidirectional traceability, key management policy, and hardened CI blocking gates."
-    warnings:
-      - "BLOCKED_EXTERNAL_CONFIGURATION: GitHub Branch Protection rules require manual activation by @jivi001 in repository settings (docs/security/BRANCH_PROTECTION.md)."
-    evidence_links:
-      - "security/baseline.manifest"
-      - "docs/security/BRANCH_PROTECTION.md"
-      - "docs/security/SUPPLY_CHAIN_POLICY.md"
-      - ".github/workflows/security-foundation.yml"
-
-  - phase: 1
-    name: "Deterministic Security Kernel"
-    status: "NOT_STARTED"
-    target_milestone: "Rust Security Kernel State Machine, Authorization Engine, Replay Protection, and Token Verifier"
-    description: "Implements deterministic execution authority, action state machine, canonical hash binding, and SQLite WAL persistence."
-    warnings: []
-    evidence_links: []
-
-  - phase: 2
-    name: "Execution Foundation & Sandboxing"
-    status: "NOT_STARTED"
-    target_milestone: "Execution Broker, Rootless Container Sandbox, ScopeGuard SSRF Engine, and DNS Pinning"
-    description: "Implements isolated container workers, network namespace boundaries, IP pinning, and redirect re-validation."
-    warnings: []
-    evidence_links: []
-
-  - phase: 3
-    name: "Intelligence & Multi-Agent Plane"
-    status: "NOT_STARTED"
-    target_milestone: "A2A Protocol Authentication, Prompt Injection Defense, and Evidence Classification Pipeline"
-    description: "Establishes cryptographic inter-agent messaging, dual-boundary prompt defense, and quarantined evidence parsing."
-    warnings: []
-    evidence_links: []
-
-  - phase: 6
-    name: "Credential Vault & Session Broker"
-    status: "NOT_STARTED"
-    target_milestone: "OS Keyring / KMS Integration, Credential KEK Enveloping, and Ephemeral Session Injection"
-    description: "Implements dynamic credential injection, automatic revocation, and zero raw LLM exposure."
-    warnings: []
-    evidence_links: []
-
-  - phase: 9
-    name: "Strong Virtualization Isolation"
-    status: "NOT_STARTED"
-    target_milestone: "MicroVM / Firecracker / gVisor Hypervisor-Enforced Execution Profiles"
-    description: "Implements hardware virtualization isolation for controlled high-risk exploitation."
-    warnings: []
-    evidence_links: []
+- phase: 0
+  name: Security Foundation
+  status: COMPLETE_WITH_WARNINGS
+  target_milestone: P0 Security Model, Controls, Traceability, Key Architecture, Supply
+    Chain, and CI Gates
+  description: Establishes machine-verifiable threat model, 100% bidirectional traceability,
+    key management policy, and hardened CI blocking gates.
+  warnings:
+  - 'BLOCKED_EXTERNAL_CONFIGURATION: GitHub Branch Protection rules require manual
+    activation by @jivi001 in repository settings (docs/security/BRANCH_PROTECTION.md).'
+  evidence_links:
+  - security/baseline.manifest
+  - docs/security/BRANCH_PROTECTION.md
+  - docs/security/SUPPLY_CHAIN_POLICY.md
+  - .github/workflows/security-foundation.yml
+- phase: 1
+  name: Deterministic Security Kernel
+  status: COMPLETE_WITH_WARNINGS
+  target_milestone: Rust Security Kernel State Machine, Authorization Engine, Replay
+    Protection, and Token Verifier
+  description: Implements deterministic execution authority, action state machine,
+    canonical hash binding, and SQLite WAL persistence.
+  warnings:
+  - 'PENDING_FORMAL_CODEOWNER_ATTESTATION: Implementation verified by independent
+    re-audit report (PASS) and 92/92 passing integration tests on merged commit 2dbd5b40/137309d3.
+    Formal release registry sign-off by human CODEOWNER (@jivi001) required.'
+  evidence_links:
+  - docs/security/PHASE_1_COMPLETION_REPORT.md
+  - docs/security/PHASE_1_VERIFICATION_AUDIT_REPORT.md
+  - docs/security/PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md
+  - crates/arka-kernel
+  - tests/checkpoint_p1_a_test.rs
+  - tests/checkpoint_p1_b_test.rs
+  - tests/checkpoint_p1_c_test.rs
+  - tests/checkpoint_p1_d_test.rs
+  - tests/checkpoint_p1_e_test.rs
+- phase: 2
+  name: Execution Foundation & Sandboxing
+  status: COMPLETE_WITH_WARNINGS
+  target_milestone: Execution Broker, Rootless Container Sandbox, ScopeGuard SSRF
+    Engine, and DNS Pinning
+  description: Implements isolated container workers, network namespace boundaries,
+    IP pinning, and redirect re-validation.
+  warnings:
+  - 'PENDING_FORMAL_CODEOWNER_ATTESTATION: Implementation verified by comprehensive test suite (161/161 passing integration & adversarial tests across workspace). Formal release registry sign-off by human CODEOWNER (@jivi001) required.'
+  - 'PRODUCTION_EXECUTION_DISABLED: Execution Broker remains in non-production / dry-run mode until formal human CODEOWNER release sign-off.'
+  evidence_links:
+  - docs/security/PHASE_2_COMPLETION_REPORT.md
+  - docs/security/PHASE_2_VERIFICATION_AUDIT_REPORT.md
+  - docs/security/PHASE_2_ARCHITECTURE_PLAN.md
+  - docs/security/OWASP_TOP_10_PHASE_2_TRACEABILITY.md
+  - docs/security/adr/ADR-001-HTTP-TRANSPORT-AND-PINNED-DIALING.md
+  - docs/security/adr/ADR-002-WORKER-IDENTITY-AND-MTLS.md
+  - crates/arka-execution-broker
+  - crates/arka-network-policy
+  - crates/arka-worker-protocol
+  - crates/arka-execution-broker/tests/checkpoint_p2_c_sandbox_test.rs
+  - crates/arka-network-policy/tests/checkpoint_p2_d_network_test.rs
+  - crates/arka-network-policy/tests/checkpoint_p2_e_redirect_test.rs
+  - crates/arka-execution-broker/tests/checkpoint_p2_f_governor_test.rs
+  - crates/arka-execution-broker/tests/checkpoint_p2_g_adversarial_test.rs
+- phase: 3
+  name: Intelligence & Multi-Agent Plane
+  status: NOT_STARTED
+  target_milestone: A2A Protocol Authentication, Prompt Injection Defense, and Evidence
+    Classification Pipeline
+  description: Establishes cryptographic inter-agent messaging, dual-boundary prompt
+    defense, and quarantined evidence parsing.
+  warnings: []
+  evidence_links: []
+- phase: 6
+  name: Credential Vault & Session Broker
+  status: NOT_STARTED
+  target_milestone: OS Keyring / KMS Integration, Credential KEK Enveloping, and Ephemeral
+    Session Injection
+  description: Implements dynamic credential injection, automatic revocation, and
+    zero raw LLM exposure.
+  warnings: []
+  evidence_links: []
+- phase: 9
+  name: Strong Virtualization Isolation
+  status: NOT_STARTED
+  target_milestone: MicroVM / Firecracker / gVisor Hypervisor-Enforced Execution Profiles
+  description: Implements hardware virtualization isolation for controlled high-risk
+    exploitation.
+  warnings: []
+  evidence_links: []

@@ -5,6 +5,9 @@ members = [
     "crates/arka-crypto",
     "crates/arka-kernel",
     "crates/arka-storage-sqlite",
+    "crates/arka-worker-protocol",
+    "crates/arka-execution-broker",
+    "crates/arka-network-policy",
 ]
 
 [workspace.package]
@@ -27,3 +30,4 @@ tracing = "0.1"
 hex = "0.4"
 base64 = "0.22"
 uuid = { version = "1.8", features = ["v4", "serde"] }
+url = "2.5"

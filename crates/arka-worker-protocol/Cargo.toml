@@ -1,0 +1,14 @@
+[package]
+name = "arka-worker-protocol"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+arka-core-types = { path = "../arka-core-types" }
+arka-crypto = { path = "../arka-crypto" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }

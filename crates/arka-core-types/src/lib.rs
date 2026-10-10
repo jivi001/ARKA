@@ -27,8 +27,8 @@ pub use clock::{Clock, MockClock, SystemClock};
 pub use emergency_stop::EmergencyStopStatus;
 pub use errors::{ExternalSecurityError, KernelSecurityError};
 pub use id::{
-    ActionId, AgentId, ApprovalId, CapabilityId, EvidenceId, IdValidationError, MissionId,
-    OperatorId, ProposalId, TaskId, TokenId, WorkerId,
+    ActionId, AgentId, ApprovalId, CapabilityId, EvidenceId, ExecutionId, IdValidationError,
+    MissionId, OperatorId, ProposalId, TaskId, TokenId, WorkerId,
 };
 pub use mission::{Mission, MissionState};
 pub use scope::{CanonicalTarget, CidrBlock, ScopeDecision, ScopeDefinition, ScopeRule};

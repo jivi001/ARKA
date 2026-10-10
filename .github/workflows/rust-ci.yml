@@ -56,6 +56,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
+      - name: Install system dependencies (Bubblewrap for Sandbox)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 2>/dev/null || true
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 

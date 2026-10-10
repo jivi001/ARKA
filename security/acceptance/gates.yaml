@@ -1,654 +1,636 @@
 gates:
-  - id: "GATE-CONTENT-ISOLATION-001"
-    name: "Malicious Target Content Quarantine Gate"
-    phase: 3
-    threats:
-      - "THREAT-MALICIOUS-TARGET-CONTENT"
-    controls:
-      - "CTRL-CONTENT-ISOLATION-001"
-    tests:
-      - "TEST-EVIDENCE-PARSER-001"
-    condition:
-      untrusted_target_content_treated_as_instruction: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-PROMPT-GUARD-001"
-    name: "Prompt Injection Kernel Ingestion Defense Gate"
-    phase: 3
-    threats:
-      - "THREAT-PROMPT-INJECTION"
-    controls:
-      - "CTRL-PROMPT-GUARD-001"
-    tests:
-      - "TEST-PROMPT-INJECTION-001"
-    condition:
-      injected_prompt_overrides_deterministic_policy: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-TOOL-OUTPUT-001"
-    name: "Tool Output Poisoning and Escape Code Gate"
-    phase: 3
-    threats:
-      - "THREAT-TOOL-OUTPUT-POISONING"
-    controls:
-      - "CTRL-TOOL-OUTPUT-SANITIZATION-001"
-    tests:
-      - "TEST-TOOL-POISONING-001"
-    condition:
-      ansi_escape_and_control_codes_stripped: true
-    expected_result: "PASS"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-ROGUE-AGENT-001"
-    name: "Autonomous Agent Recursion & Rate Limit Gate"
-    phase: 1
-    threats:
-      - "THREAT-ROGUE-AGENT"
-    controls:
-      - "CTRL-AGENT-SUPERVISION-001"
-    tests:
-      - "TEST-RESOURCE-001"
-    condition:
-      rate_limit_exceeded_proposal_rejected: true
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-A2A-AUTH-001"
-    name: "Agent-to-Agent Message Verification Gate"
-    phase: 3
-    threats:
-      - "THREAT-FORGED-A2A-MESSAGE"
-    controls:
-      - "CTRL-A2A-AUTH-001"
-    tests:
-      - "TEST-A2A-FORGERY-001"
-    condition:
-      unauthenticated_a2a_message_accepted: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-TOKEN-PROTECTION-001"
-    name: "Capability Token Sealing and Log Redaction Gate"
-    phase: 1
-    threats:
-      - "THREAT-TOKEN-THEFT"
-    controls:
-      - "CTRL-TOKEN-PROTECTION-001"
-    tests:
-      - "TEST-CAPABILITY-SCOPE-001"
-    condition:
-      tokens_exposed_in_plaintext_logs_or_llm_prompts: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-REPLAY-001"
-    name: "Action Proposal Replay Prevention Gate"
-    phase: 1
-    threats:
-      - "THREAT-REPLAY"
-    controls:
-      - "CTRL-REPLAY-001"
-    tests:
-      - "TEST-REPLAY-001"
-    condition:
-      replayed_completed_action_rejected: true
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-SCOPE-ENFORCEMENT-001"
-    name: "Out-of-Scope Target Access Rejection Gate"
-    phase: 1
-    threats:
-      - "THREAT-SCOPE-EXPANSION"
-    controls:
-      - "CTRL-SCOPE-ENFORCEMENT-001"
-    tests:
-      - "TEST-CAPABILITY-SCOPE-001"
-    condition:
-      out_of_scope_target_action_permitted: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-SSRF-001"
-    name: "Server-Side Request Forgery Blocking Gate"
-    phase: 2
-    threats:
-      - "THREAT-SSRF"
-    controls:
-      - "CTRL-SSRF-001"
-    tests:
-      - "TEST-SSRF-001"
-    condition:
-      rfc1918_or_loopback_connection_permitted: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-DNS-REBIND-001"
-    name: "DNS Rebinding Protection and IP Pinning Gate"
-    phase: 2
-    threats:
-      - "THREAT-DNS-REBINDING"
-    controls:
-      - "CTRL-DNS-PINNING-001"
-    tests:
-      - "TEST-DNS-REBIND-001"
-    condition:
-      connection_differs_from_validated_resolved_ip: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-CRED-ISOLATION-001"
-    name: "Credential Vault Isolation and Memory Guard Gate"
-    phase: 6
-    threats:
-      - "THREAT-CREDENTIAL-THEFT"
-    controls:
-      - "CTRL-CRED-ISOLATION-001"
-    tests:
-      - "TEST-CREDENTIAL-ISOLATION-001"
-    condition:
-      raw_credentials_exposed_to_agent_reasoning: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-SANDBOX-CONTAINMENT-001"
-    name: "Rootless Container Sandbox Containment Gate"
-    phase: 2
-    threats:
-      - "THREAT-SANDBOX-ESCAPE"
-    controls:
-      - "CTRL-SANDBOX-CONTAINMENT-001"
-    tests:
-      - "TEST-SANDBOX-PRIV-001"
-    condition:
-      worker_container_runs_as_root_or_accesses_host_fs: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-HOST-PROTECTION-001"
-    name: "MicroVM Strong Virtualization Isolation Gate"
-    phase: 9
-    threats:
-      - "THREAT-HOST-COMPROMISE"
-    controls:
-      - "CTRL-HOST-PROTECTION-001"
-    tests:
-      - "TEST-SANDBOX-PRIV-001"
-    condition:
-      unsupported_exploit_executes_without_microvm: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-MISSION-ISOLATION-001"
-    name: "Cross-Mission Database and Resource Isolation Gate"
-    phase: 1
-    threats:
-      - "THREAT-CROSS-MISSION-LEAKAGE"
-    controls:
-      - "CTRL-MISSION-ISOLATION-001"
-    tests:
-      - "TEST-MISSION-ISOLATION-001"
-    condition:
-      cross_mission_tenant_access_permitted: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-AUDIT-INTEGRITY-001"
-    name: "Audit Log Hash-Chain Non-Repudiation Gate"
-    phase: 1
-    threats:
-      - "THREAT-AUDIT-TAMPERING"
-    controls:
-      - "CTRL-AUDIT-INTEGRITY-001"
-    tests:
-      - "TEST-AUDIT-INTEGRITY-001"
-    condition:
-      tampered_audit_chain_passes_verification: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-EVIDENCE-INTEGRITY-001"
-    name: "Content-Addressed Evidence Hash Verification Gate"
-    phase: 1
-    threats:
-      - "THREAT-EVIDENCE-TAMPERING"
-    controls:
-      - "CTRL-EVIDENCE-INTEGRITY-001"
-    tests:
-      - "TEST-EVIDENCE-INTEGRITY-001"
-    condition:
-      tampered_evidence_artifact_accepted: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-RESOURCE-LIMIT-001"
-    name: "Worker Cgroup and Token Quota Enforcement Gate"
-    phase: 1
-    threats:
-      - "THREAT-RESOURCE-EXHAUSTION"
-    controls:
-      - "CTRL-RESOURCE-LIMIT-001"
-    tests:
-      - "TEST-RESOURCE-001"
-    condition:
-      process_exceeds_cgroup_quota_without_kill: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-EGRESS-FILTER-001"
-    name: "LLM Gateway Data Loss Prevention Gate"
-    phase: 3
-    threats:
-      - "THREAT-LLM-PROVIDER-EXPOSURE"
-    controls:
-      - "CTRL-EGRESS-FILTER-001"
-    tests:
-      - "TEST-LLM-EGRESS-001"
-    condition:
-      platform_secrets_leak_to_llm_outbound: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-SUPPLY-CHAIN-001"
-    name: "Automated Third-Party Dependency Security Gate"
-    phase: 0
-    threats:
-      - "THREAT-DEPENDENCY-COMPROMISE"
-    controls:
-      - "CTRL-SUPPLY-CHAIN-AUDIT-001"
-    tests:
-      - "TEST-SUPPLY-CHAIN-001"
-    condition:
-      vulnerable_dependencies_permitted: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-DUAL-AUTHORIZATION-001"
-    name: "High-Risk Action Human Approval Gate"
-    phase: 1
-    threats:
-      - "THREAT-OPERATOR-MISUSE"
-    controls:
-      - "CTRL-DUAL-AUTHORIZATION-001"
-    tests:
-      - "TEST-APPROVAL-EXPIRY-001"
-    condition:
-      destructive_action_executes_without_human_seal: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-TOCTOU-BINDING-001"
-    name: "Action Parameter Hash Match Verification Gate"
-    phase: 1
-    threats:
-      - "THREAT-TOCTOU-PARAMETER-MUTATION"
-    controls:
-      - "CTRL-TOCTOU-BINDING-001"
-    tests:
-      - "TEST-PARAM-MUTATION-001"
-    condition:
-      action_parameters_hash_mismatch_executes: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-EMERGENCY-STOP-001"
-    name: "Atomic Emergency Stop Execution Kill Gate"
-    phase: 1
-    threats:
-      - "THREAT-EMERGENCY-STOP-BYPASS"
-    controls:
-      - "CTRL-EMERGENCY-STOP-001"
-    tests:
-      - "TEST-ESTOP-001"
-    condition:
-      actions_continue_after_emergency_stop_triggered: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-PARSER-SANDBOX-001"
-    name: "Evidence Parser Sandbox Containment Gate"
-    phase: 3
-    threats:
-      - "THREAT-EVIDENCE-PARSER-COMPROMISE"
-    controls:
-      - "CTRL-PARSER-SANDBOX-001"
-    tests:
-      - "TEST-EVIDENCE-PARSER-001"
-    condition:
-      parser_escape_accesses_kernel_process: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-GRAPH-INTEGRITY-001"
-    name: "Knowledge Graph Provenance Validation Gate"
-    phase: 3
-    threats:
-      - "THREAT-GRAPHIFY-POISONING"
-    controls:
-      - "CTRL-GRAPH-INTEGRITY-001"
-    tests:
-      - "TEST-GRAPHIFY-POISONING-001"
-    condition:
-      unsupported_graph_assertions_influence_kernel_policy: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-LLM-EGRESS-001"
-    name: "Prompt Context Token and Key DLP Gate"
-    phase: 3
-    threats:
-      - "THREAT-LLM-EGRESS-DATA-LEAKAGE"
-    controls:
-      - "CTRL-LLM-EGRESS-DLP-001"
-    tests:
-      - "TEST-LLM-EGRESS-001"
-    condition:
-      system_tokens_sent_to_external_llm: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-CI-INTEGRITY-001"
-    name: "CI Gate Baseline Manifest Verification Gate"
-    phase: 0
-    threats:
-      - "THREAT-CI-GATE-MANIPULATION"
-    controls:
-      - "CTRL-CI-GATE-PROTECTION-001"
-    tests:
-      - "TEST-P0-CI-GATE-INTEGRITY-001"
-    condition:
-      tampered_security_manifest_passes_ci: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-CI-SUPPLY-CHAIN-001"
-    name: "Immutable Commit SHA Pinned Workflow Gate"
-    phase: 0
-    threats:
-      - "THREAT-CI-SUPPLY-CHAIN-COMPROMISE"
-    controls:
-      - "CTRL-CI-SUPPLY-CHAIN-001"
-    tests:
-      - "TEST-SUPPLY-CHAIN-001"
-    condition:
-      unpinned_github_action_merged_to_main: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-METADATA-BLOCK-001"
-    name: "Cloud Instance Metadata Access Denial Gate"
-    phase: 2
-    threats:
-      - "THREAT-METADATA-ENDPOINT-ACCESS"
-    controls:
-      - "CTRL-METADATA-BLOCK-001"
-    tests:
-      - "TEST-METADATA-001"
-    condition:
-      request_to_169_254_169_254_permitted: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-IPV6-POLICY-001"
-    name: "IPv6 Dual-Stack Policy Alignment Gate"
-    phase: 2
-    threats:
-      - "THREAT-IPV6-POLICY-BYPASS"
-    controls:
-      - "CTRL-IPV6-POLICY-001"
-    tests:
-      - "TEST-IPV6-BYPASS-001"
-    condition:
-      unscoped_ipv6_connection_permitted: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-REDIRECT-FILTER-001"
-    name: "HTTP Redirect Destination Scope Re-Verification Gate"
-    phase: 2
-    threats:
-      - "THREAT-REDIRECT-VALIDATION-BYPASS"
-    controls:
-      - "CTRL-REDIRECT-FILTER-001"
-    tests:
-      - "TEST-REDIRECT-001"
-    condition:
-      redirect_to_out_of_scope_target_followed: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-BROWSER-SANDBOX-001"
-    name: "Headless Browser Proxy Mediation Gate"
-    phase: 2
-    threats:
-      - "THREAT-BROWSER-EXECUTION-BYPASS"
-    controls:
-      - "CTRL-BROWSER-SANDBOX-001"
-    tests:
-      - "TEST-SANDBOX-NET-001"
-    condition:
-      browser_requests_bypass_execution_broker: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-CAPABILITY-SIGNING-001"
-    name: "Cryptographic Capability Token Verification Gate"
-    phase: 1
-    threats:
-      - "THREAT-CAPABILITY-FORGERY"
-    controls:
-      - "CTRL-CAPABILITY-SIGNING-001"
-    tests:
-      - "TEST-CAPABILITY-FORGERY-001"
-    condition:
-      forged_or_unsigned_capability_dispatched: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-SANDBOX-CLEANUP-001"
-    name: "Post-Execution Sandbox Teardown and Cleanup Gate"
-    phase: 2
-    threats:
-      - "THREAT-SANDBOX-CLEANUP-FAILURE"
-    controls:
-      - "CTRL-SANDBOX-CLEANUP-001"
-    tests:
-      - "TEST-SANDBOX-CLEANUP-001"
-    condition:
-      worker_containers_or_temp_keys_linger_post_task: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-BUDGET-ENFORCEMENT-001"
-    name: "Task and Mission Budget Enforcement Gate"
-    phase: 1
-    threats:
-      - "THREAT-BUDGET-OVERRUN"
-    controls:
-      - "CTRL-BUDGET-ENFORCEMENT-001"
-    tests:
-      - "TEST-RESOURCE-001"
-    condition:
-      over_budget_task_continues_executing: false
-    expected_result: "DENY"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-FAIL-CLOSED-001"
-    name: "Systemic Fail-Closed Error Resolution Gate"
-    phase: 1
-    threats:
-      - "THREAT-FAIL-CLOSED-VIOLATION"
-    controls:
-      - "CTRL-FAIL-CLOSED-DEFAULT-001"
-    tests:
-      - "TEST-FAIL-CLOSED-001"
-    condition:
-      unhandled_kernel_error_results_in_allow: false
-    expected_result: "FAIL_CLOSED"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
-
-  - id: "GATE-P0-FOUNDATION-001"
-    name: "Phase 0 Security Foundation Integrity Gate"
-    phase: 0
-    threats:
-      - "THREAT-CI-GATE-MANIPULATION"
-      - "THREAT-TOKEN-THEFT"
-    controls:
-      - "CTRL-P0-MODEL-INTEGRITY-001"
-      - "CTRL-P0-TRACEABILITY-001"
-      - "CTRL-P0-KEY-POLICY-001"
-    tests:
-      - "TEST-P0-MODEL-INTEGRITY-001"
-      - "TEST-P0-TRACEABILITY-001"
-      - "TEST-P0-VALIDATOR-META-001"
-      - "TEST-P0-CRYPTO-KEY-POLICY-001"
-    condition:
-      p0_foundation_validation_passes: true
-    expected_result: "PASS"
-    blocking: true
-    evidence_required:
-      - "ci_run_id"
-      - "commit_sha"
-      - "artifact_hash"
+- id: GATE-CONTENT-ISOLATION-001
+  name: Malicious Target Content Quarantine Gate
+  phase: 3
+  threats:
+  - THREAT-MALICIOUS-TARGET-CONTENT
+  controls:
+  - CTRL-CONTENT-ISOLATION-001
+  tests:
+  - TEST-EVIDENCE-PARSER-001
+  condition:
+    untrusted_target_content_treated_as_instruction: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-PROMPT-GUARD-001
+  name: Prompt Injection Kernel Ingestion Defense Gate
+  phase: 3
+  threats:
+  - THREAT-PROMPT-INJECTION
+  controls:
+  - CTRL-PROMPT-GUARD-001
+  tests:
+  - TEST-PROMPT-INJECTION-001
+  condition:
+    injected_prompt_overrides_deterministic_policy: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-TOOL-OUTPUT-001
+  name: Tool Output Poisoning and Escape Code Gate
+  phase: 3
+  threats:
+  - THREAT-TOOL-OUTPUT-POISONING
+  controls:
+  - CTRL-TOOL-OUTPUT-SANITIZATION-001
+  tests:
+  - TEST-TOOL-POISONING-001
+  condition:
+    ansi_escape_and_control_codes_stripped: true
+  expected_result: PASS
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-ROGUE-AGENT-001
+  name: Autonomous Agent Recursion & Rate Limit Gate
+  phase: 1
+  threats:
+  - THREAT-ROGUE-AGENT
+  controls:
+  - CTRL-AGENT-SUPERVISION-001
+  tests:
+  - TEST-RESOURCE-001
+  condition:
+    rate_limit_exceeded_proposal_rejected: true
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-A2A-AUTH-001
+  name: Agent-to-Agent Message Verification Gate
+  phase: 3
+  threats:
+  - THREAT-FORGED-A2A-MESSAGE
+  controls:
+  - CTRL-A2A-AUTH-001
+  tests:
+  - TEST-A2A-FORGERY-001
+  condition:
+    unauthenticated_a2a_message_accepted: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-TOKEN-PROTECTION-001
+  name: Capability Token Sealing and Log Redaction Gate
+  phase: 1
+  threats:
+  - THREAT-TOKEN-THEFT
+  controls:
+  - CTRL-TOKEN-PROTECTION-001
+  tests:
+  - TEST-CAPABILITY-SCOPE-001
+  condition:
+    tokens_exposed_in_plaintext_logs_or_llm_prompts: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-REPLAY-001
+  name: Action Proposal Replay Prevention Gate
+  phase: 1
+  threats:
+  - THREAT-REPLAY
+  controls:
+  - CTRL-REPLAY-001
+  tests:
+  - TEST-REPLAY-001
+  condition:
+    replayed_completed_action_rejected: true
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-SCOPE-ENFORCEMENT-001
+  name: Out-of-Scope Target Access Rejection Gate
+  phase: 1
+  threats:
+  - THREAT-SCOPE-EXPANSION
+  controls:
+  - CTRL-SCOPE-ENFORCEMENT-001
+  tests:
+  - TEST-CAPABILITY-SCOPE-001
+  condition:
+    out_of_scope_target_action_permitted: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-SSRF-001
+  name: Server-Side Request Forgery Blocking Gate
+  phase: 2
+  threats:
+  - THREAT-SSRF
+  controls:
+  - CTRL-SSRF-001
+  tests:
+  - TEST-SSRF-001
+  condition:
+    rfc1918_or_loopback_connection_permitted: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-DNS-REBIND-001
+  name: DNS Rebinding Protection and IP Pinning Gate
+  phase: 2
+  threats:
+  - THREAT-DNS-REBINDING
+  controls:
+  - CTRL-DNS-PINNING-001
+  tests:
+  - TEST-DNS-REBIND-001
+  condition:
+    connection_differs_from_validated_resolved_ip: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-CRED-ISOLATION-001
+  name: Credential Vault Isolation and Memory Guard Gate
+  phase: 6
+  threats:
+  - THREAT-CREDENTIAL-THEFT
+  controls:
+  - CTRL-CRED-ISOLATION-001
+  tests:
+  - TEST-CREDENTIAL-ISOLATION-001
+  condition:
+    raw_credentials_exposed_to_agent_reasoning: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-SANDBOX-CONTAINMENT-001
+  name: Rootless Container Sandbox Containment Gate
+  phase: 2
+  threats:
+  - THREAT-SANDBOX-ESCAPE
+  controls:
+  - CTRL-SANDBOX-CONTAINMENT-001
+  tests:
+  - TEST-SANDBOX-PRIV-001
+  condition:
+    worker_container_runs_as_root_or_accesses_host_fs: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-HOST-PROTECTION-001
+  name: MicroVM Strong Virtualization Isolation Gate
+  phase: 9
+  threats:
+  - THREAT-HOST-COMPROMISE
+  controls:
+  - CTRL-HOST-PROTECTION-001
+  tests:
+  - TEST-SANDBOX-PRIV-001
+  condition:
+    unsupported_exploit_executes_without_microvm: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-MISSION-ISOLATION-001
+  name: Cross-Mission Database and Resource Isolation Gate
+  phase: 1
+  threats:
+  - THREAT-CROSS-MISSION-LEAKAGE
+  controls:
+  - CTRL-MISSION-ISOLATION-001
+  tests:
+  - TEST-MISSION-ISOLATION-001
+  condition:
+    cross_mission_tenant_access_permitted: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-AUDIT-INTEGRITY-001
+  name: Audit Log Hash-Chain Non-Repudiation Gate
+  phase: 1
+  threats:
+  - THREAT-AUDIT-TAMPERING
+  controls:
+  - CTRL-AUDIT-INTEGRITY-001
+  tests:
+  - TEST-AUDIT-INTEGRITY-001
+  condition:
+    tampered_audit_chain_passes_verification: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-EVIDENCE-INTEGRITY-001
+  name: Content-Addressed Evidence Hash Verification Gate
+  phase: 1
+  threats:
+  - THREAT-EVIDENCE-TAMPERING
+  controls:
+  - CTRL-EVIDENCE-INTEGRITY-001
+  tests:
+  - TEST-EVIDENCE-INTEGRITY-001
+  condition:
+    tampered_evidence_artifact_accepted: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-RESOURCE-LIMIT-001
+  name: Worker Cgroup and Token Quota Enforcement Gate
+  phase: 1
+  threats:
+  - THREAT-RESOURCE-EXHAUSTION
+  controls:
+  - CTRL-RESOURCE-LIMIT-001
+  tests:
+  - TEST-RESOURCE-001
+  condition:
+    process_exceeds_cgroup_quota_without_kill: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-EGRESS-FILTER-001
+  name: LLM Gateway Data Loss Prevention Gate
+  phase: 3
+  threats:
+  - THREAT-LLM-PROVIDER-EXPOSURE
+  controls:
+  - CTRL-EGRESS-FILTER-001
+  tests:
+  - TEST-LLM-EGRESS-001
+  condition:
+    platform_secrets_leak_to_llm_outbound: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-SUPPLY-CHAIN-001
+  name: Automated Third-Party Dependency Security Gate
+  phase: 0
+  threats:
+  - THREAT-DEPENDENCY-COMPROMISE
+  controls:
+  - CTRL-SUPPLY-CHAIN-AUDIT-001
+  tests:
+  - TEST-SUPPLY-CHAIN-001
+  condition:
+    vulnerable_dependencies_permitted: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-DUAL-AUTHORIZATION-001
+  name: High-Risk Action Human Approval Gate
+  phase: 1
+  threats:
+  - THREAT-OPERATOR-MISUSE
+  controls:
+  - CTRL-DUAL-AUTHORIZATION-001
+  tests:
+  - TEST-APPROVAL-EXPIRY-001
+  condition:
+    destructive_action_executes_without_human_seal: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-TOCTOU-BINDING-001
+  name: Action Parameter Hash Match Verification Gate
+  phase: 1
+  threats:
+  - THREAT-TOCTOU-PARAMETER-MUTATION
+  controls:
+  - CTRL-TOCTOU-BINDING-001
+  tests:
+  - TEST-PARAM-MUTATION-001
+  condition:
+    action_parameters_hash_mismatch_executes: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-EMERGENCY-STOP-001
+  name: Atomic Emergency Stop Execution Kill Gate
+  phase: 1
+  threats:
+  - THREAT-EMERGENCY-STOP-BYPASS
+  controls:
+  - CTRL-EMERGENCY-STOP-001
+  tests:
+  - TEST-ESTOP-001
+  condition:
+    actions_continue_after_emergency_stop_triggered: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-PARSER-SANDBOX-001
+  name: Evidence Parser Sandbox Containment Gate
+  phase: 3
+  threats:
+  - THREAT-EVIDENCE-PARSER-COMPROMISE
+  controls:
+  - CTRL-PARSER-SANDBOX-001
+  tests:
+  - TEST-EVIDENCE-PARSER-001
+  condition:
+    parser_escape_accesses_kernel_process: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-GRAPH-INTEGRITY-001
+  name: Knowledge Graph Provenance Validation Gate
+  phase: 3
+  threats:
+  - THREAT-GRAPHIFY-POISONING
+  controls:
+  - CTRL-GRAPH-INTEGRITY-001
+  tests:
+  - TEST-GRAPHIFY-POISONING-001
+  condition:
+    unsupported_graph_assertions_influence_kernel_policy: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-LLM-EGRESS-001
+  name: Prompt Context Token and Key DLP Gate
+  phase: 3
+  threats:
+  - THREAT-LLM-EGRESS-DATA-LEAKAGE
+  controls:
+  - CTRL-LLM-EGRESS-DLP-001
+  tests:
+  - TEST-LLM-EGRESS-001
+  condition:
+    system_tokens_sent_to_external_llm: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-CI-INTEGRITY-001
+  name: CI Gate Baseline Manifest Verification Gate
+  phase: 0
+  threats:
+  - THREAT-CI-GATE-MANIPULATION
+  controls:
+  - CTRL-CI-GATE-PROTECTION-001
+  tests:
+  - TEST-P0-CI-GATE-INTEGRITY-001
+  condition:
+    tampered_security_manifest_passes_ci: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-CI-SUPPLY-CHAIN-001
+  name: Immutable Commit SHA Pinned Workflow Gate
+  phase: 0
+  threats:
+  - THREAT-CI-SUPPLY-CHAIN-COMPROMISE
+  controls:
+  - CTRL-CI-SUPPLY-CHAIN-001
+  tests:
+  - TEST-SUPPLY-CHAIN-001
+  condition:
+    unpinned_github_action_merged_to_main: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-METADATA-BLOCK-001
+  name: Cloud Instance Metadata Access Denial Gate
+  phase: 2
+  threats:
+  - THREAT-METADATA-ENDPOINT-ACCESS
+  controls:
+  - CTRL-METADATA-BLOCK-001
+  tests:
+  - TEST-METADATA-001
+  condition:
+    request_to_169_254_169_254_permitted: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-IPV6-POLICY-001
+  name: IPv6 Dual-Stack Policy Alignment Gate
+  phase: 2
+  threats:
+  - THREAT-IPV6-POLICY-BYPASS
+  controls:
+  - CTRL-IPV6-POLICY-001
+  tests:
+  - TEST-IPV6-BYPASS-001
+  condition:
+    unscoped_ipv6_connection_permitted: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-REDIRECT-FILTER-001
+  name: HTTP Redirect Destination Scope Re-Verification Gate
+  phase: 2
+  threats:
+  - THREAT-REDIRECT-VALIDATION-BYPASS
+  controls:
+  - CTRL-REDIRECT-FILTER-001
+  tests:
+  - TEST-REDIRECT-001
+  condition:
+    redirect_to_out_of_scope_target_followed: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-BROWSER-SANDBOX-001
+  name: Headless Browser Proxy Mediation Gate
+  phase: 2
+  threats:
+  - THREAT-BROWSER-EXECUTION-BYPASS
+  controls:
+  - CTRL-BROWSER-SANDBOX-001
+  tests:
+  - TEST-SANDBOX-NET-001
+  condition:
+    browser_requests_bypass_execution_broker: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-CAPABILITY-SIGNING-001
+  name: Cryptographic Capability Token Verification Gate
+  phase: 1
+  threats:
+  - THREAT-CAPABILITY-FORGERY
+  controls:
+  - CTRL-CAPABILITY-SIGNING-001
+  tests:
+  - TEST-CAPABILITY-FORGERY-001
+  condition:
+    forged_or_unsigned_capability_dispatched: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-SANDBOX-CLEANUP-001
+  name: Post-Execution Sandbox Teardown and Cleanup Gate
+  phase: 2
+  threats:
+  - THREAT-SANDBOX-CLEANUP-FAILURE
+  controls:
+  - CTRL-SANDBOX-CLEANUP-001
+  tests:
+  - TEST-SANDBOX-CLEANUP-001
+  condition:
+    worker_containers_or_temp_keys_linger_post_task: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-BUDGET-ENFORCEMENT-001
+  name: Task and Mission Budget Enforcement Gate
+  phase: 1
+  threats:
+  - THREAT-BUDGET-OVERRUN
+  controls:
+  - CTRL-BUDGET-ENFORCEMENT-001
+  tests:
+  - TEST-RESOURCE-001
+  condition:
+    over_budget_task_continues_executing: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-FAIL-CLOSED-001
+  name: Systemic Fail-Closed Error Resolution Gate
+  phase: 1
+  threats:
+  - THREAT-FAIL-CLOSED-VIOLATION
+  controls:
+  - CTRL-FAIL-CLOSED-DEFAULT-001
+  tests:
+  - TEST-FAIL-CLOSED-001
+  condition:
+    unhandled_kernel_error_results_in_allow: false
+  expected_result: FAIL_CLOSED
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-P0-FOUNDATION-001
+  name: Phase 0 Security Foundation Integrity Gate
+  phase: 0
+  threats:
+  - THREAT-CI-GATE-MANIPULATION
+  - THREAT-TOKEN-THEFT
+  controls:
+  - CTRL-P0-MODEL-INTEGRITY-001
+  - CTRL-P0-TRACEABILITY-001
+  - CTRL-P0-KEY-POLICY-001
+  tests:
+  - TEST-P0-MODEL-INTEGRITY-001
+  - TEST-P0-TRACEABILITY-001
+  - TEST-P0-VALIDATOR-META-001
+  - TEST-P0-CRYPTO-KEY-POLICY-001
+  condition:
+    p0_foundation_validation_passes: true
+  expected_result: PASS
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash
+- id: GATE-WORKER-RESOURCE-001
+  name: Worker OS Cgroup and Process Resource Containment Gate
+  phase: 2
+  threats:
+  - THREAT-RESOURCE-EXHAUSTION
+  controls:
+  - CTRL-WORKER-RESOURCE-001
+  tests:
+  - TEST-WORKER-RESOURCE-001
+  condition:
+    worker_exceeds_os_cgroup_limits_without_kill: false
+  expected_result: DENY
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash

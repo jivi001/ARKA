@@ -12,6 +12,7 @@ pub const DOMAIN_PARAM: &str = "ARKA-PARAM-V1:";
 pub const DOMAIN_AUDIT: &str = "ARKA-AUDIT-V1:";
 pub const DOMAIN_APPROVAL: &str = "ARKA-APPROVAL-V1:";
 pub const DOMAIN_REPLAY: &str = "ARKA-REPLAY-V1:";
+pub const DOMAIN_EVIDENCE: &str = "ARKA-EVIDENCE-V1:";
 
 /// Computes SHA-256 with explicit domain separation prefix:
 /// SHA-256(domain_prefix || data)

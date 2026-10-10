@@ -1,595 +1,577 @@
 traceability_matrix:
-  - id: "TRACE-MALICIOUS-TARGET-CONTENT-001"
-    threat: "THREAT-MALICIOUS-TARGET-CONTENT"
-    control: "CTRL-CONTENT-ISOLATION-001"
-    component: "COMP-EVID"
-    implementation:
-      phase: 3
-      status: "PENDING(phase=3)"
-      target_path: null
-    test:
-      - "TEST-EVIDENCE-PARSER-001"
-    acceptance:
-      - "GATE-CONTENT-ISOLATION-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+- id: TRACE-MALICIOUS-TARGET-CONTENT-001
+  threat: THREAT-MALICIOUS-TARGET-CONTENT
+  control: CTRL-CONTENT-ISOLATION-001
+  component: COMP-EVID
+  implementation:
     phase: 3
-    status: "PENDING(phase=3)"
-
-  - id: "TRACE-PROMPT-INJECTION-001"
-    threat: "THREAT-PROMPT-INJECTION"
-    control: "CTRL-PROMPT-GUARD-001"
-    component: "COMP-LLM-GW"
-    implementation:
-      phase: 3
-      status: "PENDING(phase=3)"
-      target_path: null
-    test:
-      - "TEST-PROMPT-INJECTION-001"
-    acceptance:
-      - "GATE-PROMPT-GUARD-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-EVIDENCE-PARSER-001
+  acceptance:
+  - GATE-CONTENT-ISOLATION-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)
+- id: TRACE-PROMPT-INJECTION-001
+  threat: THREAT-PROMPT-INJECTION
+  control: CTRL-PROMPT-GUARD-001
+  component: COMP-LLM-GW
+  implementation:
     phase: 3
-    status: "PENDING(phase=3)"
-
-  - id: "TRACE-TOOL-OUTPUT-POISONING-001"
-    threat: "THREAT-TOOL-OUTPUT-POISONING"
-    control: "CTRL-TOOL-OUTPUT-SANITIZATION-001"
-    component: "COMP-SANDBOX"
-    implementation:
-      phase: 3
-      status: "PENDING(phase=3)"
-      target_path: null
-    test:
-      - "TEST-TOOL-POISONING-001"
-    acceptance:
-      - "GATE-TOOL-OUTPUT-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-PROMPT-INJECTION-001
+  acceptance:
+  - GATE-PROMPT-GUARD-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)
+- id: TRACE-TOOL-OUTPUT-POISONING-001
+  threat: THREAT-TOOL-OUTPUT-POISONING
+  control: CTRL-TOOL-OUTPUT-SANITIZATION-001
+  component: COMP-SANDBOX
+  implementation:
     phase: 3
-    status: "PENDING(phase=3)"
-
-  - id: "TRACE-ROGUE-AGENT-001"
-    threat: "THREAT-ROGUE-AGENT"
-    control: "CTRL-AGENT-SUPERVISION-001"
-    component: "COMP-KERNEL"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-RESOURCE-001"
-    acceptance:
-      - "GATE-ROGUE-AGENT-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-TOOL-POISONING-001
+  acceptance:
+  - GATE-TOOL-OUTPUT-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)
+- id: TRACE-ROGUE-AGENT-001
+  threat: THREAT-ROGUE-AGENT
+  control: CTRL-AGENT-SUPERVISION-001
+  component: COMP-KERNEL
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-FORGED-A2A-MESSAGE-001"
-    threat: "THREAT-FORGED-A2A-MESSAGE"
-    control: "CTRL-A2A-AUTH-001"
-    component: "COMP-AUTH"
-    implementation:
-      phase: 3
-      status: "PENDING(phase=3)"
-      target_path: null
-    test:
-      - "TEST-A2A-FORGERY-001"
-    acceptance:
-      - "GATE-A2A-AUTH-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-RESOURCE-001
+  acceptance:
+  - GATE-ROGUE-AGENT-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-FORGED-A2A-MESSAGE-001
+  threat: THREAT-FORGED-A2A-MESSAGE
+  control: CTRL-A2A-AUTH-001
+  component: COMP-AUTH
+  implementation:
     phase: 3
-    status: "PENDING(phase=3)"
-
-  - id: "TRACE-TOKEN-THEFT-001"
-    threat: "THREAT-TOKEN-THEFT"
-    control: "CTRL-TOKEN-PROTECTION-001"
-    component: "COMP-AUTH"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-CAPABILITY-SCOPE-001"
-    acceptance:
-      - "GATE-TOKEN-PROTECTION-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-A2A-FORGERY-001
+  acceptance:
+  - GATE-A2A-AUTH-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)
+- id: TRACE-TOKEN-THEFT-001
+  threat: THREAT-TOKEN-THEFT
+  control: CTRL-TOKEN-PROTECTION-001
+  component: COMP-AUTH
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-REPLAY-001"
-    threat: "THREAT-REPLAY"
-    control: "CTRL-REPLAY-001"
-    component: "COMP-KERNEL"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-REPLAY-001"
-    acceptance:
-      - "GATE-REPLAY-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-CAPABILITY-SCOPE-001
+  acceptance:
+  - GATE-TOKEN-PROTECTION-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-REPLAY-001
+  threat: THREAT-REPLAY
+  control: CTRL-REPLAY-001
+  component: COMP-KERNEL
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-SCOPE-EXPANSION-001"
-    threat: "THREAT-SCOPE-EXPANSION"
-    control: "CTRL-SCOPE-ENFORCEMENT-001"
-    component: "COMP-SCOPE"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-CAPABILITY-SCOPE-001"
-    acceptance:
-      - "GATE-SCOPE-ENFORCEMENT-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-REPLAY-001
+  acceptance:
+  - GATE-REPLAY-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-SCOPE-EXPANSION-001
+  threat: THREAT-SCOPE-EXPANSION
+  control: CTRL-SCOPE-ENFORCEMENT-001
+  component: COMP-SCOPE
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-SSRF-001"
-    threat: "THREAT-SSRF"
-    control: "CTRL-SSRF-001"
-    component: "COMP-BROKER"
-    implementation:
-      phase: 2
-      status: "PENDING(phase=2)"
-      target_path: null
-    test:
-      - "TEST-SSRF-001"
-    acceptance:
-      - "GATE-SSRF-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-CAPABILITY-SCOPE-001
+  acceptance:
+  - GATE-SCOPE-ENFORCEMENT-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-SSRF-001
+  threat: THREAT-SSRF
+  control: CTRL-SSRF-001
+  component: COMP-BROKER
+  implementation:
     phase: 2
-    status: "PENDING(phase=2)"
-
-  - id: "TRACE-DNS-REBINDING-001"
-    threat: "THREAT-DNS-REBINDING"
-    control: "CTRL-DNS-PINNING-001"
-    component: "COMP-BROKER"
-    implementation:
-      phase: 2
-      status: "PENDING(phase=2)"
-      target_path: null
-    test:
-      - "TEST-DNS-REBIND-001"
-    acceptance:
-      - "GATE-DNS-REBIND-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-SSRF-001
+  acceptance:
+  - GATE-SSRF-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)
+- id: TRACE-DNS-REBINDING-001
+  threat: THREAT-DNS-REBINDING
+  control: CTRL-DNS-PINNING-001
+  component: COMP-BROKER
+  implementation:
     phase: 2
-    status: "PENDING(phase=2)"
-
-  - id: "TRACE-CREDENTIAL-THEFT-001"
-    threat: "THREAT-CREDENTIAL-THEFT"
-    control: "CTRL-CRED-ISOLATION-001"
-    component: "COMP-CRED"
-    implementation:
-      phase: 6
-      status: "PENDING(phase=6)"
-      target_path: null
-    test:
-      - "TEST-CREDENTIAL-ISOLATION-001"
-    acceptance:
-      - "GATE-CRED-ISOLATION-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-DNS-REBIND-001
+  acceptance:
+  - GATE-DNS-REBIND-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)
+- id: TRACE-CREDENTIAL-THEFT-001
+  threat: THREAT-CREDENTIAL-THEFT
+  control: CTRL-CRED-ISOLATION-001
+  component: COMP-CRED
+  implementation:
     phase: 6
-    status: "PENDING(phase=6)"
-
-  - id: "TRACE-SANDBOX-ESCAPE-001"
-    threat: "THREAT-SANDBOX-ESCAPE"
-    control: "CTRL-SANDBOX-CONTAINMENT-001"
-    component: "COMP-SANDBOX"
-    implementation:
-      phase: 2
-      status: "PENDING(phase=2)"
-      target_path: null
-    test:
-      - "TEST-SANDBOX-PRIV-001"
-    acceptance:
-      - "GATE-SANDBOX-CONTAINMENT-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=6)
+    target_path: null
+  test:
+  - TEST-CREDENTIAL-ISOLATION-001
+  acceptance:
+  - GATE-CRED-ISOLATION-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 6
+  status: PENDING(phase=6)
+- id: TRACE-SANDBOX-ESCAPE-001
+  threat: THREAT-SANDBOX-ESCAPE
+  control: CTRL-SANDBOX-CONTAINMENT-001
+  component: COMP-SANDBOX
+  implementation:
     phase: 2
-    status: "PENDING(phase=2)"
-
-  - id: "TRACE-HOST-COMPROMISE-001"
-    threat: "THREAT-HOST-COMPROMISE"
-    control: "CTRL-HOST-PROTECTION-001"
-    component: "COMP-SANDBOX"
-    implementation:
-      phase: 9
-      status: "PENDING(phase=9)"
-      target_path: null
-    test:
-      - "TEST-SANDBOX-PRIV-001"
-    acceptance:
-      - "GATE-HOST-PROTECTION-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-SANDBOX-PRIV-001
+  acceptance:
+  - GATE-SANDBOX-CONTAINMENT-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)
+- id: TRACE-HOST-COMPROMISE-001
+  threat: THREAT-HOST-COMPROMISE
+  control: CTRL-HOST-PROTECTION-001
+  component: COMP-SANDBOX
+  implementation:
     phase: 9
-    status: "PENDING(phase=9)"
-
-  - id: "TRACE-CROSS-MISSION-LEAKAGE-001"
-    threat: "THREAT-CROSS-MISSION-LEAKAGE"
-    control: "CTRL-MISSION-ISOLATION-001"
-    component: "COMP-KERNEL"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-MISSION-ISOLATION-001"
-    acceptance:
-      - "GATE-MISSION-ISOLATION-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=9)
+    target_path: null
+  test:
+  - TEST-SANDBOX-PRIV-001
+  acceptance:
+  - GATE-HOST-PROTECTION-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 9
+  status: PENDING(phase=9)
+- id: TRACE-CROSS-MISSION-LEAKAGE-001
+  threat: THREAT-CROSS-MISSION-LEAKAGE
+  control: CTRL-MISSION-ISOLATION-001
+  component: COMP-KERNEL
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-AUDIT-TAMPERING-001"
-    threat: "THREAT-AUDIT-TAMPERING"
-    control: "CTRL-AUDIT-INTEGRITY-001"
-    component: "COMP-AUDIT"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-AUDIT-INTEGRITY-001"
-    acceptance:
-      - "GATE-AUDIT-INTEGRITY-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-MISSION-ISOLATION-001
+  acceptance:
+  - GATE-MISSION-ISOLATION-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-AUDIT-TAMPERING-001
+  threat: THREAT-AUDIT-TAMPERING
+  control: CTRL-AUDIT-INTEGRITY-001
+  component: COMP-AUDIT
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-EVIDENCE-TAMPERING-001"
-    threat: "THREAT-EVIDENCE-TAMPERING"
-    control: "CTRL-EVIDENCE-INTEGRITY-001"
-    component: "COMP-EVID"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-EVIDENCE-INTEGRITY-001"
-    acceptance:
-      - "GATE-EVIDENCE-INTEGRITY-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-AUDIT-INTEGRITY-001
+  acceptance:
+  - GATE-AUDIT-INTEGRITY-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-EVIDENCE-TAMPERING-001
+  threat: THREAT-EVIDENCE-TAMPERING
+  control: CTRL-EVIDENCE-INTEGRITY-001
+  component: COMP-EVID
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-RESOURCE-EXHAUSTION-001"
-    threat: "THREAT-RESOURCE-EXHAUSTION"
-    control: "CTRL-RESOURCE-LIMIT-001"
-    component: "COMP-RES-GOV"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-RESOURCE-001"
-    acceptance:
-      - "GATE-RESOURCE-LIMIT-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-EVIDENCE-INTEGRITY-001
+  acceptance:
+  - GATE-EVIDENCE-INTEGRITY-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-RESOURCE-EXHAUSTION-001
+  threat: THREAT-RESOURCE-EXHAUSTION
+  control: CTRL-RESOURCE-LIMIT-001
+  component: COMP-RES-GOV
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-LLM-PROVIDER-EXPOSURE-001"
-    threat: "THREAT-LLM-PROVIDER-EXPOSURE"
-    control: "CTRL-EGRESS-FILTER-001"
-    component: "COMP-LLM-GW"
-    implementation:
-      phase: 3
-      status: "PENDING(phase=3)"
-      target_path: null
-    test:
-      - "TEST-LLM-EGRESS-001"
-    acceptance:
-      - "GATE-EGRESS-FILTER-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-RESOURCE-001
+  acceptance:
+  - GATE-RESOURCE-LIMIT-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-LLM-PROVIDER-EXPOSURE-001
+  threat: THREAT-LLM-PROVIDER-EXPOSURE
+  control: CTRL-EGRESS-FILTER-001
+  component: COMP-LLM-GW
+  implementation:
     phase: 3
-    status: "PENDING(phase=3)"
-
-  - id: "TRACE-DEPENDENCY-COMPROMISE-001"
-    threat: "THREAT-DEPENDENCY-COMPROMISE"
-    control: "CTRL-SUPPLY-CHAIN-AUDIT-001"
-    component: "COMP-CI"
-    implementation:
-      phase: 0
-      status: "IMPLEMENTED_PASSING"
-      target_path: ".github/workflows/security-foundation.yml"
-    test:
-      - "TEST-SUPPLY-CHAIN-001"
-    acceptance:
-      - "GATE-SUPPLY-CHAIN-001"
-    ci:
-      - "CI-SEC-DEPENDENCIES"
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-LLM-EGRESS-001
+  acceptance:
+  - GATE-EGRESS-FILTER-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)
+- id: TRACE-DEPENDENCY-COMPROMISE-001
+  threat: THREAT-DEPENDENCY-COMPROMISE
+  control: CTRL-SUPPLY-CHAIN-AUDIT-001
+  component: COMP-CI
+  implementation:
     phase: 0
-    status: "IMPLEMENTED_PASSING"
-
-  - id: "TRACE-OPERATOR-MISUSE-001"
-    threat: "THREAT-OPERATOR-MISUSE"
-    control: "CTRL-DUAL-AUTHORIZATION-001"
-    component: "COMP-APPROV"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-APPROVAL-EXPIRY-001"
-    acceptance:
-      - "GATE-DUAL-AUTHORIZATION-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: .github/workflows/security-foundation.yml
+  test:
+  - TEST-SUPPLY-CHAIN-001
+  acceptance:
+  - GATE-SUPPLY-CHAIN-001
+  ci:
+  - CI-SEC-DEPENDENCIES
+  phase: 0
+  status: IMPLEMENTED_PASSING
+- id: TRACE-OPERATOR-MISUSE-001
+  threat: THREAT-OPERATOR-MISUSE
+  control: CTRL-DUAL-AUTHORIZATION-001
+  component: COMP-APPROV
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-TOCTOU-PARAMETER-MUTATION-001"
-    threat: "THREAT-TOCTOU-PARAMETER-MUTATION"
-    control: "CTRL-TOCTOU-BINDING-001"
-    component: "COMP-APPROV"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-PARAM-MUTATION-001"
-    acceptance:
-      - "GATE-TOCTOU-BINDING-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-APPROVAL-EXPIRY-001
+  acceptance:
+  - GATE-DUAL-AUTHORIZATION-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-TOCTOU-PARAMETER-MUTATION-001
+  threat: THREAT-TOCTOU-PARAMETER-MUTATION
+  control: CTRL-TOCTOU-BINDING-001
+  component: COMP-APPROV
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-EMERGENCY-STOP-BYPASS-001"
-    threat: "THREAT-EMERGENCY-STOP-BYPASS"
-    control: "CTRL-EMERGENCY-STOP-001"
-    component: "COMP-ESTOP"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-ESTOP-001"
-    acceptance:
-      - "GATE-EMERGENCY-STOP-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-PARAM-MUTATION-001
+  acceptance:
+  - GATE-TOCTOU-BINDING-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-EMERGENCY-STOP-BYPASS-001
+  threat: THREAT-EMERGENCY-STOP-BYPASS
+  control: CTRL-EMERGENCY-STOP-001
+  component: COMP-ESTOP
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-EVIDENCE-PARSER-COMPROMISE-001"
-    threat: "THREAT-EVIDENCE-PARSER-COMPROMISE"
-    control: "CTRL-PARSER-SANDBOX-001"
-    component: "COMP-SANDBOX"
-    implementation:
-      phase: 3
-      status: "PENDING(phase=3)"
-      target_path: null
-    test:
-      - "TEST-EVIDENCE-PARSER-001"
-    acceptance:
-      - "GATE-PARSER-SANDBOX-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-ESTOP-001
+  acceptance:
+  - GATE-EMERGENCY-STOP-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-EVIDENCE-PARSER-COMPROMISE-001
+  threat: THREAT-EVIDENCE-PARSER-COMPROMISE
+  control: CTRL-PARSER-SANDBOX-001
+  component: COMP-SANDBOX
+  implementation:
     phase: 3
-    status: "PENDING(phase=3)"
-
-  - id: "TRACE-GRAPHIFY-POISONING-001"
-    threat: "THREAT-GRAPHIFY-POISONING"
-    control: "CTRL-GRAPH-INTEGRITY-001"
-    component: "COMP-KG"
-    implementation:
-      phase: 3
-      status: "PENDING(phase=3)"
-      target_path: null
-    test:
-      - "TEST-GRAPHIFY-POISONING-001"
-    acceptance:
-      - "GATE-GRAPH-INTEGRITY-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-EVIDENCE-PARSER-001
+  acceptance:
+  - GATE-PARSER-SANDBOX-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)
+- id: TRACE-GRAPHIFY-POISONING-001
+  threat: THREAT-GRAPHIFY-POISONING
+  control: CTRL-GRAPH-INTEGRITY-001
+  component: COMP-KG
+  implementation:
     phase: 3
-    status: "PENDING(phase=3)"
-
-  - id: "TRACE-LLM-EGRESS-DATA-LEAKAGE-001"
-    threat: "THREAT-LLM-EGRESS-DATA-LEAKAGE"
-    control: "CTRL-LLM-EGRESS-DLP-001"
-    component: "COMP-LLM-GW"
-    implementation:
-      phase: 3
-      status: "PENDING(phase=3)"
-      target_path: null
-    test:
-      - "TEST-LLM-EGRESS-001"
-    acceptance:
-      - "GATE-LLM-EGRESS-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-GRAPHIFY-POISONING-001
+  acceptance:
+  - GATE-GRAPH-INTEGRITY-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)
+- id: TRACE-LLM-EGRESS-DATA-LEAKAGE-001
+  threat: THREAT-LLM-EGRESS-DATA-LEAKAGE
+  control: CTRL-LLM-EGRESS-DLP-001
+  component: COMP-LLM-GW
+  implementation:
     phase: 3
-    status: "PENDING(phase=3)"
-
-  - id: "TRACE-CI-GATE-MANIPULATION-001"
-    threat: "THREAT-CI-GATE-MANIPULATION"
-    control: "CTRL-CI-GATE-PROTECTION-001"
-    component: "COMP-CI"
-    implementation:
-      phase: 0
-      status: "IMPLEMENTED_PASSING"
-      target_path: "security/validator/validate_security_model.py"
-    test:
-      - "TEST-P0-CI-GATE-INTEGRITY-001"
-    acceptance:
-      - "GATE-CI-INTEGRITY-001"
-    ci:
-      - "CI-SEC-VALIDATOR"
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-LLM-EGRESS-001
+  acceptance:
+  - GATE-LLM-EGRESS-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)
+- id: TRACE-CI-GATE-MANIPULATION-001
+  threat: THREAT-CI-GATE-MANIPULATION
+  control: CTRL-CI-GATE-PROTECTION-001
+  component: COMP-CI
+  implementation:
     phase: 0
-    status: "IMPLEMENTED_PASSING"
-
-  - id: "TRACE-CI-SUPPLY-CHAIN-COMPROMISE-001"
-    threat: "THREAT-CI-SUPPLY-CHAIN-COMPROMISE"
-    control: "CTRL-CI-SUPPLY-CHAIN-001"
-    component: "COMP-CI"
-    implementation:
-      phase: 0
-      status: "IMPLEMENTED_PASSING"
-      target_path: ".github/workflows/security-foundation.yml"
-    test:
-      - "TEST-SUPPLY-CHAIN-001"
-    acceptance:
-      - "GATE-CI-SUPPLY-CHAIN-001"
-    ci:
-      - "CI-SEC-DEPENDENCIES"
+    status: IMPLEMENTED_PASSING
+    target_path: security/validator/validate_security_model.py
+  test:
+  - TEST-P0-CI-GATE-INTEGRITY-001
+  acceptance:
+  - GATE-CI-INTEGRITY-001
+  ci:
+  - CI-SEC-VALIDATOR
+  phase: 0
+  status: IMPLEMENTED_PASSING
+- id: TRACE-CI-SUPPLY-CHAIN-COMPROMISE-001
+  threat: THREAT-CI-SUPPLY-CHAIN-COMPROMISE
+  control: CTRL-CI-SUPPLY-CHAIN-001
+  component: COMP-CI
+  implementation:
     phase: 0
-    status: "IMPLEMENTED_PASSING"
-
-  - id: "TRACE-METADATA-ENDPOINT-ACCESS-001"
-    threat: "THREAT-METADATA-ENDPOINT-ACCESS"
-    control: "CTRL-METADATA-BLOCK-001"
-    component: "COMP-BROKER"
-    implementation:
-      phase: 2
-      status: "PENDING(phase=2)"
-      target_path: null
-    test:
-      - "TEST-METADATA-001"
-    acceptance:
-      - "GATE-METADATA-BLOCK-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: .github/workflows/security-foundation.yml
+  test:
+  - TEST-SUPPLY-CHAIN-001
+  acceptance:
+  - GATE-CI-SUPPLY-CHAIN-001
+  ci:
+  - CI-SEC-DEPENDENCIES
+  phase: 0
+  status: IMPLEMENTED_PASSING
+- id: TRACE-METADATA-ENDPOINT-ACCESS-001
+  threat: THREAT-METADATA-ENDPOINT-ACCESS
+  control: CTRL-METADATA-BLOCK-001
+  component: COMP-BROKER
+  implementation:
     phase: 2
-    status: "PENDING(phase=2)"
-
-  - id: "TRACE-IPV6-POLICY-BYPASS-001"
-    threat: "THREAT-IPV6-POLICY-BYPASS"
-    control: "CTRL-IPV6-POLICY-001"
-    component: "COMP-BROKER"
-    implementation:
-      phase: 2
-      status: "PENDING(phase=2)"
-      target_path: null
-    test:
-      - "TEST-IPV6-BYPASS-001"
-    acceptance:
-      - "GATE-IPV6-POLICY-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-METADATA-001
+  acceptance:
+  - GATE-METADATA-BLOCK-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)
+- id: TRACE-IPV6-POLICY-BYPASS-001
+  threat: THREAT-IPV6-POLICY-BYPASS
+  control: CTRL-IPV6-POLICY-001
+  component: COMP-BROKER
+  implementation:
     phase: 2
-    status: "PENDING(phase=2)"
-
-  - id: "TRACE-REDIRECT-VALIDATION-BYPASS-001"
-    threat: "THREAT-REDIRECT-VALIDATION-BYPASS"
-    control: "CTRL-REDIRECT-FILTER-001"
-    component: "COMP-BROKER"
-    implementation:
-      phase: 2
-      status: "PENDING(phase=2)"
-      target_path: null
-    test:
-      - "TEST-REDIRECT-001"
-    acceptance:
-      - "GATE-REDIRECT-FILTER-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-IPV6-BYPASS-001
+  acceptance:
+  - GATE-IPV6-POLICY-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)
+- id: TRACE-REDIRECT-VALIDATION-BYPASS-001
+  threat: THREAT-REDIRECT-VALIDATION-BYPASS
+  control: CTRL-REDIRECT-FILTER-001
+  component: COMP-BROKER
+  implementation:
     phase: 2
-    status: "PENDING(phase=2)"
-
-  - id: "TRACE-BROWSER-EXECUTION-BYPASS-001"
-    threat: "THREAT-BROWSER-EXECUTION-BYPASS"
-    control: "CTRL-BROWSER-SANDBOX-001"
-    component: "COMP-SANDBOX"
-    implementation:
-      phase: 2
-      status: "PENDING(phase=2)"
-      target_path: null
-    test:
-      - "TEST-SANDBOX-NET-001"
-    acceptance:
-      - "GATE-BROWSER-SANDBOX-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-REDIRECT-001
+  acceptance:
+  - GATE-REDIRECT-FILTER-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)
+- id: TRACE-BROWSER-EXECUTION-BYPASS-001
+  threat: THREAT-BROWSER-EXECUTION-BYPASS
+  control: CTRL-BROWSER-SANDBOX-001
+  component: COMP-SANDBOX
+  implementation:
     phase: 2
-    status: "PENDING(phase=2)"
-
-  - id: "TRACE-CAPABILITY-FORGERY-001"
-    threat: "THREAT-CAPABILITY-FORGERY"
-    control: "CTRL-CAPABILITY-SIGNING-001"
-    component: "COMP-AUTH"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-CAPABILITY-FORGERY-001"
-    acceptance:
-      - "GATE-CAPABILITY-SIGNING-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-SANDBOX-NET-001
+  acceptance:
+  - GATE-BROWSER-SANDBOX-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)
+- id: TRACE-CAPABILITY-FORGERY-001
+  threat: THREAT-CAPABILITY-FORGERY
+  control: CTRL-CAPABILITY-SIGNING-001
+  component: COMP-AUTH
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-SANDBOX-CLEANUP-FAILURE-001"
-    threat: "THREAT-SANDBOX-CLEANUP-FAILURE"
-    control: "CTRL-SANDBOX-CLEANUP-001"
-    component: "COMP-SANDBOX"
-    implementation:
-      phase: 2
-      status: "PENDING(phase=2)"
-      target_path: null
-    test:
-      - "TEST-SANDBOX-CLEANUP-001"
-    acceptance:
-      - "GATE-SANDBOX-CLEANUP-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-CAPABILITY-FORGERY-001
+  acceptance:
+  - GATE-CAPABILITY-SIGNING-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-SANDBOX-CLEANUP-FAILURE-001
+  threat: THREAT-SANDBOX-CLEANUP-FAILURE
+  control: CTRL-SANDBOX-CLEANUP-001
+  component: COMP-SANDBOX
+  implementation:
     phase: 2
-    status: "PENDING(phase=2)"
-
-  - id: "TRACE-BUDGET-OVERRUN-001"
-    threat: "THREAT-BUDGET-OVERRUN"
-    control: "CTRL-BUDGET-ENFORCEMENT-001"
-    component: "COMP-RES-GOV"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-RESOURCE-001"
-    acceptance:
-      - "GATE-BUDGET-ENFORCEMENT-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-SANDBOX-CLEANUP-001
+  acceptance:
+  - GATE-SANDBOX-CLEANUP-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)
+- id: TRACE-BUDGET-OVERRUN-001
+  threat: THREAT-BUDGET-OVERRUN
+  control: CTRL-BUDGET-ENFORCEMENT-001
+  component: COMP-RES-GOV
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
-
-  - id: "TRACE-FAIL-CLOSED-VIOLATION-001"
-    threat: "THREAT-FAIL-CLOSED-VIOLATION"
-    control: "CTRL-FAIL-CLOSED-DEFAULT-001"
-    component: "COMP-KERNEL"
-    implementation:
-      phase: 1
-      status: "PENDING(phase=1)"
-      target_path: null
-    test:
-      - "TEST-FAIL-CLOSED-001"
-    acceptance:
-      - "GATE-FAIL-CLOSED-001"
-    ci:
-      - "CI-SEC-TRACEABILITY"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-RESOURCE-001
+  acceptance:
+  - GATE-BUDGET-ENFORCEMENT-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-FAIL-CLOSED-VIOLATION-001
+  threat: THREAT-FAIL-CLOSED-VIOLATION
+  control: CTRL-FAIL-CLOSED-DEFAULT-001
+  component: COMP-KERNEL
+  implementation:
     phase: 1
-    status: "PENDING(phase=1)"
+    status: IMPLEMENTED_PASSING
+    target_path: crates/arka-kernel/src/lib.rs
+  test:
+  - TEST-FAIL-CLOSED-001
+  acceptance:
+  - GATE-FAIL-CLOSED-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 1
+  status: IMPLEMENTED_PASSING
+- id: TRACE-WORKER-RESOURCE-001
+  threat: THREAT-RESOURCE-EXHAUSTION
+  control: CTRL-WORKER-RESOURCE-001
+  component: COMP-RES-GOV
+  implementation:
+    phase: 2
+    status: PENDING(phase=2)
+    target_path: null
+  test:
+  - TEST-WORKER-RESOURCE-001
+  acceptance:
+  - GATE-WORKER-RESOURCE-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 2
+  status: PENDING(phase=2)

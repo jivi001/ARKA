@@ -123,6 +123,7 @@ define_id!(ProposalId, 3, 64, None);
 define_id!(ApprovalId, 3, 64, None);
 define_id!(EvidenceId, 3, 64, None);
 define_id!(TokenId, 3, 64, None);
+define_id!(ExecutionId, 3, 64, None);
 
 #[cfg(test)]
 mod tests {

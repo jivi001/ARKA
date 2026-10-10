@@ -46,6 +46,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "arka-execution-broker"
+version = "0.1.0"
+dependencies = [
+ "arka-core-types",
+ "arka-crypto",
+ "arka-kernel",
+ "arka-network-policy",
+ "arka-storage-sqlite",
+ "arka-worker-protocol",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "arka-kernel"
 version = "0.1.0"
 dependencies = [
@@ -63,6 +84,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "arka-network-policy"
+version = "0.1.0"
+dependencies = [
+ "arka-core-types",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "arka-storage-sqlite"
 version = "0.1.0"
 dependencies = [
@@ -74,6 +109,18 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "arka-worker-protocol"
+version = "0.1.0"
+dependencies = [
+ "arka-core-types",
+ "arka-crypto",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -1687,6 +1734,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
