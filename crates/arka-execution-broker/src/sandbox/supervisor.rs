@@ -47,21 +47,53 @@ impl SandboxSupervisor {
             )));
         }
 
-        // Test minimal execution
-        let mut cmd = Command::new(&self.config.bwrap_path);
-        cmd.arg("--version");
-        cmd.stdout(Stdio::piped());
-        cmd.stderr(Stdio::piped());
+        // 1. Test binary execution
+        let mut version_cmd = Command::new(&self.config.bwrap_path);
+        version_cmd.arg("--version");
+        version_cmd.stdout(Stdio::piped());
+        version_cmd.stderr(Stdio::piped());
 
-        match cmd.output().await {
+        match version_cmd.output().await {
+            Ok(output) if !output.status.success() => {
+                return Err(BrokerError::SandboxInitializationFailure(format!(
+                    "bwrap --version failed with exit code {:?}: {}",
+                    output.status.code(),
+                    String::from_utf8_lossy(&output.stderr).trim()
+                )));
+            }
+            Err(e) => {
+                return Err(BrokerError::SandboxInitializationFailure(format!(
+                    "Failed to execute bwrap: {}",
+                    e
+                )));
+            }
+            _ => {}
+        }
+
+        // 2. Test unprivileged namespace creation capability
+        let mut ns_cmd = Command::new(&self.config.bwrap_path);
+        ns_cmd.arg("--ro-bind").arg("/").arg("/");
+        ns_cmd.arg("--unshare-user");
+        ns_cmd.arg("--die-with-parent");
+        let true_bin = if Path::new("/bin/true").exists() {
+            "/bin/true"
+        } else if Path::new("/usr/bin/true").exists() {
+            "/usr/bin/true"
+        } else {
+            "true"
+        };
+        ns_cmd.arg(true_bin);
+        ns_cmd.stdout(Stdio::piped());
+        ns_cmd.stderr(Stdio::piped());
+
+        match ns_cmd.output().await {
             Ok(output) if output.status.success() => Ok(()),
             Ok(output) => Err(BrokerError::SandboxInitializationFailure(format!(
-                "bwrap --version failed with exit code {:?}: {}",
-                output.status.code(),
-                String::from_utf8_lossy(&output.stderr)
+                "bwrap namespace creation check failed: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
             ))),
             Err(e) => Err(BrokerError::SandboxInitializationFailure(format!(
-                "Failed to execute bwrap: {}",
+                "Failed to execute bwrap namespace test: {}",
                 e
             ))),
         }
