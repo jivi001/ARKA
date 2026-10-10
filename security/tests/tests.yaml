@@ -157,10 +157,10 @@ tests:
   - CTRL-REDIRECT-FILTER-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: 3xx redirects to private or out-of-scope targets are intercepted
     and blocked.
-  test_path: null
+  test_path: crates/arka-network-policy/tests/checkpoint_p2_e_redirect_test.rs
 - id: TEST-METADATA-001
   name: Cloud Instance Metadata Access Denial Contract
   threats:
@@ -193,10 +193,10 @@ tests:
   - CTRL-BROWSER-SANDBOX-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: All tool and browser egress traffic flows through the broker
     proxy with zero direct access.
-  test_path: null
+  test_path: crates/arka-network-policy/tests/checkpoint_p2_e_redirect_test.rs
 - id: TEST-IPV6-BYPASS-001
   name: IPv6 Unscoped Interface Access Rejection Contract
   threats:
@@ -217,10 +217,10 @@ tests:
   - CTRL-SANDBOX-CONTAINMENT-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Worker container filesystem is read-only; attempts to write outside
     /tmp fail with EROFS.
-  test_path: null
+  test_path: crates/arka-execution-broker/tests/checkpoint_p2_c_sandbox_test.rs
 - id: TEST-SANDBOX-NET-001
   name: Sandbox Network Namespace Isolation Contract
   threats:
@@ -229,10 +229,10 @@ tests:
   - CTRL-BROWSER-SANDBOX-001
   owner: Execution Engine Lead
   phase: 2
-  status: PENDING(phase=2)
+  status: IMPLEMENTED_PASSING
   expected_property: Sandboxed processes cannot access host loopback interfaces or
     host network namespace.
-  test_path: null
+  test_path: crates/arka-network-policy/tests/checkpoint_p2_e_redirect_test.rs
 - id: TEST-SANDBOX-PRIV-001
   name: Sandbox Privilege Escalation and Rootless Enclosure Contract
   threats:

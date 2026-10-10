@@ -14,16 +14,20 @@
 
 pub mod address;
 pub mod blocked_ranges;
+pub mod browser;
 pub mod connector;
 pub mod dns;
 pub mod errors;
 pub mod params;
+pub mod redirect;
 pub mod validator;
 
 pub use address::CanonicalIp;
 pub use blocked_ranges::BlockedRanges;
+pub use browser::{BrowserMediationConfig, BrowserMediationGuard};
 pub use connector::DirectIpConnector;
 pub use dns::{DnsResolver, MockDnsResolver, SystemDnsResolver};
 pub use errors::NetworkPolicyError;
 pub use params::ParameterValidator;
+pub use redirect::{RedirectConfig, RedirectDecision, RedirectHandler};
 pub use validator::{PinnedDestination, ScopeGuard};

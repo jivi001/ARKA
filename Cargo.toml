@@ -30,3 +30,4 @@ tracing = "0.1"
 hex = "0.4"
 base64 = "0.22"
 uuid = { version = "1.8", features = ["v4", "serde"] }
+url = "2.5"

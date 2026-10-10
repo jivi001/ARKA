@@ -47,4 +47,36 @@ pub enum NetworkPolicyError {
 
     #[error("Connection Timeout: Dial attempt to {0} timed out after {1}ms")]
     Timeout(String, u64),
+
+    #[error("HTTP Redirect Policy Violation: Redirect chain exceeded maximum limit of {0} hops")]
+    RedirectLimitExceeded(usize),
+
+    #[error("HTTP Redirect Policy Violation: Cyclic redirect loop detected for URL '{0}'")]
+    RedirectLoopDetected(String),
+
+    #[error(
+        "HTTP Redirect Policy Violation: Insecure scheme downgrade from {from} to {to} is forbidden"
+    )]
+    SchemeDowngradeForbidden { from: String, to: String },
+
+    #[error(
+        "HTTP Redirect Policy Violation: Unsupported URL scheme '{0}'. Only HTTP and HTTPS are permitted"
+    )]
+    UnsupportedScheme(String),
+
+    #[error(
+        "HTTP Redirect Policy Violation: Embedded credentials (userinfo) in URL are forbidden"
+    )]
+    CredentialsInUrlForbidden,
+
+    #[error("HTTP Redirect Policy Violation: Malformed redirect Location URL: {0}")]
+    InvalidRedirectUrl(String),
+
+    #[error(
+        "Browser Mediation Boundary Violation: Direct connection attempt to '{0}' bypasses broker proxy"
+    )]
+    BrowserMediationBypass(String),
+
+    #[error("Browser Mediation Boundary Violation: Invalid proxy configuration: {0}")]
+    ProxyConfigurationInvalid(String),
 }
