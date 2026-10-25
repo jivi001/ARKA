@@ -8,6 +8,8 @@ members = [
     "crates/arka-worker-protocol",
     "crates/arka-execution-broker",
     "crates/arka-network-policy",
+    "crates/arka-gatewayd",
+    "crates/arka-kerneld",
 ]
 
 [workspace.package]

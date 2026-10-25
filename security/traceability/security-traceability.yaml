@@ -575,3 +575,19 @@ traceability_matrix:
   - CI-SEC-TRACEABILITY
   phase: 2
   status: PENDING(phase=2)
+- id: TRACE-PROVIDER-CRED-001
+  threat: THREAT-PROVIDER-CRED-THEFT
+  control: CTRL-PROVIDER-CRED-ISOLATION-001
+  component: COMP-LLM-GW
+  implementation:
+    phase: 3
+    status: PENDING(phase=3)
+    target_path: null
+  test:
+  - TEST-PROVIDER-CRED-ISOLATION-001
+  acceptance:
+  - GATE-PROVIDER-CRED-ISOLATION-001
+  ci:
+  - CI-SEC-TRACEABILITY
+  phase: 3
+  status: PENDING(phase=3)

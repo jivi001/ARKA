@@ -237,6 +237,56 @@ class DevelopmentKeyProvider(KeyProvider):
             timestamp=time.time(),
         )
 
+    def generate_signing_key(
+        self,
+        domain: KeyDomain,
+        kid: Optional[str] = None,
+        active: bool = False,
+    ) -> Tuple[KeyMetadata, ed25519.Ed25519PrivateKey]:
+        """Generate and store a distinct Ed25519 signing key."""
+        if domain not in self.SIGNING_DOMAINS:
+            raise DomainSeparationViolationError(
+                f"Domain '{domain.value}' is not a signing domain."
+            )
+        self._version_counter[domain] += 1
+        ver = self._version_counter[domain]
+        assigned_kid = kid or f"{domain.value}-v{ver}-{uuid.uuid4().hex[:8]}"
+        private_key = ed25519.Ed25519PrivateKey.generate()
+        metadata = KeyMetadata(
+            kid=assigned_kid,
+            domain=domain,
+            algorithm="Ed25519",
+            version=ver,
+            created_at=time.time(),
+            active=active,
+        )
+        self._keys[domain][assigned_kid] = (metadata, private_key)
+        if active:
+            self._active_kid[domain] = assigned_kid
+        return metadata, private_key
+
+    def register_public_key(
+        self,
+        domain: KeyDomain,
+        kid: str,
+        public_key: ed25519.Ed25519PublicKey,
+    ) -> KeyMetadata:
+        """Register a public key for verification operations."""
+        if domain not in self.SIGNING_DOMAINS:
+            raise DomainSeparationViolationError(
+                f"Domain '{domain.value}' is not a signing/verification domain."
+            )
+        metadata = KeyMetadata(
+            kid=kid,
+            domain=domain,
+            algorithm="Ed25519",
+            version=1,
+            created_at=time.time(),
+            active=False,
+        )
+        self._keys[domain][kid] = (metadata, public_key)
+        return metadata
+
     def verify(self, domain: KeyDomain, payload: bytes, signature: bytes, kid: str) -> bool:
         if domain not in self.SIGNING_DOMAINS:
             raise DomainSeparationViolationError(
@@ -247,10 +297,13 @@ class DevelopmentKeyProvider(KeyProvider):
             raise KeyNotFoundError(f"Key '{kid}' not found in domain '{domain.value}'")
 
         metadata, key_obj = self._keys[domain][kid]
-        if not isinstance(key_obj, ed25519.Ed25519PrivateKey):
-            raise DomainSeparationViolationError("Key object is not an Ed25519 private key.")
+        if isinstance(key_obj, ed25519.Ed25519PrivateKey):
+            public_key = key_obj.public_key()
+        elif isinstance(key_obj, ed25519.Ed25519PublicKey):
+            public_key = key_obj
+        else:
+            raise DomainSeparationViolationError("Key object is not an Ed25519 key.")
 
-        public_key = key_obj.public_key()
         try:
             public_key.verify(signature, payload)
             return True

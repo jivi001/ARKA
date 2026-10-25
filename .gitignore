@@ -10,6 +10,12 @@ target/
 **/*.rs.bk
 *.profraw
 *.profdata
+cargo-timings/
+cargo-timing*.html
+core
+core.*
+!**/core.ts
+vgcore.*
 
 # ------------------------------------------------------------------------------
 # 2. Python & Bytecode
@@ -60,12 +66,17 @@ MANIFEST
 .ruff_cache/
 .pyre/
 .pytype/
+.dmypy.json
+dmypy.json
+.pyright/
+.basedpyright/
 
 # ------------------------------------------------------------------------------
 # 6. Testing, Coverage & Profiling
 # ------------------------------------------------------------------------------
 .pytest_cache/
 htmlcov/
+coverage/
 .coverage
 .coverage.*
 .cache
@@ -73,7 +84,9 @@ nosetests.xml
 coverage.xml
 *.cover
 *.py,cover
+*.lcov
 .hypothesis/
+.benchmarks/
 
 # ------------------------------------------------------------------------------
 # 7. AI Assistants & Tool Workspaces
@@ -87,6 +100,11 @@ coverage.xml
 .copilot/
 .amazonq/
 .factory/
+.continue/
+.cline/
+.roo/
+.aider*
+.openhands/
 graphify-out/
 graphify/
 .graphify*
@@ -105,12 +123,20 @@ sbom*.json
 pip-audit*.json
 arka-sandbox-scratch/
 arka-test-scratch*/
+arka-adv-scratch*/
+arka-*-scratch*/
+arka-run-*/
+arka-exec-*/
 
 # ------------------------------------------------------------------------------
-# 9. Frontend — Next.js / pnpm / Tailwind (Operator Console)
+# 9. Frontend — Vite / React / Next.js (Operator Console)
 # ------------------------------------------------------------------------------
 node_modules/
 frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+frontend/.vite/
 .next/
 frontend/.next/
 out/
@@ -119,13 +145,14 @@ frontend/out/
 # Turbopack / Turborepo
 .turbo/
 
-# TypeScript incremental build cache
+# TypeScript incremental build cache & linters
 *.tsbuildinfo
+.eslintcache
 
 # Next.js auto-generated type declarations
 next-env.d.ts
 
-# pnpm
+# pnpm & yarn
 .pnp
 .pnp.*
 .yarn/*
@@ -148,8 +175,12 @@ pnpm-debug.log*
 # Tailwind / PostCSS caches
 .postcss-cache/
 
-# Frontend test coverage
+# Frontend test coverage & E2E reports
 frontend/coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # ------------------------------------------------------------------------------
 # 10. Local Databases & In-Memory Queues (SQLite WAL & SHM)
@@ -158,14 +189,27 @@ frontend/coverage/
 *.sqlite3
 *.sqlite-wal
 *.sqlite-shm
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
 dump.rdb
+*.rdb
 
 # ------------------------------------------------------------------------------
-# 11. Secrets & Environment Files (Strictly Ignored)
+# 11. Sockets, IPC & Process Locks
+# ------------------------------------------------------------------------------
+*.sock
+*.socket
+*.pid
+*.pid.lock
+
+# ------------------------------------------------------------------------------
+# 12. Secrets & Environment Files (Strictly Ignored)
 # ------------------------------------------------------------------------------
 .env
 .env.*
@@ -178,7 +222,7 @@ dump.rdb
 *.crt
 
 # ------------------------------------------------------------------------------
-# 12. Operating System & Editor Files
+# 13. Operating System & Editor Files
 # ------------------------------------------------------------------------------
 .DS_Store
 .DS_Store?
@@ -197,12 +241,12 @@ Desktop.ini
 *.bak
 
 # ------------------------------------------------------------------------------
-# 13. Notebooks & Misc
+# 14. Notebooks & Misc
 # ------------------------------------------------------------------------------
 .ipynb_checkpoints/
 
 # ------------------------------------------------------------------------------
-# 14. Docker & Archives
+# 15. Docker & Archives
 # ------------------------------------------------------------------------------
 *.tar
 *.tar.gz
