@@ -20,7 +20,7 @@ SECRET_PATTERNS: List[Tuple[str, Pattern]] = [
     ("JWT_BEARER", re.compile(r"\b(Bearer\s+ey[A-Za-z0-9-_=]+\.ey[A-Za-z0-9-_=]+(?:\.[A-Za-z0-9-_.+/=]*)?)\b", re.IGNORECASE)),
     ("GITHUB_TOKEN", re.compile(r"\b(gh[pousr]_[A-Za-z0-9_]{36,255})\b")),
     ("SLACK_TOKEN", re.compile(r"\b(xox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*)\b")),
-    ("GENERIC_PASSWORD", re.compile(r"(?i)\b(password|passwd|pwd|api_key|access_token|client_secret)\s*[:=]\s*['\"]?([^\s&'\"]{4,})")),
+    ("GENERIC_PASSWORD", re.compile(r"""(?i)\b(password|passwd|pwd|api_key|access_token|client_secret)\s*[:=]\s*(?:['"][^'"]*['"]|[^\s&'"]+)""")),
 ]
 
 # Pattern matching RFC 1918 private IPv4 addresses
