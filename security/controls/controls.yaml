@@ -762,3 +762,21 @@ controls:
   gate_ids:
   - GATE-WORKER-RESOURCE-001
   status: IMPLEMENTED_PASSING
+- id: CTRL-PROVIDER-CRED-ISOLATION-001
+  name: Dedicated LLM Provider Credential Isolation and Memory Zeroization
+  description: Raw provider credentials exist exclusively in Gateway memory under an isolated OS user, are zeroized after use, and are physically inaccessible to agent processes (INV-011, INV-012).
+  threats:
+  - THREAT-PROVIDER-CRED-THEFT
+  components:
+  - COMP-LLM-GW
+  phase: 3
+  security_property: Raw provider credentials exist exclusively in Gateway memory, are zeroized after use, and are physically inaccessible to agent processes.
+  enforcement_layer:
+  - os-process-dac
+  - memory-zeroize
+  - scopeguard-connector
+  test_ids:
+  - TEST-PROVIDER-CRED-ISOLATION-001
+  gate_ids:
+  - GATE-PROVIDER-CRED-ISOLATION-001
+  status: PENDING(phase=3)

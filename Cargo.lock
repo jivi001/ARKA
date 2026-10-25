@@ -67,6 +67,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "arka-gatewayd"
+version = "0.1.0"
+dependencies = [
+ "arka-core-types",
+ "arka-crypto",
+ "arka-network-policy",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "arka-kernel"
 version = "0.1.0"
 dependencies = [
@@ -77,6 +95,25 @@ dependencies = [
  "hex",
  "serde",
  "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "arka-kerneld"
+version = "0.1.0"
+dependencies = [
+ "arka-core-types",
+ "arka-crypto",
+ "arka-execution-broker",
+ "arka-kernel",
+ "arka-storage-sqlite",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",

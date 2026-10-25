@@ -540,3 +540,14 @@ tests:
   expected_property: Worker attempting to allocate memory or CPU beyond cgroup quota
     is terminated by OS with SIGKILL within 500ms.
   test_path: crates/arka-execution-broker/tests/checkpoint_p2_c_sandbox_test.rs
+- id: TEST-PROVIDER-CRED-ISOLATION-001
+  name: LLM Provider Credential Process Isolation and Egress Defense Test
+  threats:
+  - THREAT-PROVIDER-CRED-THEFT
+  controls:
+  - CTRL-PROVIDER-CRED-ISOLATION-001
+  owner: Intelligence Plane Lead
+  phase: 3
+  status: PENDING(phase=3)
+  expected_property: Provider secrets are completely inaccessible to agent processes, absent from all traces, and protected by fail-closed isolation.
+  test_path: null

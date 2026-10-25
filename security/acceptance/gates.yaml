@@ -634,3 +634,20 @@ gates:
   - ci_run_id
   - commit_sha
   - artifact_hash
+- id: GATE-PROVIDER-CRED-ISOLATION-001
+  name: Dedicated LLM Provider Credential Isolation Gate
+  phase: 3
+  threats:
+  - THREAT-PROVIDER-CRED-THEFT
+  controls:
+  - CTRL-PROVIDER-CRED-ISOLATION-001
+  tests:
+  - TEST-PROVIDER-CRED-ISOLATION-001
+  condition:
+    provider_credentials_exposed_to_agents: false
+  expected_result: PASS
+  blocking: true
+  evidence_required:
+  - ci_run_id
+  - commit_sha
+  - artifact_hash

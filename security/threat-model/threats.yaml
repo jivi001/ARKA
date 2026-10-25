@@ -984,3 +984,30 @@ threats:
     invariants_threatened:
       - "INV-010"
     status: "ACTIVE"
+
+  - id: "THREAT-PROVIDER-CRED-THEFT"
+    title: "LLM Provider API Credential Compromise and Exfiltration"
+    description: "Adversary coerces agent via prompt injection or process memory inspection into exfiltrating external LLM provider API credentials."
+    stride:
+      - "Information Disclosure"
+      - "Elevation of Privilege"
+    owasp_llm:
+      - "LLM02:2025-Sensitive Information Disclosure"
+    owasp_agentic:
+      - "ASI03:2026-Identity and Privilege Abuse"
+    mitre_atlas:
+      - "AML.T0024-Exfiltration via External API"
+    mitre_attack:
+      - "T1552.001-Credentials in Files"
+    affected_assets:
+      - "ASSET-LLM-KEYS"
+    source_actors:
+      - "ACTOR-PYTHON-AGENT"
+      - "ACTOR-ROGUE-AGENT"
+    trust_boundary: "TB-T3-T8"
+    attack_surface: "SURF-LLM-GATEWAY"
+    target_phase: 3
+    severity: "CRITICAL"
+    invariants_threatened:
+      - "INV-011"
+    status: "ACTIVE"
