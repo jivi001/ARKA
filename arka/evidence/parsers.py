@@ -37,7 +37,7 @@ class SafeParser(ABC):
 
 class SafeJsonParser(SafeParser):
     """
-    Safe JSON parser enforcing payload bounds and maximum nesting depth.
+    Safe JSON parser enforcing payload bounds, maximum nesting depth, and duplicate key rejection.
     """
 
     def __init__(self, max_depth: int = MAX_RECURSION_DEPTH):
@@ -54,23 +54,34 @@ class SafeJsonParser(SafeParser):
         except UnicodeDecodeError as e:
             raise EvidenceParserError(f"Invalid UTF-8 encoding in JSON evidence: {e}") from e
 
-        # Depth tracking hook
-        depth = 0
+        # Iterative depth-tracking traversal to avoid Python call stack recursion limits
+        def check_depth(root: Any) -> None:
+            stack = [(root, 0)]
+            while stack:
+                obj, current_depth = stack.pop()
+                if current_depth > self.max_depth:
+                    raise ParserBombError(
+                        f"JSON nesting depth exceeds maximum allowable depth ({self.max_depth})."
+                    )
+                if isinstance(obj, dict):
+                    for v in obj.values():
+                        stack.append((v, current_depth + 1))
+                elif isinstance(obj, list):
+                    for item in obj:
+                        stack.append((item, current_depth + 1))
 
-        def check_depth(obj: Any, current_depth: int = 0) -> None:
-            if current_depth > self.max_depth:
-                raise ParserBombError(
-                    f"JSON nesting depth exceeds maximum allowable depth ({self.max_depth})."
-                )
-            if isinstance(obj, dict):
-                for v in obj.values():
-                    check_depth(v, current_depth + 1)
-            elif isinstance(obj, list):
-                for item in obj:
-                    check_depth(item, current_depth + 1)
+        def reject_duplicates(ordered_pairs: List[tuple]) -> Dict[str, Any]:
+            d: Dict[str, Any] = {}
+            for k, v in ordered_pairs:
+                if k in d:
+                    raise EvidenceParserError(f"Duplicate JSON key rejected: {k}")
+                d[k] = v
+            return d
 
         try:
-            data = json.loads(text)
+            data = json.loads(text, object_pairs_hook=reject_duplicates)
+        except RecursionError as e:
+            raise ParserBombError(f"JSON recursion depth exceeded parser limit: {e}") from e
         except json.JSONDecodeError as e:
             raise EvidenceParserError(f"Malformed JSON syntax: {e}") from e
 

@@ -17,7 +17,7 @@ use crate::protocol::{
 use arka_core_types::clock::MockClock;
 use arka_core_types::errors::ExternalSecurityError;
 use arka_core_types::id::{AgentId, TokenId};
-use arka_core_types::scope::{ScopeDefinition, ScopeRule};
+use arka_core_types::scope::ScopeDefinition;
 use arka_core_types::subject::{AuthenticatedContext, Subject};
 use arka_crypto::json_strict::StrictJsonParser;
 use arka_crypto::token::SignedToken;
@@ -235,13 +235,21 @@ impl KernelServer {
                     KernelServiceError::PeerAuthFailed(format!("Cannot obtain SO_PEERCRED: {}", e))
                 })?;
 
-                if let Some(expected_uid) = config.allowed_uid {
-                    if peer_cred.uid() != expected_uid {
-                        return Err(KernelServiceError::PeerAuthFailed(format!(
-                            "Caller UID {} does not match expected UID {}",
-                            peer_cred.uid(),
-                            expected_uid
-                        )));
+                match config.allowed_uid {
+                    Some(expected_uid) => {
+                        if peer_cred.uid() != expected_uid {
+                            return Err(KernelServiceError::PeerAuthFailed(format!(
+                                "Caller UID {} does not match expected UID {}",
+                                peer_cred.uid(),
+                                expected_uid
+                            )));
+                        }
+                    }
+                    None => {
+                        return Err(KernelServiceError::PeerAuthFailed(
+                            "Peer authentication is enabled but allowed_uid is not configured (fail-closed)"
+                                .to_string(),
+                        ));
                     }
                 }
             }
@@ -378,24 +386,23 @@ impl KernelServer {
             }
         };
 
-        // Resolve active Scope Definition
+        // Resolve active Scope Definition (VULN-002: Fail-closed on missing scope)
         let scope = {
             let scopes_lock = scopes.read().await;
-            scopes_lock
-                .get(&auth_context.scope_ref)
-                .cloned()
-                .unwrap_or_else(|| {
-                    // Default permissive scope for tests if not explicitly registered
-                    ScopeDefinition {
-                        inclusions: vec![
-                            ScopeRule::IpExact("127.0.0.1".parse().unwrap()),
-                            ScopeRule::IpExact("198.51.100.1".parse().unwrap()),
-                            ScopeRule::IpExact("192.168.1.1".parse().unwrap()),
-                        ],
-                        exclusions: vec![],
-                        allow_private_ranges: true,
-                    }
-                })
+            match scopes_lock.get(&auth_context.scope_ref).cloned() {
+                Some(s) => s,
+                None => {
+                    return KernelResponse::deny(
+                        request_id,
+                        "ERR_SCOPE_NOT_FOUND",
+                        format!(
+                            "Scope reference '{}' is not registered in the active security kernel (fail-closed)",
+                            auth_context.scope_ref
+                        ),
+                        false,
+                    );
+                }
+            }
         };
 
         // Barrier 6: Deterministic Policy Authorization & Atomic Commit

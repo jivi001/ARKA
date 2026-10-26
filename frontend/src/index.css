@@ -431,3 +431,32 @@ table.arka-table tbody tr.selected {
   font-size: 11px;
   margin-top: 2px;
 }
+
+/* Findings Trace Workspace & Timeline Responsive Breakpoints */
+@media (max-width: 1200px) {
+  .trace-workspace-split {
+    grid-template-columns: 1fr !important;
+  }
+  .timeline-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .timeline-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .flow-nodes-container {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.table-row-hover:hover {
+  background-color: var(--bg-surface-high) !important;
+}
+
+.table-row-selected {
+  background-color: var(--accent-primary-dim) !important;
+  border-left: 3px solid var(--accent-primary) !important;
+}
+

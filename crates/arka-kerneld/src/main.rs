@@ -19,8 +19,51 @@ use tracing::info;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Initializing ARKA Security Kernel Daemon (arka-kerneld)...");
 
-    let config = KernelServerConfig::default();
-    let storage = Arc::new(SqliteStorage::new_in_memory().await?);
+    let socket_path = std::env::var("ARKA_KERNEL_SOCKET")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::PathBuf::from("/run/arka/kernel.sock"));
+
+    let allowed_uid = std::env::var("ARKA_KERNEL_ALLOWED_UID")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok());
+
+    let enforce_peer_auth = std::env::var("ARKA_KERNEL_ENFORCE_PEER_AUTH")
+        .map(|v| v != "0" && v.to_lowercase() != "false")
+        .unwrap_or(allowed_uid.is_some());
+
+    let config = KernelServerConfig {
+        socket_path,
+        enforce_peer_auth,
+        allowed_uid,
+        ..Default::default()
+    };
+
+    // Storage durability configuration (VULN-005):
+    // Requires persistent SQLite storage path in production; permits in-memory only when explicitly opted in.
+    let storage = match std::env::var("ARKA_DATABASE_PATH") {
+        Ok(db_path) => {
+            info!("Initializing durable SQLite storage at: {}", db_path);
+            let conn_str = format!("sqlite://{}?mode=rwc", db_path);
+            Arc::new(SqliteStorage::new(&conn_str).await?)
+        }
+        Err(_) => {
+            let allow_in_memory = std::env::var("ARKA_ALLOW_IN_MEMORY_STORAGE")
+                .map(|v| v == "1" || v.to_lowercase() == "true")
+                .unwrap_or(true); // Default true for local workspace development & testing
+
+            if allow_in_memory {
+                tracing::warn!(
+                    "Starting arka-kerneld with ephemeral in-memory storage (ARKA_ALLOW_IN_MEMORY_STORAGE). \
+                     Audit logs and replay state will not persist across restarts."
+                );
+                Arc::new(SqliteStorage::new_in_memory().await?)
+            } else {
+                return Err("Production startup requires ARKA_DATABASE_PATH to ensure durable audit persistence. \
+                            Set ARKA_ALLOW_IN_MEMORY_STORAGE=1 for non-production development."
+                    .into());
+            }
+        }
+    };
     let clock = Arc::new(MockClock::new(1000));
     let key_provider = Arc::new(DevKeyProvider::new());
     let audit_engine = Arc::new(AuditChainEngine::new(key_provider.clone()));

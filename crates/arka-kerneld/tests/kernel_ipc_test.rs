@@ -12,10 +12,12 @@
 
 use arka_core_types::actions::RawActionProposal;
 use arka_core_types::clock::MockClock;
-use arka_core_types::id::{CapabilityId, MissionId, OperatorId, ProposalId};
+use arka_core_types::id::{AgentId, CapabilityId, MissionId, OperatorId, ProposalId, TokenId};
 use arka_core_types::mission::{Mission, MissionState};
 use arka_core_types::scope::{ScopeDefinition, ScopeRule};
+use arka_core_types::subject::Subject;
 use arka_crypto::provider::DevKeyProvider;
+use arka_crypto::token::{SignedToken, TokenClaims};
 use arka_kernel::audit::AuditChainEngine;
 use arka_kernel::auth::AuthenticationService;
 use arka_kernel::capabilities::StandardCapabilityRegistry;
@@ -375,6 +377,62 @@ async fn test_ipc_successful_authorization_and_internal_broker_dispatch() {
     let exec = resp.execution_result.unwrap();
     assert_eq!(exec.state, "COMPLETED");
     assert!(exec.execution_id.starts_with("exc-"));
+
+    let _ = harness.shutdown_tx.send(());
+}
+
+#[tokio::test]
+async fn test_ipc_unregistered_scope_reference_denied_fail_closed() {
+    let harness = start_test_kernel(|_| {}).await;
+    create_mission(&harness.storage, "mis-scope-fail").await;
+
+    // Create an authenticated token that references an unregistered scope 'scope-unregistered-999'
+    let claims = TokenClaims {
+        token_id: TokenId::new("tok-scope-fail-1").unwrap(),
+        subject: Subject::Agent(AgentId::new("agt-recon-01").unwrap()),
+        mission_id: MissionId::new("mis-scope-fail").unwrap(),
+        parent_task_id: None,
+        capabilities: vec![CapabilityId::new("PORT_SCAN").unwrap()],
+        scope_ref: "scope-unregistered-999".to_string(),
+        issued_at_unix: 1000,
+        expires_at_unix: 2000,
+        parent_token_id: None,
+    };
+    let signed_token = SignedToken::issue(
+        claims,
+        "TOKEN-SIGNING-dev-01",
+        harness.key_provider.as_ref(),
+    )
+    .unwrap();
+    let token_json = serde_json::to_string(&signed_token).unwrap();
+
+    let request = KernelRequest {
+        request_id: "req-scope-fail".to_string(),
+        client_version: "3.0.0".to_string(),
+        auth_token: Some(token_json),
+        operation: "AUTHORIZE".to_string(),
+        proposal: RawActionProposal {
+            proposal_id: ProposalId::new("prp-scope-fail").unwrap(),
+            mission_id: MissionId::new("mis-scope-fail").unwrap(),
+            parent_task_id: None,
+            capability_id: CapabilityId::new("PORT_SCAN").unwrap(),
+            target: "127.0.0.1".to_string(), // Trying to access localhost via unregistered scope
+            parameters: json!({"ports": [80]}),
+            declared_risk: None,
+            nonce: "nonce-scope-fail-1".to_string(),
+        },
+    };
+
+    let payload = serde_json::to_vec(&request).unwrap();
+    let resp = send_raw_frame(&harness.socket_path, &payload)
+        .await
+        .unwrap();
+
+    // VULN-002 Invariant: Unregistered scope reference MUST be rejected with DENY and ERR_SCOPE_NOT_FOUND
+    assert_eq!(resp.decision, "DENY");
+    let err = resp.error.expect("Expected error payload on DENY");
+    assert_eq!(err.code, "ERR_SCOPE_NOT_FOUND");
+    assert!(err.message.contains("fail-closed"));
 
     let _ = harness.shutdown_tx.send(());
 }

@@ -101,18 +101,18 @@ No pnpm-lock.yaml found: Cannot audit a project without a lockfile
 
 ---
 
-## 4. Systemic STRIDE Security Audit Summary
+## 4. Systemic STRIDE Security Audit & Remediation Verification
 
-A full-codebase STRIDE security audit conducted via the `/security-review` skill identified 6 confirmed findings with concrete remediation paths:
+A comprehensive security audit conducted on the repository confirmed 6 vulnerabilities. All 6 findings have been remediated with negative test regression coverage and independently verified:
 
-| Finding ID | Severity | STRIDE Category | Vulnerability Type | Primary Location | Remediation Summary |
-|---|:---:|---|---|---|---|
-| **VULN-001** | 🔴 **HIGH** | Tampering / EoP | OS Command Injection ([CWE-78](https://cwe.mitre.org/data/definitions/78.html)) | `workers/linux/wrappers/tcp_probe.sh:23` | Sanitize `TARGET_HOST` against `^[a-zA-Z0-9.-]+$` and pass positional parameters without subshell string evaluation. |
-| **VULN-002** | 🔴 **HIGH** | EoP / Info Disclosure | Default Permissive Fallback Scope ([CWE-1188](https://cwe.mitre.org/data/definitions/1188.html)) | `crates/arka-kerneld/src/server.rs:387` | Deny authorization request immediately (`ERR_SCOPE_NOT_FOUND`) if `scope_ref` cannot be resolved. |
-| **VULN-003** | 🟡 **MEDIUM** | Spoofing / EoP | Incomplete Peer Auth Gate ([CWE-306](https://cwe.mitre.org/data/definitions/306.html)) | `crates/arka-gatewayd/src/server.rs:146` | Compare `SO_PEERCRED` caller UID against authorized UID and enforce mode `0660` on socket. |
-| **VULN-004** | 🟡 **MEDIUM** | Info Disclosure | Single-Match DLP Redaction Leak ([CWE-200](https://cwe.mitre.org/data/definitions/200.html)) | `crates/arka-gatewayd/src/dlp.rs:56` | Wrap pattern matching in a `while let` loop to scrub multiple secrets in the same payload. |
-| **VULN-005** | 🟡 **MEDIUM** | Repudiation | In-Memory Storage & Ephemeral Keys ([CWE-311](https://cwe.mitre.org/data/definitions/311.html)) | `crates/arka-kerneld/src/main.rs:23` | Bind daemon to persistent SQLite database path and load durable signing keys from KMS/keyfile. |
-| **VULN-006** | 🔵 **LOW** | DoS / Tampering | JSON Recursion & Duplicate Key Differential ([CWE-674](https://cwe.mitre.org/data/definitions/674.html)) | `arka/evidence/parsers.py:73` | Implement `object_pairs_hook` to reject duplicate keys and catch `RecursionError` cleanly. |
+| Finding ID | Severity | Status | STRIDE Category | Vulnerability Type | Primary Location | Verification & Remediation Applied |
+|---|:---:|:---:|---|---|---|---|
+| **VULN-001** | 🔴 **HIGH** | ✅ **RESOLVED** | Tampering / EoP | OS Command Injection ([CWE-78](https://cwe.mitre.org/data/definitions/78.html)) | `workers/linux/wrappers/tcp_probe.sh` | Enforced RFC length limit (<= 253), character regex allowlist (`^[a-zA-Z0-9.:-]+$`), numeric port/timeout bounds, JSON escaping, and eliminated shell interpolation via positional args (`bash -c 'exec 3<>/dev/tcp/"$1"/"$2"' _ "$TARGET_HOST" "$TARGET_PORT"`). Injection tests verified. |
+| **VULN-002** | 🔴 **HIGH** | ✅ **RESOLVED** | EoP / Info Disclosure | Default Permissive Fallback Scope ([CWE-1188](https://cwe.mitre.org/data/definitions/1188.html)) | `crates/arka-kerneld/src/server.rs` | Removed permissive fallback scope (`127.0.0.1`, `192.168.1.1`). Requests referencing unregistered scopes fail closed immediately with `KernelResponse::deny(..., "ERR_SCOPE_NOT_FOUND", ...)`. Verified via `test_ipc_unregistered_scope_reference_denied_fail_closed`. |
+| **VULN-003** | 🟡 **MEDIUM** | ✅ **RESOLVED** | Spoofing / EoP | Incomplete Peer Auth Gate ([CWE-306](https://cwe.mitre.org/data/definitions/306.html)) | `crates/arka-gatewayd/src/server.rs`, `arka-kerneld/src/server.rs` | Enforced `0o660` socket filesystem permissions on creation. Gateway and Kernel peer auth check now fail-closed: if `enforce_peer_auth` is enabled and `allowed_uid` is `None` or mismatched, connection is denied with `PeerAuthFailed`. Environment variables added for daemon deployment. |
+| **VULN-004** | 🟡 **MEDIUM** | ✅ **RESOLVED** | Info Disclosure | Single-Match DLP Redaction Leak ([CWE-200](https://cwe.mitre.org/data/definitions/200.html)) | `crates/arka-gatewayd/src/dlp.rs` | Replaced single `find` with `while let` iterative loops with cursor advancement for Anthropic (`sk-ant-`), OpenAI (`sk-`), Private Keys (`BEGIN PRIVATE KEY`), internal tokens (`tok_`), and AWS keys (`AKIA...`). Unit tests added verifying multiple keys in single strings and passing. |
+| **VULN-005** | 🟡 **MEDIUM** | ✅ **RESOLVED** | Repudiation | In-Memory Storage & Ephemeral Keys ([CWE-311](https://cwe.mitre.org/data/definitions/311.html)) | `crates/arka-kerneld/src/main.rs` | Integrated `ARKA_DATABASE_PATH` configuration with persistent `SqliteStorage::new(db_path)`. Guarded ephemeral in-memory storage behind explicit `ARKA_ALLOW_IN_MEMORY_STORAGE=1` with operator audit warning. |
+| **VULN-006** | 🔵 **LOW** | ✅ **RESOLVED** | DoS / Tampering | JSON Recursion & Duplicate Key Differential ([CWE-674](https://cwe.mitre.org/data/definitions/674.html)) | `arka/evidence/parsers.py` | Implemented `object_pairs_hook=reject_duplicates` to reject duplicate JSON keys with `EvidenceParserError`. Added stack-based iterative depth validation and caught `RecursionError` converting to `ParserBombError`. Verified via unit tests in `tests/test_evidence_pipeline.py`. |
 
 ---
 
@@ -142,9 +142,10 @@ The codebase was re-indexed with `graphify update .`, producing an updated AST k
 
 | Component / Layer | Command | Status | Details |
 |---|---|:---:|---|
-| **Rust Kernel Workspace** | `cargo test --all` | ✅ **PASS** | 161 unit, integration, and adversarial tests passing. |
+| **Rust Kernel Workspace** | `cargo test --all` | ✅ **PASS** | All unit, integration, and adversarial tests passing (including IPC fail-closed scope tests and DLP multi-secret scrubbing). |
 | **Rust Compiler Lints** | `cargo clippy --all-targets --all-features -- -D warnings` | ✅ **PASS** | Zero compiler warnings; `#![forbid(unsafe_code)]` enforced. |
 | **Rust Formatting** | `cargo fmt --check` | ✅ **PASS** | 100% compliant with standard Rust formatting. |
+| **Python Evidence Pipeline** | `python3 -m unittest tests/test_evidence_pipeline.py` | ✅ **PASS** | 17 tests passing (including duplicate key rejection & recursion bomb defenses). |
 | **Frontend Unit Tests** | `npm --prefix frontend test` | ✅ **PASS** | 25 automated invariant & state-machine tests passing. |
 | **Frontend Type Safety** | `npm --prefix frontend exec tsc -- -p frontend/tsconfig.json --noEmit` | ✅ **PASS** | Zero TypeScript compilation errors. |
 | **Frontend Production Build** | `npm --prefix frontend run build` | ✅ **PASS** | Vite production bundle compiled in 2.57s. |

@@ -21,7 +21,7 @@ import {
 } from '../types/core';
 import { DiscoveredAsset } from '../types/attackSurface';
 import { AgentInstance, AgentTask } from '../types/agents';
-import { Finding, AssessmentReport } from '../types/findings';
+import { Finding, AssessmentReport, FindingTraceItem } from '../types/findings';
 import { PlatformSettings } from '../types/settings';
 import {
   SAMPLE_MISSIONS,
@@ -36,6 +36,7 @@ import {
   SAMPLE_SETTINGS,
   SAMPLE_EMERGENCY_STOP,
 } from './mockData';
+import { SAMPLE_FINDING_TRACE_ITEMS } from './traceData';
 
 export class ArkaApiClient {
   private baseUrl: string;
@@ -323,6 +324,24 @@ export class ArkaApiClient {
 
   public async getFindings(signal?: AbortSignal): Promise<ApiResponse<Finding[]>> {
     return this.request<Finding[]>('/findings', 'GET', undefined, SAMPLE_FINDINGS, signal);
+  }
+
+  public async getFindingTraceItems(
+    missionId?: string,
+    signal?: AbortSignal
+  ): Promise<ApiResponse<FindingTraceItem[]>> {
+    const filtered = missionId
+      ? SAMPLE_FINDING_TRACE_ITEMS.filter((item) => item.mission_id === missionId)
+      : SAMPLE_FINDING_TRACE_ITEMS;
+    return this.request<FindingTraceItem[]>('/findings/trace', 'GET', undefined, filtered, signal);
+  }
+
+  public async getFindingTraceById(
+    findingId: string,
+    signal?: AbortSignal
+  ): Promise<ApiResponse<FindingTraceItem | null>> {
+    const item = SAMPLE_FINDING_TRACE_ITEMS.find((f) => f.finding_id === findingId) || null;
+    return this.request<FindingTraceItem | null>(`/findings/trace/${findingId}`, 'GET', undefined, item, signal);
   }
 
   public async getReports(signal?: AbortSignal): Promise<ApiResponse<AssessmentReport[]>> {

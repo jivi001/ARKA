@@ -88,6 +88,17 @@ impl GatewayServer {
             GatewayError::IoError(format!("Failed to bind UDS at {}: {}", path.display(), e))
         })?;
 
+        // Enforce mode 0660 on Unix socket to restrict access to owner and group
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = std::fs::metadata(path) {
+                let mut perms = metadata.permissions();
+                perms.set_mode(0o660);
+                let _ = std::fs::set_permissions(path, perms);
+            }
+        }
+
         info!("arka-gatewayd listening on {}", path.display());
 
         loop {
@@ -145,17 +156,26 @@ impl GatewayServer {
         #[cfg(target_os = "linux")]
         if config.enforce_peer_auth {
             if let Ok(ucred) = stream.peer_cred() {
-                if let Some(expected_uid) = config.allowed_uid {
-                    if ucred.uid() != expected_uid {
-                        warn!(
-                            "Peer UID mismatch: expected {}, got {}",
-                            expected_uid,
-                            ucred.uid()
-                        );
-                        return Err(GatewayError::PeerAuthFailed(format!(
-                            "Peer UID {} not authorized",
-                            ucred.uid()
-                        )));
+                match config.allowed_uid {
+                    Some(expected_uid) => {
+                        if ucred.uid() != expected_uid {
+                            warn!(
+                                "Peer UID mismatch: expected {}, got {}",
+                                expected_uid,
+                                ucred.uid()
+                            );
+                            return Err(GatewayError::PeerAuthFailed(format!(
+                                "Peer UID {} not authorized",
+                                ucred.uid()
+                            )));
+                        }
+                    }
+                    None => {
+                        warn!("Peer auth is enforced but allowed_uid is not configured; failing closed");
+                        return Err(GatewayError::PeerAuthFailed(
+                            "Peer authentication is enabled but allowed_uid is not configured (fail-closed)"
+                                .to_string(),
+                        ));
                     }
                 }
             } else {

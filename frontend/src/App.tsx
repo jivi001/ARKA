@@ -26,6 +26,7 @@ import { ApprovalsView } from './components/approvals/ApprovalsView';
 import { AgentsAndTasksView } from './components/agents/AgentsAndTasksView';
 import { EvidenceView } from './components/evidence/EvidenceView';
 import { FindingsView } from './components/findings/FindingsView';
+import { AgentFindingsTraceView } from './components/trace/AgentFindingsTraceView';
 import { ReportsView } from './components/reports/ReportsView';
 import { AuditView } from './components/audit/AuditView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -247,6 +248,21 @@ export const App: React.FC = () => {
 
   const pendingApprovalsCount = approvals.filter((a) => a.status === 'PENDING').length;
 
+  const TAB_LABELS: Record<NavDestination, string> = {
+    overview: 'Mission Overview',
+    missions: 'Missions Management',
+    attack_surface: 'Attack Surface',
+    proposals: 'Action Proposals',
+    approvals: 'Approvals Gate',
+    agents: 'Agents & Tasks',
+    evidence: 'Evidence Pipeline',
+    findings: 'Security Findings',
+    findings_trace: 'Agent Findings Trace',
+    reports: 'Assessment Reports',
+    audit: 'Cryptographic Audit Trail',
+    settings: 'Platform Settings',
+  };
+
   if (initialLoading) {
     return (
       <div
@@ -295,6 +311,7 @@ export const App: React.FC = () => {
         onTriggerEmergencyStop={handleTriggerEmergencyStop}
         onClearEmergencyStop={handleClearEmergencyStop}
         onOpenMobileNav={() => setMobileNavOpen(true)}
+        currentTabLabel={TAB_LABELS[currentTab]}
       />
 
       {/* Main Body with Sidebar + Content */}
@@ -309,6 +326,8 @@ export const App: React.FC = () => {
           pendingApprovalsCount={pendingApprovalsCount}
           isOpenMobile={mobileNavOpen}
           onCloseMobile={() => setMobileNavOpen(false)}
+          onTriggerEmergencyStop={handleTriggerEmergencyStop}
+          emergencyStopActive={emergencyStopStatus.active}
         />
 
         {/* Content Area */}
@@ -436,6 +455,16 @@ export const App: React.FC = () => {
               onSelectEvidence={() => {
                 setCurrentTab('evidence');
               }}
+            />
+          )}
+
+          {currentTab === 'findings_trace' && (
+            <AgentFindingsTraceView
+              currentMission={currentMission}
+              allMissions={missions}
+              onSelectMission={(id) => setSelectedMissionId(id)}
+              onNavigate={(tab) => setCurrentTab(tab)}
+              isBackendConnected={isBackendConnected}
             />
           )}
 

@@ -3,8 +3,10 @@
  * Distinguishes observed facts from inferred conclusions.
  */
 
-export type FindingSeverity = 'INFORMATIONAL' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-export type FindingConfidence = 'CONFIRMED_EXPLOIT' | 'OBSERVED_ANOMALY' | 'THEORETICAL_MATCH';
+import type { FindingSeverity, FindingConfidence } from './findingsTrace';
+export * from './findingsTrace';
+
+export type { FindingSeverity, FindingConfidence };
 
 export interface Finding {
   finding_id: string; // fnd_<crockford>
@@ -42,3 +44,4 @@ export interface AssessmentReport {
   audit_chain_verified: boolean;
   tamper_evident_signature: string;
 }
+

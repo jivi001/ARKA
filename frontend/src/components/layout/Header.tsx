@@ -1,5 +1,5 @@
-import React from 'react';
-import { Menu, Sun, Moon, KeyRound, Wifi, WifiOff } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { Menu, Sun, Moon, KeyRound, Wifi, WifiOff, Search, Bell } from 'lucide-react';
 import { EmergencyStopStatus, Mission } from '../../types/core';
 import { EmergencyStopControl } from './EmergencyStopControl';
 import { maskToken } from '../../utils/security';
@@ -16,6 +16,8 @@ export interface HeaderProps {
   onTriggerEmergencyStop: (reason: string) => Promise<void>;
   onClearEmergencyStop: (reason: string) => Promise<void>;
   onOpenMobileNav: () => void;
+  currentTabLabel?: string;
+  onGlobalSearch?: (query: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,25 +32,42 @@ export const Header: React.FC<HeaderProps> = ({
   onTriggerEmergencyStop,
   onClearEmergencyStop,
   onOpenMobileNav,
+  currentTabLabel = 'Security Operations',
+  onGlobalSearch,
 }) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const isMac = typeof window !== 'undefined' && navigator.platform?.toUpperCase().indexOf('MAC') >= 0;
+
+  // Global keyboard shortcut: Cmd+K / Ctrl+K focuses search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <header
       style={{
-        height: 44,
+        height: 46,
         backgroundColor: 'var(--bg-surface-lowest)',
         borderBottom: '1px solid var(--border-subtle)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 14px',
+        padding: '0 16px',
         position: 'sticky',
         top: 0,
         zIndex: 50,
         boxShadow: 'var(--inset-highlight)',
       }}
     >
-      {/* Left: Mobile Toggle & Mission Context */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Left: Mobile Toggle, Mission Context & Breadcrumb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button
           onClick={onOpenMobileNav}
           className="btn-ghost mobile-menu-btn"
@@ -64,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
             Mission:
           </span>
           <select
@@ -74,13 +93,15 @@ export const Header: React.FC<HeaderProps> = ({
             style={{
               padding: '2px 8px',
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 600,
               width: 'auto',
               maxWidth: 240,
               backgroundColor: 'var(--bg-surface-low)',
               color: 'var(--text-primary)',
               borderColor: 'var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
             }}
+            aria-label="Active assessment mission"
           >
             {missions.map((m) => (
               <option key={m.id} value={m.id}>
@@ -90,7 +111,13 @@ export const Header: React.FC<HeaderProps> = ({
           </select>
         </div>
 
-        {/* Backend Connection status */}
+        {/* Current Destination Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+          <span>/</span>
+          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{currentTabLabel}</span>
+        </div>
+
+        {/* Backend Connection / Dev Sample Mode Indicator */}
         <div
           style={{
             display: 'flex',
@@ -98,15 +125,16 @@ export const Header: React.FC<HeaderProps> = ({
             gap: 4,
             fontSize: 10,
             fontFamily: 'var(--font-mono)',
-            padding: '2px 6px',
+            padding: '2px 7px',
             borderRadius: 'var(--radius-xs)',
             backgroundColor: isBackendConnected ? 'var(--status-emerald-dim)' : 'var(--status-amber-dim)',
             color: isBackendConnected ? 'var(--status-emerald)' : 'var(--status-amber)',
             border: `1px solid ${isBackendConnected ? 'var(--status-emerald-border)' : 'var(--status-amber-border)'}`,
+            fontWeight: 700,
           }}
           title={
             isBackendConnected
-              ? 'Authoritative Kernel Backend: CONNECTED'
+              ? 'Authoritative Kernel Backend: CONNECTED & ENFORCING'
               : 'Local Dev Mode: Using verified sample data fixtures'
           }
         >
@@ -115,8 +143,94 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Actions, Emergency Stop, Operator, Theme */}
+      {/* Center: Global Search Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          position: 'relative',
+          width: 280,
+          maxWidth: '30vw',
+        }}
+        className="header-search-container"
+      >
+        <Search
+          size={13}
+          style={{
+            position: 'absolute',
+            left: 9,
+            color: 'var(--text-muted)',
+            pointerEvents: 'none',
+          }}
+        />
+        <input
+          ref={searchInputRef}
+          type="text"
+          placeholder="Global search assets, findings..."
+          onChange={(e) => onGlobalSearch && onGlobalSearch(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '4px 44px 4px 28px',
+            fontSize: 11,
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-subtle)',
+            backgroundColor: 'var(--bg-surface-low)',
+            color: 'var(--text-primary)',
+          }}
+          aria-label="Global search"
+        />
+        <div
+          style={{
+            position: 'absolute',
+            right: 6,
+            display: 'flex',
+            alignItems: 'center',
+            fontSize: 9,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--text-muted)',
+            backgroundColor: 'var(--bg-well)',
+            padding: '1px 4px',
+            borderRadius: 'var(--radius-xs)',
+            border: '1px solid var(--border-subtle)',
+            pointerEvents: 'none',
+          }}
+        >
+          {isMac ? '⌘K' : 'Ctrl+K'}
+        </div>
+      </div>
+
+      {/* Right: Actions, Notifications, Emergency Stop, Operator, Theme */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Notifications Icon Button */}
+        <button
+          className="btn-ghost"
+          style={{
+            position: 'relative',
+            padding: 5,
+            border: 'none',
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+          title="Operator notifications"
+          aria-label="Operator notifications"
+        >
+          <Bell size={15} />
+          <span
+            style={{
+              position: 'absolute',
+              top: 3,
+              right: 3,
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              backgroundColor: 'var(--accent-primary)',
+            }}
+          />
+        </button>
+
         {/* Persistent Emergency Stop Control */}
         <EmergencyStopControl
           status={emergencyStopStatus}
@@ -150,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onToggleTheme}
           className="btn-ghost"
           style={{
-            padding: 4,
+            padding: 5,
             border: 'none',
             borderRadius: 'var(--radius-sm)',
             cursor: 'pointer',
