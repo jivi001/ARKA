@@ -23,6 +23,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { NavDestination } from '../layout/SideNav';
+import { ActiveMissionCard } from '../missions/ActiveMissionCard';
 
 export interface MissionOverviewProps {
   currentMission: Mission;
@@ -228,50 +229,15 @@ export const MissionOverviewView: React.FC<MissionOverviewProps> = ({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 14 }}>
         {/* Left Column: Mission Lifecycle & Pending Approvals */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Active Mission Details */}
-          <div className="panel" style={{ padding: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Layers size={14} style={{ color: 'var(--accent-primary)' }} />
-                <h3 style={{ fontSize: 13, fontWeight: 600 }}>Active Assessment Mission</h3>
-              </div>
-              <Badge variant={currentMission.state === 'ACTIVE' ? 'success' : 'neutral'} pulseDot={currentMission.state === 'ACTIVE'}>
-                {currentMission.state}
-              </Badge>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Name: </span>
-                <span style={{ fontWeight: 600 }}>{currentMission.name}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Mission ID: </span>
-                <span className="font-mono text-muted">{currentMission.id}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Scope Ref: </span>
-                <span className="font-mono">{currentMission.scope_ref}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Created By: </span>
-                <span className="font-mono">{currentMission.created_by}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Started: </span>
-                <span>{formatTimestamp(currentMission.created_at_unix)}</span>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-              <button onClick={() => onNavigate('missions')} className="btn btn-secondary" style={{ fontSize: 11 }}>
-                Switch Mission
-              </button>
-              <button onClick={() => onNavigate('attack_surface')} className="btn btn-secondary" style={{ fontSize: 11 }}>
-                Inspect Scope Boundaries
-              </button>
-            </div>
-          </div>
+          {/* Active Assessment Mission Card (Apple HIG Specification) */}
+          <ActiveMissionCard
+            mission={currentMission}
+            assets={assets}
+            canSwitchMission={allMissions.length > 1}
+            onInspectScope={() => onNavigate('attack_surface')}
+            onViewDetails={() => onNavigate('missions')}
+            onSwitchMission={() => onNavigate('missions')}
+          />
 
           {/* Pending Approvals Review Box */}
           <div className="panel" style={{ padding: 14 }}>

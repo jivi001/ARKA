@@ -43,6 +43,8 @@ export class ArkaApiClient {
   private isDevelopmentMode: boolean = true;
   private isBackendConnected: boolean = false;
 
+  private allowMockMutations: boolean = false;
+
   constructor(baseUrl: string = '/api/v1') {
     this.baseUrl = baseUrl;
     // Default local operator session for development/testing
@@ -53,6 +55,14 @@ export class ArkaApiClient {
       hardware_token_bound: true,
       token_expires_at_unix: Math.floor(Date.now() / 1000) + 28800,
     };
+  }
+
+  public setAllowMockMutations(allow: boolean): void {
+    this.allowMockMutations = allow;
+  }
+
+  public getAllowMockMutations(): boolean {
+    return this.allowMockMutations;
   }
 
   public setSession(session: UserSession | null): void {
@@ -163,17 +173,22 @@ export class ArkaApiClient {
         throw err;
       }
 
-      // If in development mode and a verified fallback fixture is available, return sample data
+      // In development mode, return sample fixtures ONLY for read-only queries (GET)
+      // or if mock mutations are explicitly authorized for testing.
+      // Sensitive state mutations (POST, PUT, DELETE) MUST NOT simulate success when backend is offline!
+      const isMutation = method !== 'GET';
       if (this.isDevelopmentMode && fallbackData !== undefined) {
-        return {
-          success: true,
-          data: fallbackData,
-          meta: {
-            request_id: requestId,
-            timestamp_unix: timestampUnix,
-            kernel_version: 'dev-mode-sample-fixture',
-          },
-        };
+        if (!isMutation || this.allowMockMutations) {
+          return {
+            success: true,
+            data: fallbackData,
+            meta: {
+              request_id: requestId,
+              timestamp_unix: timestampUnix,
+              kernel_version: 'dev-mode-sample-fixture',
+            },
+          };
+        }
       }
 
       return {

@@ -37,6 +37,19 @@ export type StandardCapability =
   | 'CREDENTIAL_VALIDATION'
   | 'CONTROLLED_EXPLOITATION';
 
+export type ScopeEnforcementState =
+  | 'VERIFIED_CURRENT'
+  | 'VERIFICATION_PENDING'
+  | 'STALE_VERIFICATION'
+  | 'INVALID_SCOPE'
+  | 'VERIFICATION_UNAVAILABLE';
+
+export interface ScopeBoundaryCounts {
+  authorizedCount: number;
+  discoveredOutOfScopeCount: number;
+  excludedCount: number;
+}
+
 export interface ScopeDefinition {
   inclusions: {
     cidr_blocks: string[];
