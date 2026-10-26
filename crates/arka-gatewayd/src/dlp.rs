@@ -47,56 +47,67 @@ impl DlpFilter {
     }
 
     /// Redacts known secret patterns from a string.
+    /// Neutralizes VULN-004 by scanning and redacting every occurrence of sensitive patterns.
     pub fn redact_string(&self, input: &str) -> (String, bool) {
         let mut output = input.to_string();
         let mut modified = false;
 
-        // Pattern matching without heavy regex compilation overhead
-        // 1. OpenAI Key Pattern
-        if let Some(idx) = output.find("sk-") {
-            if idx + 23 <= output.len() {
-                let tail = &output[idx + 3..];
-                let count = tail
-                    .chars()
-                    .take_while(|c| c.is_ascii_alphanumeric())
-                    .count();
-                if count >= 20 {
-                    let end = idx + 3 + count;
-                    output.replace_range(idx..end, "[REDACTED:API_KEY]");
-                    modified = true;
-                }
+        // 1. Anthropic Key Pattern (evaluate before generic sk- to prevent prefix truncation)
+        let mut search_start = 0;
+        while let Some(rel_idx) = output[search_start..].find("sk-ant-") {
+            let idx = search_start + rel_idx;
+            let tail = &output[idx + 7..];
+            let count = tail
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+                .count();
+            if count >= 20 {
+                let end = idx + 7 + count;
+                output.replace_range(idx..end, "[REDACTED:API_KEY]");
+                modified = true;
+                search_start = idx + "[REDACTED:API_KEY]".len();
+            } else {
+                search_start = idx + 7;
             }
         }
 
-        // 2. Anthropic Key Pattern
-        if let Some(idx) = output.find("sk-ant-") {
-            if idx + 27 <= output.len() {
-                let tail = &output[idx + 7..];
-                let count = tail
-                    .chars()
-                    .take_while(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-                    .count();
-                if count >= 20 {
-                    let end = idx + 7 + count;
-                    output.replace_range(idx..end, "[REDACTED:API_KEY]");
-                    modified = true;
-                }
+        // 2. OpenAI Key Pattern
+        let mut search_start = 0;
+        while let Some(rel_idx) = output[search_start..].find("sk-") {
+            let idx = search_start + rel_idx;
+            let tail = &output[idx + 3..];
+            let count = tail
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric())
+                .count();
+            if count >= 20 {
+                let end = idx + 3 + count;
+                output.replace_range(idx..end, "[REDACTED:API_KEY]");
+                modified = true;
+                search_start = idx + "[REDACTED:API_KEY]".len();
+            } else {
+                search_start = idx + 3;
             }
         }
 
-        // 3. Private Key Pattern
-        if let Some(start) = output.find("-----BEGIN") {
-            if let Some(end_marker) = output.find("KEY-----") {
-                if end_marker > start {
-                    let total_end = end_marker + 8;
-                    output.replace_range(start..total_end, "[REDACTED:PRIVATE_KEY]");
-                    modified = true;
-                }
+        // 3. Private Key Pattern (-----BEGIN ... KEY-----)
+        let mut search_start = 0;
+        while let Some(rel_start) = output[search_start..].find("-----BEGIN") {
+            let start = search_start + rel_start;
+            if let Some(rel_end) = output[start..].find("KEY-----") {
+                let total_end = start + rel_end + 8;
+                output.replace_range(start..total_end, "[REDACTED:PRIVATE_KEY]");
+                modified = true;
+                search_start = start + "[REDACTED:PRIVATE_KEY]".len();
+            } else {
+                search_start = start + "-----BEGIN".len();
             }
         }
 
-        // 4. Internal token prefix
-        if let Some(idx) = output.find("tok_") {
+        // 4. Internal token prefix (tok_...)
+        let mut search_start = 0;
+        while let Some(rel_idx) = output[search_start..].find("tok_") {
+            let idx = search_start + rel_idx;
             let tail = &output[idx + 4..];
             let count = tail
                 .chars()
@@ -106,6 +117,28 @@ impl DlpFilter {
                 let end = idx + 4 + count;
                 output.replace_range(idx..end, "[REDACTED:INTERNAL_TOKEN]");
                 modified = true;
+                search_start = idx + "[REDACTED:INTERNAL_TOKEN]".len();
+            } else {
+                search_start = idx + 4;
+            }
+        }
+
+        // 5. AWS Access Key Pattern (AKIA...)
+        let mut search_start = 0;
+        while let Some(rel_idx) = output[search_start..].find("AKIA") {
+            let idx = search_start + rel_idx;
+            let tail = &output[idx + 4..];
+            let count = tail
+                .chars()
+                .take_while(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+                .count();
+            if count == 16 {
+                let end = idx + 4 + count;
+                output.replace_range(idx..end, "[REDACTED:AWS_KEY]");
+                modified = true;
+                search_start = idx + "[REDACTED:AWS_KEY]".len();
+            } else {
+                search_start = idx + 4;
             }
         }
 
@@ -163,5 +196,32 @@ mod tests {
         let (cleaned, modified) = filter.redact_string(text);
         assert!(modified);
         assert!(cleaned.contains("[REDACTED:PRIVATE_KEY]"));
+    }
+
+    #[test]
+    fn test_dlp_redacts_multiple_keys_in_single_payload() {
+        let filter = DlpFilter::new();
+        let text = "Key 1: sk-proj111111111111111111111111 and Key 2: sk-proj222222222222222222222222 in one string";
+        let (cleaned, modified) = filter.redact_string(text);
+        assert!(modified);
+        assert_eq!(cleaned.matches("[REDACTED:API_KEY]").count(), 2);
+        assert!(!cleaned.contains("sk-proj111111111111111111111111"));
+        assert!(!cleaned.contains("sk-proj222222222222222222222222"));
+    }
+
+    #[test]
+    fn test_dlp_redacts_mixed_patterns_and_false_candidates() {
+        let filter = DlpFilter::new();
+        let text = "sk-short sk-ant-realant12345678901234567890abc sk-projreal98765432109876543210 AKIAIOSFODNN7EXAMPLE";
+        let (cleaned, modified) = filter.redact_string(text);
+        assert!(modified);
+        // sk-short is not redacted (too short)
+        assert!(cleaned.contains("sk-short"));
+        // Real keys are all redacted
+        assert!(cleaned.contains("[REDACTED:API_KEY]"));
+        assert!(cleaned.contains("[REDACTED:AWS_KEY]"));
+        assert!(!cleaned.contains("sk-ant-realant"));
+        assert!(!cleaned.contains("sk-projreal"));
+        assert!(!cleaned.contains("AKIAIOSFODNN7EXAMPLE"));
     }
 }

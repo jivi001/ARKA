@@ -20,6 +20,7 @@ from arka.evidence import (
     EvidenceClassifier,
     EvidenceImmutabilityError,
     EvidenceIntegrityError,
+    EvidenceParserError,
     EvidencePipeline,
     EvidenceProvenance,
     EvidenceRecord,
@@ -68,6 +69,29 @@ class TestEvidencePipeline(unittest.TestCase):
         nested = '{"a":' * 8 + '1' + '}' * 8
         with self.assertRaises(ParserBombError):
             parser.parse(nested.encode("utf-8"))
+
+    def test_safe_json_duplicate_keys_rejected(self):
+        """
+        VULN-006:
+        Adversary supplies JSON with duplicate keys to exploit parser differentials.
+        SafeJsonParser must reject duplicate keys with EvidenceParserError.
+        """
+        parser = SafeJsonParser()
+        raw = b'{"target": "198.51.100.1", "action": "scan", "target": "10.0.0.1"}'
+        with self.assertRaises(EvidenceParserError) as ctx:
+            parser.parse(raw)
+        self.assertIn("Duplicate JSON key", str(ctx.exception))
+
+    def test_safe_json_recursion_bomb_converts_to_parser_bomb_error(self):
+        """
+        VULN-006:
+        Adversary supplies an extreme recursion bomb that exceeds nesting limits.
+        Parser must raise ParserBombError without unhandled crash.
+        """
+        parser = SafeJsonParser(max_depth=8)
+        nested = '{"k":' * 500 + '1' + '}' * 500
+        with self.assertRaises(ParserBombError):
+            parser.parse(nested.encode("utf-8"), max_bytes=1024 * 1024)
 
     def test_safe_xml_parsing_success(self):
         """Safe XML parser parses benign XML structures."""
