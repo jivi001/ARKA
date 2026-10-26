@@ -5,6 +5,9 @@
 [![Execution Plane: Phase 2](https://img.shields.io/badge/execution%20plane-Phase%202%20Audited%20(PASS)-brightgreen.svg)](docs/security/PHASE_2_COMPLETION_REPORT.md)
 [![Security Kernel: Phase 1](https://img.shields.io/badge/security%20kernel-Phase%201%20Audited%20(PASS)-brightgreen.svg)](docs/security/PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md)
 [![Security Foundation: Phase 0](https://img.shields.io/badge/security%20foundation-P0%20established-brightgreen.svg)](docs/security/P0_SECURITY_FOUNDATION_REPORT.md)
+[![Frontend: Phase 3 Module A](https://img.shields.io/badge/frontend-Phase%203%20Module%20A%20(Delivered)-brightgreen.svg)](frontend/)
+[![Supply Chain: pnpm 12](https://img.shields.io/badge/supply%20chain-pnpm%20audit%20(PASS)-brightgreen.svg)](.github/workflows/security-foundation.yml)
+[![Knowledge Graph: Graphify](https://img.shields.io/badge/graphify-4024%20nodes%20%7C%20210%20communities-blue.svg)](graphify-out/GRAPH_REPORT.md)
 [![Traceability: 100%](https://img.shields.io/badge/traceability-100%25%20(35%2F35%20threats)-brightgreen.svg)](security/traceability/security-traceability.yaml)
 [![Unsafe Code: Forbidden](https://img.shields.io/badge/unsafe%20code-forbidden%20(%23!%5Bforbid(unsafe_code)%5D)-blue.svg)](crates/)
 [![License: Proprietary / Authorized](https://img.shields.io/badge/license-Authorized_Use_Only-red.svg)](LICENSE)
@@ -94,7 +97,7 @@ In strict accordance with the ARKA Security Baseline, phase statuses are governe
 | **Phase 0** | **P0 Security Foundation** | **`COMPLETE`** | 35 canonical threats, 39 controls, 37 blocking gates, 100% bidirectional traceability, 6-domain key policy, hardened CI supply chain, 44 test contracts, and validator meta-testing. |
 | **Phase 1** | **Deterministic Security Kernel** | **`COMPLETE (PASS)`** | Deterministic Rust Security Kernel (`arka-core-types`, `arka-crypto`, `arka-kernel`, `arka-storage-sqlite`). `#![forbid(unsafe_code)]`, RFC 8785 JCS canonicalization, single-use replay protection with SQLite WAL `BEGIN IMMEDIATE`, dual signed audit hash chains (`AUDIT-SIGNING`), and persistent Emergency Stop. Remediation verified; 92/92 Rust tests passing. Re-audit PASS ([`PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md`](docs/security/PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md)). |
 | **Phase 2** | **Execution Broker & Sandboxing** | **`COMPLETE (PASS)`** | Rust Execution Broker (`arka-execution-broker`), typed IPC protocol (`arka-worker-protocol`), network policy engine (`arka-network-policy`). Single-resolution DNS pinning (`DirectIpConnector`), SSRF & cloud metadata blocking (`169.254.169.254`), hop-by-hop HTTP redirect filter with CRLF injection defense, rootless Bubblewrap sandbox supervisor (`SandboxSupervisor`), resource governor, and real-time e-stop process kill. All 9 Phase 2 gates passing ([`PHASE_2_COMPLETION_REPORT.md`](docs/security/PHASE_2_COMPLETION_REPORT.md), [`PHASE_2_VERIFICATION_AUDIT_REPORT.md`](docs/security/PHASE_2_VERIFICATION_AUDIT_REPORT.md)). |
-| **Phase 3** | **Intelligence & Multi-Agent Plane** | `NEXT (PLANNED)` | Inter-agent message signing (`CTRL-A2A-AUTH-001`), dual-boundary prompt framing (`CTRL-PROMPT-GUARD-001`), ANSI terminal stripping, quarantined evidence parsing (`CTRL-PARSER-SANDBOX-001`). |
+| **Phase 3** | **Intelligence, Operations & Multi-Agent Plane** | **`ACTIVE / DELIVERED`** | **Module A (Delivered):** Apple-inspired Security Operations Console (`frontend/`), Active Mission Card, Scope boundary segregation ($\mathbf{DISCOVERED \neq AUTHORIZED}$), TOCTOU approval binding, 25-suite unit test coverage, and pnpm 12 supply chain lockfile.<br>**Module I (Delivered):** Safe evidence analysis, parsing sandbox (`defusedxml`, HTML stripping, Nmap parser), DLP secret sanitization, and SHA-256 provenance pipeline.<br>**Module J (Delivered):** Attack surface knowledge graph with causal node/edge provenance validation and integrated acceptance suite.<br>**Daemons:** Standalone UDS daemons for Security Kernel (`arka-kerneld`) and LLM Gateway (`arka-gatewayd`). |
 | **Phase 6** | **Credential Vault & Session Broker** | `PLANNED` | Hardware/KMS Key Encryption Key (KEK) wrapping (`CTRL-CRED-ISOLATION-001`), ephemeral in-memory POSIX secret injection, zero plain-text storage. |
 | **Phase 9+** | **Strong Virtualization Isolation** | `PLANNED` | Hardware-assisted microVM hypervisor isolation (Firecracker / gVisor) for controlled high-risk exploitation. |
 
@@ -103,7 +106,45 @@ In strict accordance with the ARKA Security Baseline, phase statuses are governe
 
 ---
 
-## Rust Workspace Architecture (`crates/`)
+## Architecture Topology & Tier Overview
+
+ARKA is structured into three isolated, highly governed execution tiers:
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│               1. HUMAN-IN-THE-LOOP OPERATOR UI (FRONTEND)              │
+│  React 18 • TypeScript 5.9 • Vite 5 • Apple Human Interface Guidelines │
+│  • Active Assessment Mission Card (Decoupled Exec & Scope Status)      │
+│  • Visual Scope Segregation (DISCOVERED ≠ AUTHORIZED Invariant)        │
+│  • Cryptographic Action-Hash Bound Operator Approvals (TOCTOU Defense) │
+│  • Instant Monotonic Emergency Stop Disconnect Button                  │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Authoritative REST/JSON API
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│              2. AI MULTI-AGENT REASONING PLANE (UNTRUSTED)             │
+│  Python 3.13 Runtime • Zero Direct Socket or Shell Authority          │
+│  • Specialized Roles: Orchestrator, Recon, VulnAnalysis, Exploit       │
+│  • A2A Message Bus with Ed25519 Token Signing & Nonce Replay Defense   │
+│  • Quarantined Evidence Parsers & DLP Sanitization (Module I)          │
+│  • Knowledge Graph Provenance Engine (Module J)                        │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Length-Prefixed Unix Socket Frames
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│            3. DETERMINISTIC SECURITY KERNEL & DAEMONS (TRUSTED)        │
+│  Rust Workspace (100% #![forbid(unsafe_code)])                         │
+│  • arka-kerneld: Standalone UDS Security Kernel Daemon                 │
+│  • arka-gatewayd: Standalone LLM Gateway with Outbound DLP & Memory    │
+│    Zeroization (Zeroizing<String>)                                     │
+│  • arka-kernel: ScopeEngine, PolicyEngine, ActionNormalizer            │
+│  • arka-storage-sqlite: Dual Audit Ledger, Atomic Replay Protection    │
+│  • arka-execution-broker: Bubblewrap Rootless Sandboxes (bwrap)        │
+│  • arka-network-policy: DNS Single-Resolution & ScopeGuard Pinning     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Rust Workspace Architecture (`crates/`)
 
 ARKA is implemented as a fine-grained, modular Rust workspace under `crates/` enforcing `#![forbid(unsafe_code)]` across 100% of crates:
 
@@ -115,8 +156,29 @@ crates/
 ├── arka-storage-sqlite/     # SqliteStorage, SqliteTransaction with WAL mode, BEGIN IMMEDIATE, schema migrations
 ├── arka-execution-broker/   # ExecutionBroker, state machine, crash recovery, SandboxSupervisor (bwrap), ResourceGovernor, EvidenceCollector, BrokerAuditService
 ├── arka-worker-protocol/    # Typed, bounded IPC schemas (WorkerHello, ExecuteTask, CancelTask), deny_unknown_fields, 64KB frame ceiling
-└── arka-network-policy/     # ScopeGuard, CanonicalIp, BlockedRanges (SSRF/metadata), DirectIpConnector, RedirectHandler, BrowserMediationGuard
+├── arka-network-policy/     # ScopeGuard, CanonicalIp, BlockedRanges (SSRF/metadata), DirectIpConnector, RedirectHandler, BrowserMediationGuard
+├── arka-gatewayd/           # Standalone LLM Gateway UDS daemon, provider adapters, credential zeroization, DLP secret scrub
+└── arka-kerneld/            # Standalone Security Kernel service daemon with UDS transport, length-prefixed frames, broker dispatch
 ```
+
+### Frontend Workspace Architecture (`frontend/`)
+
+The ARKA Frontend is implemented under `frontend/` as a high-density, Apple HIG-inspired security operations interface:
+- **Framework & Bundler:** React 18, TypeScript 5.9, Vite 5, pnpm 12.
+- **Visual Design System:** Native system font stack (`-apple-system`, `SF Pro`), dark canvas (`#1C1C1E`) and light canvas (`#F5F5F7`), Apple Blue accent (`#0071E3` light / `#2997FF` dark), 18px squircles (`--radius-card`), and tabular numerals (`tnum`).
+- **Active Assessment Mission Card:** Distinct execution lifecycle state (`ACTIVE`, `PAUSED`, `TRANSITIONING`, `TERMINATED`) orthogonal to scope verification health (`VERIFIED_CURRENT`, `STALE_VERIFICATION`, `INVALID_SCOPE`).
+- **Scope Invariant Display:** Explicit asymmetric 3-column metric layout separating **Authorized (In-Scope)**, **Discovered (Inert)**, and **Excluded** targets with permanent invariant banner: $\mathbf{DISCOVERED \neq AUTHORIZED}$.
+- **Fail-Closed API Client:** Read-only `GET` queries fall back to development fixtures; sensitive mutations (`POST`, `PUT`, `DELETE`) fail closed when the Security Kernel is offline.
+- **Verification:** 25 automated unit tests executed with Node's native test runner (`node --experimental-strip-types --test`).
+
+### Multi-Agent Intelligence Plane (`arka/`)
+
+The Python agent runtime is implemented under `arka/`:
+- `arka/a2a`: Cryptographically mediated Agent-to-Agent communication bus with Ed25519 signatures, monotonic nonces, and TTL windows.
+- `arka/agents`: Single-responsibility agent implementations (`OrchestratorAgent`, `ReconnaissanceAgent`, `VulnerabilityAnalysisAgent`, `ExploitationValidationAgent`, `ReportingAgent`).
+- `arka/defense`: Heuristic prompt injection detection (`PromptInjectionDetector`), Canary token leak verification (`CanaryTokenManager`), and input sanitization (`InputSanitizer`).
+- `arka/evidence`: Safe evidence parsing engine (`SafeJsonParser`, `SafeXmlParser`, `NmapXmlParser`, `SafeHtmlParser`) preventing parser bombs (XXE, Billion Laughs, ReDoS).
+- `arka/graph`: Attack surface knowledge graph (`KnowledgeGraphStore`) tracking node/edge provenance and agent causal attribution.
 
 ### Cryptographic Key Management (6 Isolated Domains)
 In compliance with **INV-011**, ARKA cryptographically isolates keys into 6 non-overlapping domains:
@@ -170,7 +232,24 @@ cargo test -p arka-execution-broker --test checkpoint_p2_f_governor_test
 cargo test -p arka-execution-broker --test checkpoint_p2_g_adversarial_test
 ```
 
-### 3. Verify the Security Model & Baseline (Phase 0)
+### 3. Verify the Frontend Operator Console (Phase 3 Module A)
+Run the automated test suite, type checker, production build, and pnpm supply chain audit:
+
+```bash
+# 1. Run all 25 automated unit and security invariant tests
+npm --prefix frontend test
+
+# 2. Strict TypeScript type check (zero compiler errors)
+npm --prefix frontend exec tsc -- -p frontend/tsconfig.json --noEmit
+
+# 3. Production Vite bundle compilation
+npm --prefix frontend run build
+
+# 4. Pnpm production dependency vulnerability audit
+cd frontend && pnpm audit --prod --audit-level=high && cd ..
+```
+
+### 4. Verify the Security Model & Baseline (Phase 0)
 Run the authoritative security validator and test suites:
 
 ```bash
@@ -187,13 +266,21 @@ python3 -m unittest discover tests/security
 cd security && sha256sum -c baseline.manifest && cd ..
 ```
 
+### 5. Update Architecture Knowledge Graph (Graphify)
+To refresh the codebase knowledge graph, community clusters, and architectural report:
+
+```bash
+# Update AST extraction, graph.json, graph.html, and GRAPH_REPORT.md
+graphify update .
+```
+
 ---
 
 ## Repository Structure
 
 ```text
 ARKA/
-├── Cargo.toml                                 # Root Rust workspace manifest (7 crates)
+├── Cargo.toml                                 # Root Rust workspace manifest (9 crates)
 ├── Cargo.lock                                 # Pinned Rust dependencies
 ├── ARKA_PRD_v2.2.md                           # Authoritative Product Requirements Document
 ├── ARKA_TRD_v2.2.md                           # Authoritative Technical Requirements Document
@@ -207,7 +294,9 @@ ARKA/
 │   ├── arka-storage-sqlite/                   # WAL-mode atomic SQLite persistence & schema
 │   ├── arka-execution-broker/                 # Execution broker, bwrap supervisor, governor, evidence
 │   ├── arka-worker-protocol/                  # Strongly-typed IPC schemas & 64KB frame bounds
-│   └── arka-network-policy/                   # ScopeGuard, IP pinning, redirect filter, browser mediation
+│   ├── arka-network-policy/                   # ScopeGuard, IP pinning, redirect filter, browser mediation
+│   ├── arka-gatewayd/                         # Standalone LLM Gateway UDS daemon & DLP filter
+│   └── arka-kerneld/                          # Standalone Security Kernel service daemon
 ├── security/                                  # Authoritative Security Foundation (Phase 0)
 │   ├── baseline.manifest                      # Cryptographic seal over security policy files
 │   ├── threat-model/                          # Assets, actors, boundaries, surfaces, threats
@@ -218,19 +307,29 @@ ARKA/
 │   ├── tests/                                 # 44 security test contracts
 │   └── validator/                             # Security model validator & meta-test engine
 ├── tests/
-│   └── security/                              # Phase 0 test suite, meta-tests, crypto tests
+│   ├── security/                              # Phase 0 test suite, meta-tests, crypto tests
+│   ├── test_agent_runtime.py                  # Phase 3 agent runtime tests
+│   ├── test_a2a_protocol.py                   # Phase 3 A2A cryptographic message bus tests
+│   ├── test_prompt_injection_defense.py       # Heuristic detector & canary tests
+│   ├── test_evidence_pipeline.py              # Phase 3 Module I quarantined parsing tests
+│   ├── test_knowledge_graph.py                # Phase 3 Module J graph provenance tests
+│   └── test_phase3_integrated_acceptance.py   # Integrated acceptance verification
 ├── docs/
 │   └── security/                              # Authoritative security documentation
 │       ├── README.md                          # Security documentation index
 │       ├── PHASE_2_COMPLETION_REPORT.md       # Phase 2 completion report & gate matrix
 │       ├── PHASE_2_VERIFICATION_AUDIT_REPORT.md # Phase 2 multi-agent verification audit report
-│       ├── PHASE_2_ARCHITECTURE_PLAN.md       # Phase 2 architectural blueprint
-│       ├── OWASP_TOP_10_PHASE_2_TRACEABILITY.md # OWASP Top 10 traceability matrix
+│       ├── PHASE_3_MODULE_A_ARCHITECTURE_DECISIONS.md # Frontend architecture decisions
+│       ├── PHASE_3_INTEGRATED_DELIVERY_REPORT.md      # Phase 3 Integrated Delivery Report
 │       ├── adr/                               # Architecture Decision Records
 │       │   ├── ADR-001-HTTP-TRANSPORT-AND-PINNED-DIALING.md # Direct-IP connector & TLS
-│       │   └── ADR-002-WORKER-IDENTITY-AND-MTLS.md          # Ephemeral worker mTLS
+│       │   ├── ADR-002-WORKER-IDENTITY-AND-MTLS.md          # Ephemeral worker mTLS
+│       │   ├── ADR-003-ROOTLESS-SANDBOX-CONTAINMENT.md      # Bubblewrap namespaces
+│       │   ├── ADR-004-GATEWAY-TOPOLOGY-AND-CREDENTIAL-ISOLATION.md # Gateway credential isolation
+│       │   ├── ADR-005-A2A-IDENTITY-AND-MESSAGE-CONTRACT.md # A2A signed envelopes
+│       │   ├── ADR-006-ACTION-NORMALIZATION-AND-CANONICALIZATION.md # RFC 8785 JCS
+│       │   └── ADR-007-PYTHON-RUST-IPC-TRANSPORT-AND-AUTHENTICATION.md # UDS socket protocol
 │       ├── PHASE_1_COMPLETION_REPORT.md       # Phase 1 completion & adversarial answers
-│       ├── PHASE_1_VERIFICATION_AUDIT_REPORT.md # Phase 1 multi-agent verification audit
 │       ├── PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md # Phase 1 independent audit (PASS)
 │       ├── P0_SECURITY_FOUNDATION_REPORT.md   # Phase 0 foundation report
 │       ├── BRANCH_PROTECTION.md               # Branch protection specification
@@ -238,7 +337,19 @@ ARKA/
 ├── workers/
 │   └── linux/                                 # Worker sandbox profiles & wrapper scripts
 ├── arka/                                      # Python agent & intelligence plane
-└── frontend/                                  # Operator Console (Next.js / React)
+│   ├── a2a/                                   # Cryptographic agent-to-agent message bus
+│   ├── agents/                                # Specialized agent role implementations
+│   ├── defense/                               # Prompt injection detection & canary guard
+│   ├── evidence/                              # Quarantined evidence parsers (JSON, XML, HTML)
+│   └── graph/                                 # Attack surface knowledge graph
+├── frontend/                                  # Operator Console (React 18 / TypeScript / Vite / pnpm)
+│   ├── src/                                   # Apple HIG components, views, layout, API client
+│   ├── tests/                                 # 25 automated invariant & state machine tests
+│   └── pnpm-lock.yaml                         # Deterministic dependency lockfile
+└── graphify-out/                              # Knowledge graph artifacts (4024 nodes, 210 communities)
+    ├── graph.json                             # Machine-readable AST graph
+    ├── graph.html                             # Interactive visual graph exploration
+    └── GRAPH_REPORT.md                        # Corpus statistics & community hubs
 ```
 
 ---
@@ -250,12 +361,10 @@ ARKA/
 - 📄 [Multi-Agent Operating Model & Specification](AGENTS.md)
 - 📄 [Repository Skills Guide](skills.md)
 - 📄 [MVP Security Acceptance Gates Checklist](mvp%20security%20acceptance%20gates.md)
+- 📄 [Phase 3 Integrated Delivery Report](docs/security/PHASE_3_INTEGRATED_DELIVERY_REPORT.md)
 - 📄 [Phase 2 Completion Report](docs/security/PHASE_2_COMPLETION_REPORT.md)
 - 📄 [Phase 2 Verification Audit Report](docs/security/PHASE_2_VERIFICATION_AUDIT_REPORT.md)
 - 📄 [Phase 2 Architecture Plan](docs/security/PHASE_2_ARCHITECTURE_PLAN.md)
-- 📄 [ADR-001: HTTP Transport & Direct-IP Dialing](docs/security/adr/ADR-001-HTTP-TRANSPORT-AND-PINNED-DIALING.md)
-- 📄 [ADR-002: Worker Identity & mTLS](docs/security/adr/ADR-002-WORKER-IDENTITY-AND-MTLS.md)
 - 📄 [Phase 1 Independent Re-Audit Report](docs/security/PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md)
 - 📄 [Phase 0 Security Foundation Report](docs/security/P0_SECURITY_FOUNDATION_REPORT.md)
-- 📄 [Branch Protection & Governance](docs/security/BRANCH_PROTECTION.md)
-- 📄 [Supply Chain Security Policy](docs/security/SUPPLY_CHAIN_POLICY.md)
+- 📄 [Architecture Knowledge Graph Report](graphify-out/GRAPH_REPORT.md)

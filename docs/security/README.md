@@ -50,8 +50,11 @@ The Phase 1 Security Kernel was constructed under strict, evidence-backed checkp
 
 ## Completion & Verification Audit Reports
 
+- 📄 [Phase 3 Integrated Delivery Report](PHASE_3_INTEGRATED_DELIVERY_REPORT.md): Comprehensive delivery report for Phase 3 Module A (Frontend Console), Module I (Evidence Sandbox), Module J (Knowledge Graph), and Standalone Daemons (`arka-kerneld`, `arka-gatewayd`).
+- 📄 [Phase 2 Completion Report](PHASE_2_COMPLETION_REPORT.md): Phase 2 Execution Broker, rootless Bubblewrap sandbox supervisor, resource governor, and Direct-IP dialer completion report.
+- 📄 [Phase 2 Verification Audit Report](PHASE_2_VERIFICATION_AUDIT_REPORT.md): Multi-agent verification audit report for Phase 2 gates.
 - 📄 [Phase 1 Completion Report](PHASE_1_COMPLETION_REPORT.md): Final completion report for the Phase 1 Security Kernel foundation, providing answers to the 22 mandatory adversarial questions and verification metrics.
-- 📄 [Phase 1 Multi-Agent Verification Audit Report](PHASE_1_VERIFICATION_AUDIT_REPORT.md): Multi-agent, strictly read-only audit report conducted by 6 specialized audit subagents (Repository, PRD/TRD, Assurance Tests, Adversarial Scope, Persistence/Audit/E-Stop, and Production Readiness).
+- 📄 [Phase 1 Multi-Agent Verification Audit Report](PHASE_1_VERIFICATION_AUDIT_REPORT.md): Multi-agent, strictly read-only audit report conducted by 6 specialized audit subagents.
 - 📄 [Phase 1 Remediation Execution Plan](PHASE_1_REMEDIATION_PLAN.md): Formal architectural remediation plan, dependency impact analysis, and single-writer implementation strategy.
 - 📄 [Phase 1 Remediation Verification Report](PHASE_1_REMEDIATION_REPORT.md): Definitive resolution and verification report confirming all findings resolved (`PHASE 1 — PASS`, `GO TO PHASE 2`).
 - 📄 [Phase 1 Independent Security Re-Audit Report](PHASE_1_INDEPENDENT_RE_AUDIT_REPORT.md): Independent post-remediation security re-audit report and final GO/NO-GO gatekeeper determination confirming all security invariants proven and authorizing transition to Phase 2.
