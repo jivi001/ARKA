@@ -86,6 +86,13 @@ export const BACKEND_CONTRACTS: Record<string, EndpointContractInfo> = {
     governingSection: 'Section 24',
     notes: 'Triggers backend cryptographic verification of Merkle/hash chains. Never trusted client-side.',
   },
+  GET_FINDINGS_TRACE: {
+    path: '/api/v1/findings/trace',
+    method: 'GET',
+    status: 'PROPOSED_SPEC',
+    governingSection: 'PRD Section 7, TRD Section 29',
+    notes: 'Observability pipeline tracing findings through 7-stage lifecycle to kernel policy decisions.',
+  },
   DIRECT_EXECUTION: {
     path: '/client/direct-exec',
     method: 'POST',

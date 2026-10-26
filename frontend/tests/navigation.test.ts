@@ -11,11 +11,12 @@ type NavDestination =
   | 'agents'
   | 'evidence'
   | 'findings'
+  | 'findings_trace'
   | 'reports'
   | 'audit'
   | 'settings';
 
-test('Navigation — Taxonomy Completeness (11 Core Destinations)', () => {
+test('Navigation — Taxonomy Completeness (12 Core Destinations including Agent Findings Trace)', () => {
   const expectedDestinations: NavDestination[] = [
     'overview',
     'missions',
@@ -25,14 +26,15 @@ test('Navigation — Taxonomy Completeness (11 Core Destinations)', () => {
     'agents',
     'evidence',
     'findings',
+    'findings_trace',
     'reports',
     'audit',
     'settings',
   ];
 
-  assert.strictEqual(expectedDestinations.length, 11);
+  assert.strictEqual(expectedDestinations.length, 12);
   const uniqueDestinations = new Set(expectedDestinations);
-  assert.strictEqual(uniqueDestinations.size, 11);
+  assert.strictEqual(uniqueDestinations.size, 12);
 });
 
 test('Backend Contract — Disabled Execution Endpoints Fail Closed', () => {
