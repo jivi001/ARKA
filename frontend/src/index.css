@@ -27,7 +27,7 @@
   --border-highlight: rgba(41, 151, 255, 0.3);
 
   --text-primary: #ffffff;
-  --text-secondary: #ebebf5;
+  --text-secondary: #a1a1a6;
   --text-muted: #8e8e93;
   --text-subtle: #636366;
 
@@ -58,12 +58,14 @@
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 
-  /* Corners: 10–14px for containers, smaller for controls */
+  /* Geometry & Radii: 16–20px main card, 10–14px nested panels, 8–12px controls */
   --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 14px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-card: 18px;
+  --radius-modal: 20px;
 
   --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.25);
   --shadow-surface: 0 4px 16px rgba(0, 0, 0, 0.35);
@@ -88,7 +90,7 @@ html.light {
   --border-highlight: rgba(0, 113, 227, 0.3);
 
   --text-primary: #1d1d1f;         /* Apple dark gray primary text */
-  --text-secondary: #515154;       /* Secondary body text */
+  --text-secondary: #62666d;       /* Secondary body text */
   --text-muted: #86868b;           /* Tertiary / labels */
   --text-subtle: #aeaeb2;
 

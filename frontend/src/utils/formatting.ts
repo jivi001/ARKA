@@ -3,7 +3,7 @@
  * Enforces tabular alignment and human-readable security formats.
  */
 
-import { RiskClass } from '../types/core';
+import type { RiskClass } from '../types/core.ts';
 
 export function formatTimestamp(unixSeconds: number): string {
   if (!unixSeconds) return '—';
